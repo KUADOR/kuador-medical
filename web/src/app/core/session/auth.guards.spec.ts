@@ -9,14 +9,17 @@ import {
   UrlTree,
   provideRouter,
 } from '@angular/router';
-import { ACCOUNT, LOGIN, SUPER_ADMIN } from '../../../testing/fixtures';
-import type { CurrentAccount } from '../api/api-types';
+import { ACCOUNT, CLINIC_SELECTION, LOGIN, SUPER_ADMIN } from '../../../testing/fixtures';
+import type { CurrentSession } from '../api/api-types';
 import {
   guestGuard,
   homeGuard,
+  loginStepGuard,
   pendingPasswordChangeGuard,
+  requireAccess,
   requirePermissions,
 } from './auth.guards';
+import { AuthService } from './auth.service';
 import { SessionStore } from './session.store';
 
 describe('auth guards', () => {
@@ -42,7 +45,7 @@ describe('auth guards', () => {
     ) as Promise<boolean | UrlTree>;
   }
 
-  async function runWithAccount(guard: CanActivateFn, account: CurrentAccount) {
+  async function runWithAccount(guard: CanActivateFn, account: CurrentSession) {
     session.start({ ...LOGIN, mustChangePassword: account.mustChangePassword });
     const result = run(guard);
     await Promise.resolve();
@@ -92,11 +95,38 @@ describe('auth guards', () => {
     const result = await runWithAccount(requirePermissions('roles.read'), {
       ...ACCOUNT,
       scope: 'PLATFORM',
-      tenant: undefined,
+      clinic: undefined,
       roles: ['SUPER_ADMIN'],
       permissions: ['platform.permissions.read'],
     });
     expect(serialize(result)).toBe('/forbidden');
+  });
+
+  it('sends to forbidden when the clinic plan does not enable the module', async () => {
+    const guard = requireAccess({ permissions: ['roles.read'], module: 'identity' });
+    expect(
+      serialize(await runWithAccount(guard, { ...ACCOUNT, enabledModules: ['patients'] })),
+    ).toBe('/forbidden');
+    session.clear();
+    expect(await runWithAccount(guard, ACCOUNT)).toBe(true);
+  });
+
+  it('opens the clinic and branch selection only while that login step is pending', async () => {
+    const clinicGuard = loginStepGuard('CLINIC_SELECTION_REQUIRED');
+    const branchGuard = loginStepGuard('BRANCH_SELECTION_REQUIRED');
+    const runStep = (guard: CanActivateFn) =>
+      TestBed.runInInjectionContext(() =>
+        guard({} as ActivatedRouteSnapshot, { url: '/login/clinic' } as RouterStateSnapshot),
+      ) as boolean | UrlTree;
+
+    expect(serialize(runStep(clinicGuard))).toBe('/login');
+
+    const login = TestBed.inject(AuthService).login({ email: 'a@example.com', password: 'x' });
+    backend.expectOne('/api/v1/auth/login').flush(CLINIC_SELECTION);
+    await login;
+
+    expect(runStep(clinicGuard)).toBe(true);
+    expect(serialize(runStep(branchGuard))).toBe('/login');
   });
 
   it('opens the password change page only while it is pending', async () => {

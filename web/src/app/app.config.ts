@@ -7,7 +7,7 @@ import {
 } from '@angular/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { routes } from './app.routes';
-import { authInterceptor } from './core/auth/auth.interceptor';
+import { authInterceptor } from './core/session/auth.interceptor';
 import { AppConfigService } from './core/config/app-config.service';
 
 export const appConfig: ApplicationConfig = {

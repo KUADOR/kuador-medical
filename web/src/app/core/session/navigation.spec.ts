@@ -1,5 +1,5 @@
 import { ACCOUNT, FULL_ACCOUNT, SUPER_ADMIN } from '../../../testing/fixtures';
-import { landingUrl, menuFor, safeReturnUrl } from './navigation';
+import { canAccess, landingUrl, menuFor, safeReturnUrl } from './navigation';
 
 describe('navigation', () => {
   it('builds the menu from the permissions of GET /me', () => {
@@ -7,6 +7,23 @@ describe('navigation', () => {
     expect(menuFor(SUPER_ADMIN).map((item) => item.label)).toEqual(['Catálogo de permisos']);
     expect(menuFor({ ...ACCOUNT, permissions: [] })).toEqual([]);
     expect(menuFor(null)).toEqual([]);
+  });
+
+  it('hides entries whose module the clinic plan does not enable', () => {
+    expect(menuFor({ ...FULL_ACCOUNT, enabledModules: ['patients'] })).toEqual([]);
+    expect(landingUrl({ ...FULL_ACCOUNT, enabledModules: [] })).toBe('/status');
+  });
+
+  it('requires every permission and the module of a requirement', () => {
+    expect(
+      canAccess(ACCOUNT, { permissions: ['roles.read', 'roles.create'], module: 'identity' }),
+    ).toBe(true);
+    expect(
+      canAccess({ ...ACCOUNT, permissions: ['roles.read'] }, { permissions: ['roles.create'] }),
+    ).toBe(false);
+    expect(canAccess({ ...ACCOUNT, enabledModules: [] }, { module: 'identity' })).toBe(false);
+    expect(canAccess(SUPER_ADMIN, { permissions: ['platform.permissions.read'] })).toBe(true);
+    expect(canAccess(null, {})).toBe(false);
   });
 
   it('shows no menu while the password change is pending', () => {
@@ -27,6 +44,8 @@ describe('navigation', () => {
     expect(safeReturnUrl('//evil.test')).toBeNull();
     expect(safeReturnUrl('/\\evil.test')).toBeNull();
     expect(safeReturnUrl('/login?returnUrl=%2Froles')).toBeNull();
+    expect(safeReturnUrl('/invitation')).toBeNull();
+    expect(safeReturnUrl('/reset-password')).toBeNull();
     expect(safeReturnUrl(undefined)).toBeNull();
   });
 });

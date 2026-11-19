@@ -87,7 +87,7 @@ La api crea la cuenta al arrancar solo si no existe ningún SUPER_ADMIN, con `KU
 4. Comprobar la base: `docker compose exec db psql -U "$DB_USERNAME" -d "$DB_NAME" -c 'select version();'` (con las variables de `.env` cargadas) o con cualquier cliente en `127.0.0.1:${DB_PORT}`.
 5. api en el host: `set -a; . ./.env; set +a` y luego `cd api && ./mvnw spring-boot:run`.
 6. web en el host: `cd web && npm install && npm start` (`http://localhost:4200`; el servidor de desarrollo hace proxy de `/api` a `http://localhost:8080`).
-   - Sin api: `cd web && npm run dev:mock` levanta el mock Prism del contrato en `http://localhost:4010` y la web en `http://localhost:4200` con proxy de `/api/v1` al mock.
+   - Sin api: `cd web && npm run dev:mock` levanta los mocks Prism de los contratos (`identity.openapi.yaml` en `http://localhost:4010` y `user-registration.openapi.yaml` en `http://localhost:4011`) y la web en `http://localhost:4200` con proxy de `/api/v1` a los mocks. Mientras la api no implemente `user-registration.openapi.yaml` (MEDK-14 a MEDK-16), el login de la web solo funciona contra el mock.
 7. Alternativa con todo en contenedores: `docker compose --profile full up -d --build`.
 8. Detener: `docker compose down` (con `-v` se borran los datos locales).
 
@@ -180,3 +180,4 @@ Resultado de MEDK-11 (2026-11-19, perfil `full` en macOS con Docker 29): 45 paso
 | 2026-11-19 | Web Angular: `config.json` en tiempo de ejecución con `API_BASE_URL` (por defecto `/api/v1`, mismo origen), reescritura de `config.json` al arrancar el contenedor web si recibe `API_BASE_URL`, proxy local a la api (`npm start`) y mock Prism del contrato en el puerto 4010 (`npm run dev:mock`) | MEDK-7 |
 | 2026-11-19 | CI por pieza en GitHub Actions (`ci`, `api`, `web`, `movil`, `contract`) con filtros por ruta; Flutter `3.47.9` fijado en CI; checks a marcar como requeridos hacia `develop` y `main` | MEDK-10 |
 | 2026-11-19 | Prueba de humo de punta a punta `scripts/smoke-test.sh` (api y web del perfil `full`), variable local `SMOKE_SUPER_ADMIN_NEW_PASSWORD` en `.env.example`, resultado de la verificación manual de web y movil contra la api real; mínimo de iOS de la app movil sube de 13.0 a 15.0 para compilar con Xcode 27 | MEDK-11 |
+| 2026-11-19 | Web: autenticación y sesión contra `user-registration.openapi.yaml`. Segundo mock Prism en el puerto local 4011 (`npm run dev:mock`). Rutas web de los enlaces de correo, con el token en el fragmento: `/invitation#t=…`, `/reset-password#t=…`, `/verify-email#t=…`; autorregistro en `/clinics/{publicCode}/register` (los correos y los deep links de la api deben apuntar a ellas). Sin variables ni secretos nuevos | MEDK-20 |

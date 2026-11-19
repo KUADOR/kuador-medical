@@ -2,11 +2,20 @@ import { Routes } from '@angular/router';
 import {
   guestGuard,
   homeGuard,
+  loginStepGuard,
   pendingPasswordChangeGuard,
+  requireAccess,
   requirePermissions,
-} from './core/auth/auth.guards';
+} from './core/session/auth.guards';
+import { Modules } from './core/session/navigation';
+import { AcceptInvitationPage } from './features/auth/accept-invitation/accept-invitation.page';
+import { ForgotPasswordPage } from './features/auth/forgot-password/forgot-password.page';
+import { LoginSelectionPage } from './features/auth/login-selection/login-selection.page';
+import { LoginPage } from './features/auth/login/login.page';
+import { ResetPasswordPage } from './features/auth/reset-password/reset-password.page';
+import { SelfRegistrationPage } from './features/auth/self-registration/self-registration.page';
+import { VerifyEmailPage } from './features/auth/verify-email/verify-email.page';
 import { ChangePasswordPage } from './features/change-password/change-password.page';
-import { LoginPage } from './features/login/login.page';
 import { MessagePage } from './features/message/message.page';
 import { PlatformPermissionsPage } from './features/platform/platform-permissions.page';
 import { RoleFormPage } from './features/roles/role-form.page';
@@ -26,6 +35,48 @@ export const routes: Routes = [
     title: `Ingresar · ${APP_TITLE}`,
   },
   {
+    path: 'login/clinic',
+    component: LoginSelectionPage,
+    canActivate: [loginStepGuard('CLINIC_SELECTION_REQUIRED')],
+    data: { step: 'CLINIC_SELECTION_REQUIRED' },
+    title: `Elegir clínica · ${APP_TITLE}`,
+  },
+  {
+    path: 'login/branch',
+    component: LoginSelectionPage,
+    canActivate: [loginStepGuard('BRANCH_SELECTION_REQUIRED')],
+    data: { step: 'BRANCH_SELECTION_REQUIRED' },
+    title: `Elegir sucursal · ${APP_TITLE}`,
+  },
+  {
+    path: 'forgot-password',
+    component: ForgotPasswordPage,
+    canActivate: [guestGuard],
+    title: `Recuperar contraseña · ${APP_TITLE}`,
+  },
+  {
+    // Email links carry the one-time token in the fragment (#t=…), never in the path or query.
+    path: 'reset-password',
+    component: ResetPasswordPage,
+    title: `Crear contraseña nueva · ${APP_TITLE}`,
+  },
+  {
+    path: 'invitation',
+    component: AcceptInvitationPage,
+    title: `Activar cuenta · ${APP_TITLE}`,
+  },
+  {
+    path: 'verify-email',
+    component: VerifyEmailPage,
+    title: `Verificar correo · ${APP_TITLE}`,
+  },
+  {
+    path: 'clinics/:publicCode/register',
+    component: SelfRegistrationPage,
+    canActivate: [guestGuard],
+    title: `Registro de pacientes · ${APP_TITLE}`,
+  },
+  {
     path: 'signup',
     component: SignupPage,
     canActivate: [guestGuard],
@@ -40,19 +91,21 @@ export const routes: Routes = [
   {
     path: 'roles',
     component: RolesPage,
-    canActivate: [requirePermissions('roles.read')],
+    canActivate: [requireAccess({ permissions: ['roles.read'], module: Modules.identity })],
     title: `Roles · ${APP_TITLE}`,
   },
   {
     path: 'roles/new',
     component: RoleFormPage,
-    canActivate: [requirePermissions('roles.read', 'roles.create')],
+    canActivate: [
+      requireAccess({ permissions: ['roles.read', 'roles.create'], module: Modules.identity }),
+    ],
     title: `Nuevo rol · ${APP_TITLE}`,
   },
   {
     path: 'roles/:id',
     component: RoleFormPage,
-    canActivate: [requirePermissions('roles.read')],
+    canActivate: [requireAccess({ permissions: ['roles.read'], module: Modules.identity })],
     title: `Rol · ${APP_TITLE}`,
   },
   {

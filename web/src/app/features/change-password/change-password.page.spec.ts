@@ -101,5 +101,8 @@ describe('ChangePasswordPage', () => {
 
     expect(app.session.isAuthenticated()).toBe(false);
     expect(app.router.url).toBe('/login');
+    app.backend
+      .expectOne('/api/v1/auth/logout')
+      .flush(null, { status: 204, statusText: 'No Content' });
   });
 });

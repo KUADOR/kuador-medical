@@ -1,4 +1,28 @@
 {
+  "^/api/v1/auth/password$": {
+    "target": "http://localhost:4010",
+    "secure": false,
+    "changeOrigin": true,
+    "pathRewrite": { "^/api/v1": "" }
+  },
+  "/api/v1/auth": {
+    "target": "http://localhost:4011",
+    "secure": false,
+    "changeOrigin": true,
+    "pathRewrite": { "^/api/v1": "" }
+  },
+  "/api/v1/me": {
+    "target": "http://localhost:4011",
+    "secure": false,
+    "changeOrigin": true,
+    "pathRewrite": { "^/api/v1": "" }
+  },
+  "/api/v1/public": {
+    "target": "http://localhost:4011",
+    "secure": false,
+    "changeOrigin": true,
+    "pathRewrite": { "^/api/v1": "" }
+  },
   "/api/v1": {
     "target": "http://localhost:4010",
     "secure": false,

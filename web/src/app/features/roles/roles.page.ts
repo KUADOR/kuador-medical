@@ -10,8 +10,8 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import type { Role } from '../../core/api/api-types';
-import { AppRoutes } from '../../core/auth/navigation';
-import { SessionStore } from '../../core/auth/session.store';
+import { AppRoutes } from '../../core/session/navigation';
+import { SessionStore } from '../../core/session/session.store';
 import { errorMessage } from '../../core/errors/error-messages';
 import { NoticeService } from '../../core/notice/notice.service';
 import { permissionLabel } from '../../core/roles/permission-labels';
@@ -48,7 +48,7 @@ export class RolesPage {
   protected readonly canCreate = computed(() => this.session.permissions().has('roles.create'));
   protected readonly canUpdate = computed(() => this.session.permissions().has('roles.update'));
   protected readonly canDelete = computed(() => this.session.permissions().has('roles.delete'));
-  protected readonly clinicName = computed(() => this.session.account()?.tenant?.name ?? null);
+  protected readonly clinicName = computed(() => this.session.account()?.clinic?.name ?? null);
 
   protected readonly state = signal<LoadState>({ kind: 'loading' });
   protected readonly roles = computed(() => {
