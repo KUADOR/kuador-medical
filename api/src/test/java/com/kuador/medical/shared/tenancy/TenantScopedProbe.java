@@ -10,11 +10,11 @@ import java.util.UUID;
 import org.hibernate.annotations.TenantId;
 
 /**
- * Test-only entity mapped on the tenant-scoped {@code role} table, used to prove the
+ * Test-only entity mapped on the tenant-scoped {@code identity_role} table, used to prove the
  * tenancy infrastructure before the identity module maps its own entities.
  */
 @Entity
-@Table(name = "role")
+@Table(name = "identity_role")
 public class TenantScopedProbe {
 
     @Id

@@ -23,6 +23,18 @@
       "^/api/v1": ""
     }
   },
+  "/api/v1/patients": {
+    "target": "http://localhost:4011",
+    "secure": false,
+    "changeOrigin": true,
+    "pathRewrite": { "^/api/v1": "" }
+  },
+  "/api/v1/patient-registration-settings": {
+    "target": "http://localhost:4011",
+    "secure": false,
+    "changeOrigin": true,
+    "pathRewrite": { "^/api/v1": "" }
+  },
   "/api/v1/public": {
     "target": "http://localhost:4011",
     "secure": false,

@@ -8,7 +8,11 @@ import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** The fixed permission catalog (FR-012), in catalog order. */
+/**
+ * The fixed permission catalog (FR-012), in catalog order. {@code /permissions} follows
+ * {@code user-registration.openapi.yaml}; {@code /platform/permissions} still follows
+ * {@code identity.openapi.yaml}.
+ */
 @RestController
 class PermissionController {
 
@@ -22,7 +26,7 @@ class PermissionController {
     /** The whole catalog, for the SUPER_ADMIN (PLATFORM token only). */
     @RequiresPermission("platform.permissions.read")
     @GetMapping("/platform/permissions")
-    List<PermissionResponse> all() {
-        return Arrays.stream(Permission.values()).map(PermissionResponse::of).toList();
+    List<PlatformPermissionResponse> all() {
+        return Arrays.stream(Permission.values()).map(PlatformPermissionResponse::of).toList();
     }
 }

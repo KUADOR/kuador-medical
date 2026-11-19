@@ -1,0 +1,186 @@
+<section class="page" aria-labelledby="patient-title">
+  <p><a [routerLink]="patientsLink">← Volver a pacientes</a></p>
+
+  @switch (state().kind) {
+    @case ('loading') {
+      <h1 id="patient-title">Paciente</h1>
+      <p class="hint" aria-live="polite">Cargando…</p>
+    }
+    @case ('failed') {
+      <h1 id="patient-title">Paciente</h1>
+      <p class="alert" role="alert" data-testid="load-error">{{ loadFailure()?.message }}</p>
+      @if (!loadFailure()?.notFound) {
+        <div class="actions">
+          <button type="button" class="button" (click)="load()">Volver a intentar</button>
+        </div>
+      }
+    }
+    @default {
+      @if (patient(); as p) {
+        <div class="page__header">
+          <div>
+            <h1 id="patient-title">{{ fullName(p) }}</h1>
+            @if (p.minor) {
+              <span class="badge" data-testid="minor-badge">Menor de edad</span>
+            } @else if (p.adultSince) {
+              <span class="badge">Mayor de edad desde {{ formatDate(p.adultSince) }}</span>
+            }
+          </div>
+          @if (canEdit()) {
+            <a class="button button--secondary" [routerLink]="editLink()" data-testid="edit-link"
+              >Editar datos</a
+            >
+          }
+        </div>
+
+        <div aria-live="polite">
+          @if (notice(); as message) {
+            <p class="alert alert--success" role="status" data-testid="notice">{{ message }}</p>
+          }
+        </div>
+
+        <section class="card" aria-labelledby="data-title">
+          <h2 id="data-title">Datos personales</h2>
+          <dl class="data-list">
+            <dt>Documento</dt>
+            <dd>{{ documentTypeLabel(p.documentType) }} {{ p.documentNumber }}</dd>
+            <dt>Fecha de nacimiento</dt>
+            <dd>{{ formatDate(p.birthDate) }}</dd>
+            <dt>Sexo</dt>
+            <dd>{{ sexLabel(p.sex) }}</dd>
+            <dt>Correo</dt>
+            <dd>{{ p.email || '—' }}</dd>
+            <dt>Teléfono</dt>
+            <dd>{{ p.phone || '—' }}</dd>
+            <dt>Dirección</dt>
+            <dd>{{ p.address || '—' }}</dd>
+            <dt>Origen</dt>
+            <dd>{{ originLabels[p.origin] }}</dd>
+            <dt>Registrado</dt>
+            <dd>{{ formatDate(p.createdAt) }}</dd>
+          </dl>
+          <p class="hint">La ficha clínica se completa en el módulo de historia clínica.</p>
+        </section>
+
+        <section class="card" aria-labelledby="consent-title" data-testid="consent">
+          <h2 id="consent-title">Consentimiento de datos personales</h2>
+          @if (p.currentConsent; as consent) {
+            <p data-testid="consent-summary">
+              Otorgado por {{ grantorLabels[consent.grantedBy] }} el
+              {{ formatDate(consent.grantedAt) }} (versión {{ consent.textVersion }}).
+              @if (consent.revokedAt) {
+                Revocado el {{ formatDate(consent.revokedAt) }}.
+              }
+            </p>
+          } @else {
+            <p data-testid="consent-summary">No hay un consentimiento vigente.</p>
+          }
+          @if (consentOutdated() && canRegister()) {
+            <div class="form">
+              @if (!p.minor) {
+                <div class="field">
+                  <label for="consent-grantedBy">¿Quién otorga el consentimiento?</label>
+                  <select
+                    id="consent-grantedBy"
+                    name="consentGrantedBy"
+                    [ngModel]="consentGrantedBy()"
+                    (ngModelChange)="consentGrantedBy.set($event)"
+                  >
+                    <option value="PATIENT">El paciente</option>
+                    <option value="GUARDIAN">Su representante</option>
+                  </select>
+                </div>
+              }
+              @if (consentFailure(); as message) {
+                <p class="alert" role="alert" data-testid="consent-error">{{ message }}</p>
+              }
+              <div class="actions">
+                <button
+                  type="button"
+                  class="button"
+                  [disabled]="recordingConsent()"
+                  (click)="recordConsent()"
+                >
+                  {{
+                    recordingConsent()
+                      ? 'Registrando…'
+                      : 'Registrar consentimiento (versión ' + consentVersion + ')'
+                  }}
+                </button>
+              </div>
+            </div>
+          }
+        </section>
+
+        <section class="card" aria-labelledby="account-title" data-testid="account">
+          <h2 id="account-title">Cuenta del paciente</h2>
+          <p>
+            Estado:
+            <strong data-testid="account-status">{{ accountStatusLabels[p.accountStatus] }}</strong>
+          </p>
+          @if (p.minor) {
+            <p class="hint">
+              Los menores de edad no tienen cuenta propia. Al cumplir la mayoría de edad se le
+              ofrecerá activarla.
+            </p>
+          } @else if (canInvite() && canRegister()) {
+            <fieldset class="fieldset">
+              <legend>
+                {{
+                  p.accountStatus === 'INVITED'
+                    ? 'Reenviar la invitación'
+                    : 'Invitar a activar la cuenta'
+                }}
+              </legend>
+              <div class="choice-row">
+                <label class="checkbox">
+                  <input
+                    type="radio"
+                    name="invite-channel"
+                    value="EMAIL"
+                    [disabled]="!p.email"
+                    [ngModel]="channel()"
+                    (ngModelChange)="channel.set($event)"
+                  />
+                  <span>Por correo{{ p.email ? '' : ' (sin correo registrado)' }}</span>
+                </label>
+                <label class="checkbox">
+                  <input
+                    type="radio"
+                    name="invite-channel"
+                    value="SMS"
+                    [disabled]="!p.phone"
+                    [ngModel]="channel()"
+                    (ngModelChange)="channel.set($event)"
+                  />
+                  <span>Por mensaje de texto{{ p.phone ? '' : ' (sin teléfono registrado)' }}</span>
+                </label>
+              </div>
+              @if (inviteFailure(); as message) {
+                <p class="alert" role="alert" data-testid="invite-error">{{ message }}</p>
+              }
+              <div class="actions">
+                <button
+                  type="button"
+                  class="button"
+                  data-testid="invite"
+                  [disabled]="inviting() || (!p.email && !p.phone)"
+                  (click)="invite()"
+                >
+                  {{ inviting() ? 'Enviando…' : 'Enviar invitación' }}
+                </button>
+              </div>
+              @if (!p.email && !p.phone) {
+                <p class="hint">
+                  Registra un correo o un teléfono del paciente para poder enviarle la invitación.
+                </p>
+              }
+            </fieldset>
+          }
+        </section>
+
+        <mk-patient-guardian-links [patient]="p" [canManage]="canManageGuardians()" />
+      }
+    }
+  }
+</section>

@@ -1,0 +1,92 @@
+<section class="page page--narrow" aria-labelledby="settings-title">
+  <p><a [routerLink]="patientsLink">← Volver a pacientes</a></p>
+  <h1 id="settings-title">Autorregistro de pacientes</h1>
+  <p class="hint">
+    Si lo habilitas, las personas mayores de edad pueden registrarse como pacientes desde el enlace
+    público de la clínica, con los mismos datos obligatorios y el consentimiento.
+  </p>
+
+  @switch (state().kind) {
+    @case ('loading') {
+      <p class="hint" aria-live="polite">Cargando…</p>
+    }
+    @case ('failed') {
+      <p class="alert" role="alert" data-testid="load-error">{{ loadFailure() }}</p>
+      <div class="actions">
+        <button type="button" class="button" (click)="load()">Volver a intentar</button>
+      </div>
+    }
+    @default {
+      @if (settings(); as s) {
+        <div aria-live="polite">
+          @if (notice(); as message) {
+            <p class="alert alert--success" role="status" data-testid="notice">{{ message }}</p>
+          }
+        </div>
+        @if (failure(); as message) {
+          <div class="alert" role="alert" data-testid="form-error">
+            <p>{{ message }}</p>
+            @if (versionConflict()) {
+              <button type="button" class="button button--secondary" (click)="load()">
+                Recargar
+              </button>
+            }
+          </div>
+        }
+
+        <div class="field">
+          @if (canConfigure()) {
+            <button
+              type="button"
+              role="switch"
+              class="switch"
+              data-testid="self-registration-switch"
+              aria-labelledby="switch-label"
+              [attr.aria-checked]="s.selfRegistrationEnabled"
+              [disabled]="saving()"
+              (click)="toggle()"
+            >
+              <span class="switch__track" aria-hidden="true"></span>
+              <span id="switch-label">Permitir el autorregistro de pacientes</span>
+            </button>
+          }
+          <p data-testid="status">
+            Estado:
+            <strong>{{ s.selfRegistrationEnabled ? 'Habilitado' : 'Deshabilitado' }}</strong>
+            @if (saving()) {
+              <span class="hint"> · Guardando…</span>
+            }
+          </p>
+          @if (!canConfigure()) {
+            <p class="hint" data-testid="read-only">
+              No tienes permiso para cambiar esta configuración.
+            </p>
+          }
+        </div>
+
+        @if (s.selfRegistrationEnabled) {
+          <div class="field" data-testid="public-link">
+            <label for="public-link">Enlace público de registro</label>
+            <div class="search__row">
+              <input id="public-link" type="text" readonly [value]="publicLink()" />
+              <button type="button" class="button button--secondary" (click)="copy()">
+                Copiar enlace
+              </button>
+            </div>
+            <p class="field__hint" aria-live="polite">
+              @if (copied()) {
+                Enlace copiado.
+              } @else {
+                Compártelo con tus pacientes por tus canales habituales.
+              }
+            </p>
+          </div>
+        } @else {
+          <p class="hint" data-testid="no-link">
+            Mientras esté deshabilitado, el enlace público no permite registrarse.
+          </p>
+        }
+      }
+    }
+  }
+</section>

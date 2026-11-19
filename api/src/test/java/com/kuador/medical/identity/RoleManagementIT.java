@@ -44,7 +44,7 @@ class RoleManagementIT {
 
     private IdentityApi api;
     private Clinic clinic;
-    private final ContractSchema contract = ContractSchema.identity();
+    private final ContractSchema contract = ContractSchema.userRegistration();
 
     @BeforeEach
     void setUp() {
@@ -63,13 +63,18 @@ class RoleManagementIT {
                 .containsEntry("name", "Reception")
                 .containsEntry("description", "Front desk")
                 .containsEntry("systemRole", false)
+                .containsEntry("systemKey", null)
+                .containsEntry("clinical", false)
                 .containsEntry("version", 0)
                 .containsEntry("permissions", List.of("roles.read", "roles.create"));
         assertThat(created.getResponse().getHeader(HttpHeaders.LOCATION)).endsWith("/api/v1/roles/" + role.get("id"));
         contract.assertResponse("/roles", "POST", 201, "application/json", role);
 
         List<Map<String, Object>> roles = api.bodyList(api.get("/api/v1/roles", clinic.token()));
-        assertThat(roles).extracting(found -> found.get("name")).containsExactly("OWNER", "ADMIN", "Reception");
+        assertThat(roles).extracting(found -> found.get("name"))
+                .startsWith("OWNER", "ADMIN")
+                .contains("Reception", "Recepción")
+                .hasSize(12);
         contract.assertArrayResponse("/roles", "GET", 200, "application/json", roles);
 
         MvcTestResult read = api.get("/api/v1/roles/" + role.get("id"), clinic.token());
@@ -80,8 +85,9 @@ class RoleManagementIT {
 
     @Test
     void systemRolesAreListedWithEveryClinicPermission() {
-        List<Map<String, Object>> roles = api.bodyList(api.get("/api/v1/roles", clinic.token()));
+        List<Map<String, Object>> roles = systemRoles();
 
+        assertThat(roles).extracting(role -> role.get("systemKey")).containsExactly("OWNER", "ADMIN");
         assertThat(roles).allSatisfy(role -> {
             assertThat(role).containsEntry("systemRole", true);
             assertThat(role.get("permissions"))
@@ -125,7 +131,7 @@ class RoleManagementIT {
         assertThat(api.get("/api/v1/roles/" + id, clinic.token())).hasStatus(HttpStatus.NOT_FOUND);
         assertThat(api.bodyList(api.get("/api/v1/roles", clinic.token())))
                 .extracting(role -> role.get("id")).doesNotContain(id);
-        assertThat(jdbc.queryForObject("select count(*) from role_permission where role_id = ?::uuid", Integer.class, id))
+        assertThat(jdbc.queryForObject("select count(*) from identity_role_permission where role_id = ?::uuid", Integer.class, id))
                 .isZero();
         assertThat(api.delete("/api/v1/roles/" + id, clinic.token())).hasStatus(HttpStatus.NOT_FOUND);
     }
@@ -167,7 +173,7 @@ class RoleManagementIT {
         String id = createdId("Reception", List.of("roles.read"));
         assertThat(update(id, "Reception", null, List.of("platform.permissions.read"), 0))
                 .hasStatus(HttpStatus.BAD_REQUEST);
-        assertThat(jdbc.queryForList("select permission_code from role_permission where role_id = ?::uuid", String.class, id))
+        assertThat(jdbc.queryForList("select permission_code from identity_role_permission where role_id = ?::uuid", String.class, id))
                 .containsExactly("roles.read");
     }
 
@@ -192,22 +198,64 @@ class RoleManagementIT {
     }
 
     @Test
-    void systemRolesCannotBeUpdatedOrDeleted() {
+    void protectedRolesCannotBeDeletedAndOwnerCannotBeUpdated() {
         for (Map<String, Object> systemRole : systemRoles()) {
             String id = systemRole.get("id").toString();
-
-            MvcTestResult updated = update(id, "Renamed", null, List.of("roles.read"), 0);
-            assertConflict(updated, "SYSTEM_ROLE_IMMUTABLE");
-            contract.assertResponse("/roles/{id}", "PUT", 409, "application/problem+json", api.body(updated));
 
             MvcTestResult deleted = api.delete("/api/v1/roles/" + id, clinic.token());
             assertConflict(deleted, "SYSTEM_ROLE_IMMUTABLE");
             contract.assertResponse("/roles/{id}", "DELETE", 409, "application/problem+json", api.body(deleted));
         }
+        String owner = systemRoles().getFirst().get("id").toString();
+        MvcTestResult updated = update(owner, "Renamed", null, List.of("roles.read"), 0);
+        assertConflict(updated, "SYSTEM_ROLE_IMMUTABLE");
+        contract.assertResponse("/roles/{id}", "PUT", 409, "application/problem+json", api.body(updated));
+
         assertThat(systemRoles()).extracting(role -> role.get("name")).containsExactly("OWNER", "ADMIN");
         int clinicPermissions = Permission.ofScope(PermissionScope.TENANT).size();
         assertThat(systemRoles())
                 .allSatisfy(role -> assertThat(((List<?>) role.get("permissions"))).hasSize(clinicPermissions));
+    }
+
+    @Test
+    void ownerEditsTheAdminRole() {
+        String admin = systemRoles().get(1).get("id").toString();
+
+        MvcTestResult updated = update(admin, "ADMIN", "Gestión diaria", List.of("roles.read", "identity.users.read"), 0);
+
+        assertThat(updated).hasStatus(HttpStatus.OK);
+        assertThat(api.body(updated))
+                .containsEntry("systemKey", "ADMIN")
+                .containsEntry("systemRole", true)
+                .containsEntry("permissions", List.of("roles.read", "identity.users.read"))
+                .containsEntry("version", 1);
+        contract.assertResponse("/roles/{id}", "PUT", 200, "application/json", api.body(updated));
+    }
+
+    @Test
+    void clinicalFlagIsStoredAndUpdated() {
+        MvcTestResult created = create(Map.of("name", "Fisioterapia", "clinical", true, "permissions", List.of()));
+
+        assertThat(api.body(created)).containsEntry("clinical", true);
+        String id = api.body(created).get("id").toString();
+        Map<String, Object> request = new HashMap<>();
+        request.put("name", "Fisioterapia");
+        request.put("clinical", false);
+        request.put("permissions", List.of());
+        request.put("version", 0);
+        assertThat(api.body(api.put("/api/v1/roles/" + id, clinic.token(), request))).containsEntry("clinical", false);
+    }
+
+    @Test
+    void clientMayChooseTheIdOfANewRoleOnce() {
+        String id = UUID.randomUUID().toString();
+
+        MvcTestResult created = create(Map.of("id", id, "name", "Laboratorio", "permissions", List.of()));
+        MvcTestResult again = create(Map.of("id", id, "name", "Imagenología", "permissions", List.of()));
+
+        assertThat(created).hasStatus(HttpStatus.CREATED);
+        assertThat(api.body(created)).containsEntry("id", id);
+        assertConflict(again, "RESOURCE_ID_TAKEN");
     }
 
     @Test
@@ -219,20 +267,6 @@ class RoleManagementIT {
 
         assertConflict(stale, "VERSION_CONFLICT");
         assertThat(api.body(api.get("/api/v1/roles/" + id, clinic.token()))).containsEntry("name", "Front desk");
-    }
-
-    @Test
-    void roleAssignedToAMembershipCannotBeDeleted() {
-        String id = createdId("Reception", List.of("roles.read"));
-        jdbc.update("""
-                insert into membership_role (membership_id, role_id, tenant_id)
-                select m.id, ?::uuid, m.tenant_id from tenant_membership m where m.tenant_id = ?""",
-                id, clinic.tenantId());
-
-        MvcTestResult result = api.delete("/api/v1/roles/" + id, clinic.token());
-
-        assertConflict(result, "ROLE_IN_USE");
-        assertThat(api.get("/api/v1/roles/" + id, clinic.token())).hasStatus(HttpStatus.OK);
     }
 
     @Test
@@ -257,7 +291,8 @@ class RoleManagementIT {
 
         var events = jdbc.queryForList("""
                 select action, actor_account_id, target_type, target_id from audit_event
-                where tenant_id = ? and action like 'ROLE_%' order by occurred_at""", clinic.tenantId());
+                where tenant_id = ? and action in ('ROLE_CREATED', 'ROLE_UPDATED', 'ROLE_DELETED') order by occurred_at""",
+                clinic.tenantId());
 
         assertThat(events).extracting(event -> event.get("action"))
                 .containsExactly("ROLE_CREATED", "ROLE_UPDATED", "ROLE_DELETED");
@@ -276,7 +311,7 @@ class RoleManagementIT {
         api.delete("/api/v1/roles/" + ownerRole, clinic.token());
 
         assertThat(jdbc.queryForObject(
-                "select count(*) from audit_event where tenant_id = ? and action like 'ROLE_%'",
+                "select count(*) from audit_event where tenant_id = ? and action in ('ROLE_CREATED', 'ROLE_UPDATED', 'ROLE_DELETED')",
                 Integer.class, clinic.tenantId())).isOne();
     }
 

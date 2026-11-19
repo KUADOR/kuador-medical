@@ -52,7 +52,7 @@ class SignupIT {
     }
 
     @Test
-    void signupCreatesTheClinicWithOwnerAndAdminAssignedToItsCreator() {
+    void signupCreatesTheClinicWithItsSeededRolesAndItsCreatorAsClinicWideOwner() {
         String email = IdentityApi.uniqueEmail("owner");
         String password = IdentityApi.randomPassword();
 
@@ -60,15 +60,17 @@ class SignupIT {
 
         assertThat(result).hasStatus(HttpStatus.CREATED).hasContentTypeCompatibleWith(MediaType.APPLICATION_JSON);
         UUID tenantId = UUID.fromString(api.body(result).get("tenantId").toString());
-        assertThat(jdbc.queryForList("select system_code from role where tenant_id = ?", String.class, tenantId))
+        assertThat(jdbc.queryForList(
+                "select system_code from identity_role where tenant_id = ? and system_code is not null", String.class, tenantId))
                 .containsExactlyInAnyOrder("OWNER", "ADMIN");
+        assertThat(jdbc.queryForObject("select count(*) from identity_role where tenant_id = ?", Integer.class, tenantId))
+                .isEqualTo(11);
         assertThat(jdbc.queryForList("""
-                select r.system_code from membership_role mr
-                join role r on r.id = mr.role_id
-                join tenant_membership m on m.id = mr.membership_id
-                join user_account a on a.id = m.user_account_id
-                where a.email = ? and m.tenant_id = ?""", String.class, email, tenantId))
-                .containsExactlyInAnyOrder("OWNER", "ADMIN");
+                select coalesce(ra.branch_id::text, 'clinic-wide') || ':' || r.system_code from identity_role_assignment ra
+                join identity_role r on r.id = ra.role_id
+                join user_account a on a.id = ra.user_id
+                where a.email = ? and ra.tenant_id = ?""", String.class, email, tenantId))
+                .containsExactly("clinic-wide:OWNER");
     }
 
     @Test
@@ -81,7 +83,7 @@ class SignupIT {
 
         assertThat(me).containsEntry("scope", "TENANT").containsEntry("mustChangePassword", false);
         assertThat(me.get("tenant")).isEqualTo(Map.of("id", tenantId.toString(), "name", "Clinica Sur"));
-        assertThat((List<Object>) me.get("roles")).containsExactlyInAnyOrder("OWNER", "ADMIN");
+        assertThat((List<Object>) me.get("roles")).containsExactly("OWNER");
         assertThat((List<Object>) me.get("permissions"))
                 .containsExactlyInAnyOrderElementsOf(TENANT_PERMISSION_CODES);
     }
@@ -91,7 +93,10 @@ class SignupIT {
         UUID tenantId = api.signUp("Clinica Este", IdentityApi.uniqueEmail("owner"), IdentityApi.randomPassword());
 
         List<String> codes = jdbc.queryForList(
-                "select distinct permission_code from role_permission where tenant_id = ?", String.class, tenantId);
+                """
+                select distinct p.permission_code from identity_role_permission p
+                join identity_role r on r.id = p.role_id
+                where p.tenant_id = ? and r.system_code is not null""", String.class, tenantId);
 
         assertThat(codes).containsExactlyInAnyOrderElementsOf(TENANT_PERMISSION_CODES);
     }

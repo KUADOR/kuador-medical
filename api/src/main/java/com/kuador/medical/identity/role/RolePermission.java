@@ -12,7 +12,7 @@ import org.hibernate.annotations.TenantId;
 
 /** Permission code of the catalog granted to a role. Tenant-scoped (ADR-007). */
 @Entity
-@Table(name = "role_permission")
+@Table(name = "identity_role_permission")
 @IdClass(RolePermission.Key.class)
 public class RolePermission {
 
