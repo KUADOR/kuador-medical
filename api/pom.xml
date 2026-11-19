@@ -71,6 +71,11 @@
             <groupId>org.springframework.modulith</groupId>
             <artifactId>spring-modulith-starter-core</artifactId>
         </dependency>
+        <!-- Outgoing email behind NotificationSender (ADR-005); SMTP provider [POR DEFINIR], Mailpit locally. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
         <!-- ADR-006: Argon2id password hashes (DelegatingPasswordEncoder) and HS256 access tokens. -->
         <dependency>
             <groupId>org.springframework.security</groupId>

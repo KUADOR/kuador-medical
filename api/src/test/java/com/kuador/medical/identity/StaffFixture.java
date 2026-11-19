@@ -42,6 +42,18 @@ public final class StaffFixture {
         return accountId;
     }
 
+    /** Account id of the email in a clinic (one account per clinic, ADR-012). */
+    public UUID accountId(UUID tenantId, String email) {
+        return jdbc.queryForObject("select id from identity_user_account where tenant_id = ? and email_normalized = ?",
+                UUID.class, tenantId, email.toLowerCase(java.util.Locale.ROOT));
+    }
+
+    /** Disables the account of the email in a clinic. */
+    public void disable(UUID tenantId, String email) {
+        jdbc.update("update identity_user_account set status = 'DISABLED' where tenant_id = ? and email_normalized = ?",
+                tenantId, email.toLowerCase(java.util.Locale.ROOT));
+    }
+
     public UUID staffUser(UUID tenantId) {
         return staffUser(tenantId, "staff-" + UUID.randomUUID() + "@example.test", "pw-" + UUID.randomUUID());
     }

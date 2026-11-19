@@ -42,8 +42,32 @@ class ApiClient {
 
   Uri uri(String path) => Uri.parse('$baseUrl$path');
 
-  Future<Object?> get(String path, {bool authenticated = true}) =>
-      _send('GET', path, authenticated: authenticated);
+  Future<Object?> get(
+    String path, {
+    bool authenticated = true,
+    Map<String, String> query = const {},
+  }) => _send('GET', _withQuery(path, query), authenticated: authenticated);
+
+  /// Authenticated `PUT`.
+  Future<Object?> put(String path, {Object? body}) =>
+      _send('PUT', path, body: body, authenticated: true);
+
+  /// Authenticated `PATCH`.
+  Future<Object?> patch(String path, {Object? body}) =>
+      _send('PATCH', path, body: body, authenticated: true);
+
+  /// Authenticated `DELETE`.
+  Future<Object?> delete(String path) =>
+      _send('DELETE', path, authenticated: true);
+
+  static String _withQuery(String path, Map<String, String> query) {
+    final params = {
+      for (final e in query.entries)
+        if (e.value.isNotEmpty) e.key: e.value,
+    };
+    if (params.isEmpty) return path;
+    return '$path?${Uri(queryParameters: params).query}';
+  }
 
   Future<Object?> post(
     String path, {

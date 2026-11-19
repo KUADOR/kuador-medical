@@ -18,7 +18,25 @@ public class CapturingNotificationSender implements NotificationSender {
         sent.add(message);
     }
 
-    /** Emails sent to {@code address}, oldest first. */
+    /**
+     * Waits up to 5 seconds until {@code count} emails were sent to {@code address} (some are sent
+     * in the background) and returns them, oldest first.
+     */
+    public List<EmailMessage> awaitSentTo(String address, int count) {
+        long deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(5);
+        while (sentTo(address).size() < count && System.nanoTime() < deadline) {
+            Thread.onSpinWait();
+            try {
+                Thread.sleep(20);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        return sentTo(address);
+    }
+
+    /** Emails sent to {@code address} so far, oldest first. */
     public List<EmailMessage> sentTo(String address) {
         return sent.stream().filter(message -> message.to().equalsIgnoreCase(address)).toList();
     }

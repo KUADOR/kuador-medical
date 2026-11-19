@@ -58,7 +58,7 @@ class AccountResolver {
 
     private static AuthenticatedAccount platformCaller(UserAccount account) {
         return new AuthenticatedAccount(
-                account.getId(), account.getDisplayName(), AccountScope.PLATFORM, null,
+                account.getId(), account.getDisplayName(), AccountScope.PLATFORM, null, null,
                 List.of(SUPER_ADMIN_ROLE), codes(Permission.ofScope(PermissionScope.PLATFORM), null),
                 account.isMustChangePassword());
     }
@@ -70,15 +70,16 @@ class AccountResolver {
         if (tenants.find(claims.tenantId()).filter(TenantDirectory.TenantInfo::active).isEmpty()) {
             return Optional.empty();
         }
-        // A disabled account stops working on its next request (ADR-008). The token has no active
-        // branch yet (MEDK-15 adds it): only clinic-wide assignments apply.
+        // A disabled account stops working on its next request (ADR-008). ADR-013: the permissions
+        // of the clinic-wide assignment plus those of the active branch, read now, so a change of
+        // role or an assignment removed applies to this request.
         return clinicAccounts.findInCurrentTenant(claims.accountId())
                 .filter(ClinicAccount::isActive)
                 .map(account -> {
-                    EffectivePermissions.Grant grant = effectivePermissions.of(account.getId(), null);
+                    EffectivePermissions.Grant grant = effectivePermissions.of(account.getId(), claims.branchId());
                     return new AuthenticatedAccount(
                             account.getId(), account.getDisplayName(), AccountScope.TENANT, claims.tenantId(),
-                            grant.roleNames(), grant.permissionCodes(), false);
+                            claims.branchId(), grant.roleNames(), grant.permissionCodes(), false);
                 });
     }
 

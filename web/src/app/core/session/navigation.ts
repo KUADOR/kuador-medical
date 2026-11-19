@@ -5,6 +5,8 @@ import { AuthRoutes } from './auth-routes';
 export const AppRoutes = {
   status: '/status',
   signup: '/signup',
+  staff: '/staff',
+  newStaffUser: '/staff/new',
   roles: '/roles',
   newRole: '/roles/new',
   platformPermissions: '/platform/permissions',
@@ -48,6 +50,12 @@ export interface MenuItem extends AccessRequirement {
 /** Menu entries of authenticated accounts, filtered by the permissions and modules of GET /me. */
 export const MENU_ITEMS: readonly MenuItem[] = [
   {
+    label: 'Personal',
+    link: AppRoutes.staff,
+    permissions: ['identity.users.read'],
+    module: Modules.identity,
+  },
+  {
     label: 'Pacientes',
     link: AppRoutes.patients,
     permissions: ['patients.read'],
@@ -73,6 +81,17 @@ export function canAccess(account: CurrentSession | null, requirement: AccessReq
     !requirement.module || (account.enabledModules ?? []).includes(requirement.module);
   const kindOk = !requirement.kinds || requirement.kinds.includes(account.kind);
   return permissionsOk && moduleOk && kindOk;
+}
+
+/** Name of the protected clinic-wide role (Role.systemKey and CurrentSession.roles). */
+export const OWNER_ROLE_NAME = 'OWNER';
+
+/**
+ * True when the active assignment includes the OWNER role. Only an OWNER edits ADMIN and assigns
+ * OWNER; the UI uses it to offer those actions and the API enforces them (ADR-013).
+ */
+export function isOwner(account: CurrentSession | null): boolean {
+  return account?.roles.includes(OWNER_ROLE_NAME) ?? false;
 }
 
 export function menuFor(account: CurrentSession | null): MenuItem[] {

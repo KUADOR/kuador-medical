@@ -10,12 +10,12 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import type { Role } from '../../core/api/api-types';
-import { AppRoutes } from '../../core/session/navigation';
+import { AppRoutes, isOwner } from '../../core/session/navigation';
 import { SessionStore } from '../../core/session/session.store';
 import { errorMessage } from '../../core/errors/error-messages';
 import { NoticeService } from '../../core/notice/notice.service';
 import { permissionLabel } from '../../core/roles/permission-labels';
-import { RolesService } from '../../core/roles/roles.service';
+import { RolesService, isOwnerRole } from '../../core/roles/roles.service';
 
 type LoadState =
   { kind: 'loading' } | { kind: 'loaded'; roles: Role[] } | { kind: 'failed'; message: string };
@@ -48,7 +48,9 @@ export class RolesPage {
   protected readonly canCreate = computed(() => this.session.permissions().has('roles.create'));
   protected readonly canUpdate = computed(() => this.session.permissions().has('roles.update'));
   protected readonly canDelete = computed(() => this.session.permissions().has('roles.delete'));
+  protected readonly isOwnerRole = isOwnerRole;
   protected readonly clinicName = computed(() => this.session.account()?.clinic?.name ?? null);
+  private readonly callerIsOwner = computed(() => isOwner(this.session.account()));
 
   protected readonly state = signal<LoadState>({ kind: 'loading' });
   protected readonly roles = computed(() => {
@@ -75,6 +77,19 @@ export class RolesPage {
       next: (roles) => this.state.set({ kind: 'loaded', roles: sortRoles(roles) }),
       error: (error: unknown) => this.state.set({ kind: 'failed', message: errorMessage(error) }),
     });
+  }
+
+  /** OWNER is immutable and only an OWNER edits ADMIN (the API enforces both). */
+  protected canEdit(role: Role): boolean {
+    if (!this.canUpdate() || isOwnerRole(role)) {
+      return false;
+    }
+    return role.systemKey !== 'ADMIN' || this.callerIsOwner();
+  }
+
+  /** OWNER and ADMIN are never deletable. */
+  protected canRemove(role: Role): boolean {
+    return this.canDelete() && !role.systemRole;
   }
 
   protected askDelete(role: Role): void {

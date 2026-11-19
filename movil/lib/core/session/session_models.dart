@@ -140,6 +140,10 @@ class CurrentSession {
 
   bool hasModule(String module) => enabledModules.contains(module);
 
+  /// The active assignment has the OWNER role (only an OWNER assigns OWNER or
+  /// edits ADMIN); the API enforces it, the UI only offers what can succeed.
+  bool get isOwner => roles.contains('OWNER');
+
   /// Staff with more than one assigned branch can switch.
   bool get canSwitchBranch =>
       kind == AccountKind.staff && availableBranches.length > 1;

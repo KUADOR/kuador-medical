@@ -43,9 +43,9 @@ class PasswordService {
             changeClinicPassword(caller, currentPassword, newPassword);
             return;
         }
-        UserAccount account = accounts.findById(caller.accountId()).orElseThrow(LoginService::invalidCredentials);
+        UserAccount account = accounts.findById(caller.accountId()).orElseThrow(SessionErrors::invalidCredentials);
         if (!passwordEncoder.matches(currentPassword, account.getPasswordHash())) {
-            throw LoginService.invalidCredentials();
+            throw SessionErrors.invalidCredentials();
         }
         policy.checkNewPassword(newPassword, account.getPasswordHash());
         account.changePassword(passwordEncoder.encode(newPassword));
@@ -55,9 +55,9 @@ class PasswordService {
     private void changeClinicPassword(AuthenticatedAccount caller, String currentPassword, String newPassword) {
         ClinicAccount account = clinicAccounts.findInCurrentTenant(caller.accountId())
                 .filter(found -> found.getPasswordHash() != null)
-                .orElseThrow(LoginService::invalidCredentials);
+                .orElseThrow(SessionErrors::invalidCredentials);
         if (!passwordEncoder.matches(currentPassword, account.getPasswordHash())) {
-            throw LoginService.invalidCredentials();
+            throw SessionErrors.invalidCredentials();
         }
         policy.checkNewPassword(newPassword, account.getPasswordHash());
         account.changePassword(passwordEncoder.encode(newPassword));

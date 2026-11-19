@@ -4,8 +4,33 @@ Flutter mobile app of the MEDK project. It covers authentication and session
 against `contracts/user-registration.openapi.yaml` (login with clinic and branch
 selection, branch switch, password reset, invitation acceptance, email
 verification and self-registration), deep links for the one-time token flows,
-the menu built from `GET /me` and the system status screen
-(`GET /api/v1/system/info`, `contracts/identity.openapi.yaml`).
+the menu built from `GET /me`, the staff, roles and patients modules (MEDK-24)
+and the system status screen (`GET /api/v1/system/info`,
+`contracts/identity.openapi.yaml`).
+
+## Modules
+
+| Menu entry | Shown when (`GET /me`) | Screens |
+|---|---|---|
+| Personal | module `identity` + `identity.users.read` | List with search and status filter; invitation (`identity.users.manage`) with branch roles; detail with edit, resend invitation, disable/enable; branch roles (`identity.assignments.manage`) |
+| Roles y permisos | module `identity` + `roles.read` | List; create (`roles.create`), edit (`roles.update`) and delete (`roles.delete`) over the clinic-scoped catalog of `GET /permissions` |
+| Pacientes | module `patients` + `patients.read` | List with search; registration with LOPDP consent and legal guardian for minors (`patients.register`); detail with edit (`patients.edit`), consent, account invitation and guardian links (`patients.guardians.manage`) |
+| Autorregistro de pacientes | module `patients` + `patients.selfRegistration.configure` | Enable or disable self-registration |
+| Mis contactos autorizados | `PATIENT` account + module `patients` | Links (including those ended at adulthood) and authorization of an emergency contact or delegated access |
+
+Rules shared with the web (same contract, same Spanish messages):
+
+- The UI only offers what can succeed (no OWNER for non-owners, permissions the
+  person lacks cannot be added to a role, nobody acts on their own record); the
+  api enforces every rule and its errors are shown in Spanish
+  (`core/api/error_messages.dart`).
+- Every creation sends a client id as body `id` and `Idempotency-Key`. The id
+  is kept while the same data is retried and renewed when the data changes
+  (`core/util/idempotent_creation.dart`).
+- Every mutating action checks the connection first; offline, nothing is sent
+  and nothing is stored on the phone (FR-029).
+- Document types, sex values and the consent text are [POR DEFINIR]; the
+  provisional codes live in `features/auth/data/registration_catalog.dart`.
 
 ## Configuration
 
@@ -75,19 +100,25 @@ lib/
   app.dart, app_scope.dart  # Root widget, session-driven navigation, services
   config.dart               # AppConfig (API_BASE_URL, APP_LINK_HOST, CONSENT_TEXT_VERSION)
   core/
-    api/                    # HTTP client with bearer token, refresh and API errors
+    api/                    # HTTP client with bearer token, refresh, API errors, Spanish messages, pages
+    ui/                     # Module page, paged search list, shared form helpers
     session/                # Session controller, token store, /me models
     menu/                   # Menu built from /me
     connectivity/           # Connection state and offline banner
+    util/                   # Client ids and idempotent creations
   features/
     auth/data/              # Auth endpoints and models
     auth/deep_links/        # Deep link parsing and platform source
     auth/ui/                # Login, clinic/branch selection, recovery, invitation, verification, self-registration
     home/                   # Home with the menu and branch switch
+    staff_users/            # Staff list, invitation, detail and branch role assignments
+    roles/                  # Clinic roles over the permission catalog
+    patients/               # Patients, consent, guardians, adult links, self-registration settings
   system_status/            # System status screen
 test/
   core/                     # Session controller and units
-  features/                 # Auth flows and self-registration (widget tests)
+  features/                 # Auth, staff, roles, patients and patient account (widget tests)
   support/fake_api.dart     # Fake API used by the tests
+  support/module_fixtures.dart # Contract examples of the module tests
   system_status_test.dart
 ```

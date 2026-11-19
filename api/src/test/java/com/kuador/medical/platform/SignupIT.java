@@ -82,7 +82,7 @@ class SignupIT {
         Map<String, Object> me = api.body(api.me(api.token(email, password)));
 
         assertThat(me).containsEntry("scope", "TENANT").containsEntry("mustChangePassword", false);
-        assertThat(me.get("tenant")).isEqualTo(Map.of("id", tenantId.toString(), "name", "Clinica Sur"));
+        assertThat(me.get("clinic")).isEqualTo(Map.of("id", tenantId.toString(), "name", "Clinica Sur"));
         assertThat((List<Object>) me.get("roles")).containsExactly("OWNER");
         assertThat((List<Object>) me.get("permissions"))
                 .containsExactlyInAnyOrderElementsOf(TENANT_PERMISSION_CODES);
@@ -112,8 +112,8 @@ class SignupIT {
         Map<String, Object> meA = api.body(api.me(api.token(emailA, password)));
         Map<String, Object> meB = api.body(api.me(api.token(emailB, password)));
 
-        assertThat(meA.get("tenant")).isEqualTo(Map.of("id", tenantA.toString(), "name", "Clinica A"));
-        assertThat(meB.get("tenant")).isEqualTo(Map.of("id", tenantB.toString(), "name", "Clinica B"));
+        assertThat(meA.get("clinic")).isEqualTo(Map.of("id", tenantA.toString(), "name", "Clinica A"));
+        assertThat(meB.get("clinic")).isEqualTo(Map.of("id", tenantB.toString(), "name", "Clinica B"));
     }
 
     /** ADR-012: one account per clinic, so the same email signs up an independent clinic account. */

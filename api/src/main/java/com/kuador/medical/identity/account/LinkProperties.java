@@ -1,6 +1,7 @@
 package com.kuador.medical.identity.account;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.ConstructorBinding;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
@@ -11,7 +12,17 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 public record LinkProperties(
         @DefaultValue("") String webBaseUrl,
         @DefaultValue("") String appLinkBaseUrl,
-        @DefaultValue("/invitation") String invitationPath) {
+        @DefaultValue("/invitation") String invitationPath,
+        @DefaultValue("/password-reset") String passwordResetPath,
+        @DefaultValue("/email-verification") String emailVerificationPath) {
+
+    @ConstructorBinding
+    public LinkProperties {}
+
+    /** Only the invitation path; the other paths keep their defaults. */
+    public LinkProperties(String webBaseUrl, String appLinkBaseUrl, String invitationPath) {
+        this(webBaseUrl, appLinkBaseUrl, invitationPath, "/password-reset", "/email-verification");
+    }
 
     /** {@code <base><path>#t=<token>}: the token goes in the fragment, which never reaches a server log. */
     public String withToken(String path, String token) {

@@ -5,8 +5,9 @@ info:
   summary: Platform and identity endpoints of the Medical Kuador skeleton.
   description: |
     Contract-first definition (ADR-011) of the platform and identity endpoints:
-    system status, clinic self-signup, login, password change, current user,
-    permission catalog and per-clinic role management.
+    system status, clinic self-signup, password change, permission catalog and
+    per-clinic role management. Login, tokens, password reset and `GET /me` are
+    served from `user-registration.openapi.yaml` (MEDK-15).
 
     Cross-cutting rules:
 
@@ -37,9 +38,7 @@ tags:
   - name: Tenants
     description: Clinic (tenant) self-signup.
   - name: Auth
-    description: Login and password management.
-  - name: Me
-    description: Current authenticated account.
+    description: Password change.
   - name: Permissions
     description: Fixed permission catalog.
   - name: Roles
@@ -127,50 +126,6 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /auth/login:
-    post:
-      tags: [Auth]
-      operationId: login
-      summary: Log in with email and password
-      description: |
-        Returns a signed JWT access token (no refresh token in the skeleton).
-        `scope` tells whether the account operates a clinic (`TENANT`) or the
-        platform (`PLATFORM`).
-      x-required-permission: public
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/LoginRequest'
-            examples:
-              login:
-                value:
-                  email: owner@example.com
-                  password: a-long-example-passphrase
-      responses:
-        '200':
-          description: Authenticated.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/LoginResponse'
-              examples:
-                tenant:
-                  value:
-                    accessToken: eyJhbGciOiJIUzI1NiJ9.example.signature
-                    tokenType: Bearer
-                    expiresIn: 1800
-                    scope: TENANT
-                    mustChangePassword: false
-        '400':
-          $ref: '#/components/responses/ValidationError'
-        '401':
-          $ref: '#/components/responses/InvalidCredentials'
-        '500':
-          $ref: '#/components/responses/InternalError'
-
   /auth/password:
     post:
       tags: [Auth]
@@ -226,48 +181,6 @@ paths:
                     title: Unauthorized
                     status: 401
                     code: INVALID_CREDENTIALS
-        '500':
-          $ref: '#/components/responses/InternalError'
-
-  /me:
-    get:
-      tags: [Me]
-      operationId: getCurrentAccount
-      summary: Get the current account
-      description: |
-        Returns the authenticated account with its scope, clinic (only for
-        `TENANT` scope), roles and effective permissions. Allowed while a password
-        change is required.
-      x-required-permission: authenticated
-      responses:
-        '200':
-          description: Current account.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CurrentAccount'
-              examples:
-                owner:
-                  value:
-                    accountId: 0f1e2d3c-4b5a-4968-8776-655443322110
-                    displayName: Jane Doe
-                    scope: TENANT
-                    tenant:
-                      id: 5b0c8f2e-3a51-4d6e-9f0a-1c2b3d4e5f60
-                      name: Example Clinic
-                    roles: [OWNER, ADMIN]
-                    permissions: [roles.read, roles.create, roles.update, roles.delete]
-                    mustChangePassword: false
-                superAdmin:
-                  value:
-                    accountId: 9a8b7c6d-5e4f-4321-8a9b-0c1d2e3f4a5b
-                    displayName: Kuador
-                    scope: PLATFORM
-                    roles: [SUPER_ADMIN]
-                    permissions: [platform.permissions.read]
-                    mustChangePassword: true
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -534,7 +447,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: Access token returned by `POST /auth/login` (HS256, 30 minutes by default).
+      description: Access token issued by the login of `user-registration.openapi.yaml` (HS256, 15 minutes by default).
 
   parameters:
     RoleId:
@@ -563,19 +476,6 @@ components:
                 errors:
                   - field: name
                     code: REQUIRED
-    InvalidCredentials:
-      description: Email or password is wrong (`INVALID_CREDENTIALS`). The response does not reveal which one.
-      content:
-        application/problem+json:
-          schema:
-            $ref: '#/components/schemas/Problem'
-          examples:
-            invalidCredentials:
-              value:
-                type: about:blank
-                title: Unauthorized
-                status: 401
-                code: INVALID_CREDENTIALS
     Unauthenticated:
       description: The access token is missing, invalid or expired (`UNAUTHENTICATED`).
       headers:
@@ -725,11 +625,6 @@ components:
       type: string
       enum: [UP, DOWN]
 
-    AccountScope:
-      type: string
-      description: '`TENANT` for clinic staff, `PLATFORM` for the SUPER_ADMIN.'
-      enum: [TENANT, PLATFORM]
-
     PermissionScope:
       type: string
       description: '`TENANT` permissions are assignable to clinic roles; `PLATFORM` permissions never are.'
@@ -793,40 +688,6 @@ components:
           format: uuid
           description: Identifier of the created clinic.
 
-    LoginRequest:
-      type: object
-      additionalProperties: false
-      required: [email, password]
-      properties:
-        email:
-          $ref: '#/components/schemas/Email'
-        password:
-          type: string
-          format: password
-          minLength: 1
-          maxLength: 128
-          writeOnly: true
-
-    LoginResponse:
-      type: object
-      required: [accessToken, tokenType, expiresIn, scope, mustChangePassword]
-      properties:
-        accessToken:
-          type: string
-          description: Signed JWT access token.
-        tokenType:
-          type: string
-          const: Bearer
-        expiresIn:
-          type: integer
-          minimum: 1
-          description: Lifetime of the token in seconds.
-        scope:
-          $ref: '#/components/schemas/AccountScope'
-        mustChangePassword:
-          type: boolean
-          description: When true, only `POST /auth/password` and `GET /me` are allowed.
-
     ChangePasswordRequest:
       type: object
       additionalProperties: false
@@ -844,44 +705,6 @@ components:
           maxLength: 128
           writeOnly: true
           description: At least 12 characters and different from the current password (enforced as `WEAK_PASSWORD`).
-
-    TenantSummary:
-      type: object
-      required: [id, name]
-      properties:
-        id:
-          type: string
-          format: uuid
-        name:
-          type: string
-
-    CurrentAccount:
-      type: object
-      required: [accountId, displayName, scope, roles, permissions, mustChangePassword]
-      properties:
-        accountId:
-          type: string
-          format: uuid
-        displayName:
-          type: string
-        scope:
-          $ref: '#/components/schemas/AccountScope'
-        tenant:
-          $ref: '#/components/schemas/TenantSummary'
-          description: Present only for `TENANT` scope.
-        roles:
-          type: array
-          description: Names of the roles of the account (`SUPER_ADMIN` for the platform account).
-          items:
-            type: string
-        permissions:
-          type: array
-          description: Effective permissions, resolved on every request.
-          uniqueItems: true
-          items:
-            $ref: '#/components/schemas/PermissionCode'
-        mustChangePassword:
-          type: boolean
 
     RoleName:
       type: string
