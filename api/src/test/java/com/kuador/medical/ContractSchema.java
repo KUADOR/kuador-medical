@@ -11,13 +11,14 @@ import java.util.Map;
 import org.yaml.snakeyaml.Yaml;
 
 /**
- * Minimal response check against {@code contracts/identity.openapi.yaml} (ADR-011): required
+ * Minimal response check against a contract of {@code contracts/} (ADR-011): required
  * properties, no undeclared properties and enum values. Enough for the flat schemas of the
  * skeleton; a full OpenAPI 3.1 validator can replace it when the contract grows.
  */
 public final class ContractSchema {
 
     private static final Path CONTRACT = Path.of("..", "contracts", "identity.openapi.yaml");
+    private static final Path USER_REGISTRATION = Path.of("..", "contracts", "user-registration.openapi.yaml");
 
     private final Map<String, Object> document;
 
@@ -26,10 +27,19 @@ public final class ContractSchema {
     }
 
     public static ContractSchema identity() {
-        try (InputStream in = Files.newInputStream(CONTRACT)) {
+        return load(CONTRACT);
+    }
+
+    /** {@code contracts/user-registration.openapi.yaml}, the target contract of epic MEDK-12. */
+    public static ContractSchema userRegistration() {
+        return load(USER_REGISTRATION);
+    }
+
+    private static ContractSchema load(Path contract) {
+        try (InputStream in = Files.newInputStream(contract)) {
             return new ContractSchema(new Yaml().load(in));
         } catch (IOException e) {
-            throw new IllegalStateException("Cannot read contract " + CONTRACT.toAbsolutePath(), e);
+            throw new IllegalStateException("Cannot read contract " + contract.toAbsolutePath(), e);
         }
     }
 

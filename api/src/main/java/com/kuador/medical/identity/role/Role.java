@@ -15,11 +15,12 @@ import org.hibernate.annotations.TenantId;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Role of a clinic. Tenant-scoped (ADR-007). System roles (OWNER, ADMIN) are immutable
- * (FR-008); the others are edited with optimistic locking on {@code version}.
+ * Role of a clinic. Tenant-scoped (ADR-007). OWNER is immutable; ADMIN can be edited (only by
+ * an OWNER, checked by {@link EscalationGuard}) but never deleted; the others are edited with
+ * optimistic locking on {@code version}.
  */
 @Entity
-@Table(name = "role")
+@Table(name = "identity_role")
 public class Role {
 
     @Id
@@ -38,6 +39,12 @@ public class Role {
     @Column(name = "system_code", updatable = false)
     private @Nullable SystemRole systemCode;
 
+    @Column(nullable = false)
+    private boolean clinical;
+
+    @Column(name = "suggested_key", updatable = false)
+    private @Nullable String suggestedKey;
+
     @Version
     private long version;
 
@@ -49,57 +56,88 @@ public class Role {
 
     protected Role() {}
 
-    private Role(String name, @Nullable String description, @Nullable SystemRole systemCode) {
-        this.id = UUID.randomUUID();
+    private Role(
+            UUID id,
+            String name,
+            @Nullable String description,
+            @Nullable SystemRole systemCode,
+            boolean clinical,
+            @Nullable String suggestedKey) {
+        this.id = id;
         this.name = name.strip();
         this.description = normalizeDescription(description);
         this.systemCode = systemCode;
+        this.clinical = clinical;
+        this.suggestedKey = suggestedKey;
         this.createdAt = Instant.now();
         this.updatedAt = this.createdAt;
     }
 
-    public static Role system(SystemRole systemRole) {
-        return new Role(systemRole.name(), systemRole.description(), systemRole);
+    /** A protected role (OWNER or ADMIN) seeded when the clinic is created. */
+    public static Role system(SystemRole systemRole, String name, @Nullable String description) {
+        return new Role(UUID.randomUUID(), name, description, systemRole, false, systemRole.name());
+    }
+
+    /** A suggested role seeded when the clinic is created; the clinic may then change or delete it. */
+    public static Role suggested(String key, String name, @Nullable String description, boolean clinical) {
+        return new Role(UUID.randomUUID(), name, description, null, clinical, key);
     }
 
     /** A role created by the clinic; name and description are trimmed, a blank description is none. */
     public static Role custom(String name, @Nullable String description) {
-        return new Role(name, description, null);
+        return custom(UUID.randomUUID(), name, description, false);
+    }
+
+    /** A role created by the clinic with an id chosen by the client. */
+    public static Role custom(UUID id, String name, @Nullable String description, boolean clinical) {
+        return new Role(id, name, description, null, clinical, null);
     }
 
     /**
-     * Replaces name and description. Rejects system roles ({@code SYSTEM_ROLE_IMMUTABLE}) and a
-     * version other than the current one ({@code VERSION_CONFLICT}). Always marks the role as
-     * changed, so its version increments even when only its permissions change.
+     * Replaces name, description and clinical flag. Rejects OWNER ({@code SYSTEM_ROLE_IMMUTABLE})
+     * and a version other than the current one ({@code VERSION_CONFLICT}). Always marks the role
+     * as changed, so its version increments even when only its permissions change.
      */
-    public void update(String newName, @Nullable String newDescription, long expectedVersion) {
+    public void update(String newName, @Nullable String newDescription, boolean newClinical, long expectedVersion) {
         ensureUpdatable(expectedVersion);
         this.name = newName.strip();
         this.description = normalizeDescription(newDescription);
+        this.clinical = newClinical;
         this.updatedAt = Instant.now();
+    }
+
+    /** Same as {@link #update(String, String, boolean, long)} keeping the clinical flag. */
+    public void update(String newName, @Nullable String newDescription, long expectedVersion) {
+        update(newName, newDescription, clinical, expectedVersion);
     }
 
     /** Same checks as {@link #update}, without changing anything. */
     public void ensureUpdatable(long expectedVersion) {
-        ensureMutable();
+        if (systemCode == SystemRole.OWNER) {
+            throw immutable();
+        }
         if (expectedVersion != version) {
             throw ApiException.conflict(ErrorCode.VERSION_CONFLICT, "The role was changed by someone else.");
         }
     }
 
-    /** Rejects the deletion of a system role ({@code SYSTEM_ROLE_IMMUTABLE}). */
+    /** Rejects the deletion of OWNER and ADMIN ({@code SYSTEM_ROLE_IMMUTABLE}). */
     public void ensureDeletable() {
-        ensureMutable();
+        if (isSystemRole()) {
+            throw immutable();
+        }
     }
 
     public boolean isSystemRole() {
         return systemCode != null;
     }
 
-    private void ensureMutable() {
-        if (isSystemRole()) {
-            throw ApiException.conflict(ErrorCode.SYSTEM_ROLE_IMMUTABLE, "System roles cannot be changed.");
-        }
+    public boolean isOwner() {
+        return systemCode == SystemRole.OWNER;
+    }
+
+    private static ApiException immutable() {
+        return ApiException.conflict(ErrorCode.SYSTEM_ROLE_IMMUTABLE, "Protected roles cannot be changed or deleted.");
     }
 
     private static @Nullable String normalizeDescription(@Nullable String description) {
@@ -127,6 +165,14 @@ public class Role {
 
     public @Nullable SystemRole getSystemCode() {
         return systemCode;
+    }
+
+    public boolean isClinical() {
+        return clinical;
+    }
+
+    public @Nullable String getSuggestedKey() {
+        return suggestedKey;
     }
 
     public long getVersion() {

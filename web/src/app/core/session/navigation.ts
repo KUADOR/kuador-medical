@@ -1,4 +1,4 @@
-import type { CurrentSession, PermissionCode } from '../api/api-types';
+import type { AccountKind, CurrentSession, PermissionCode } from '../api/api-types';
 import { AuthRoutes } from './auth-routes';
 
 /** Client routes of the authenticated pages. */
@@ -10,7 +10,21 @@ export const AppRoutes = {
   roles: '/roles',
   newRole: '/roles/new',
   platformPermissions: '/platform/permissions',
+  patients: '/patients',
+  newPatient: '/patients/new',
+  selfRegistrationSettings: '/patients/self-registration',
+  myGuardianLinks: '/my-contacts',
 } as const;
+
+/** Detail page of a patient. */
+export function patientUrl(id: string): string {
+  return `${AppRoutes.patients}/${encodeURIComponent(id)}`;
+}
+
+/** Edit page of a patient. */
+export function editPatientUrl(id: string): string {
+  return `${patientUrl(id)}/edit`;
+}
 
 /** Modules of the clinic plan (CurrentSession.enabledModules). */
 export const Modules = {
@@ -24,6 +38,8 @@ export interface AccessRequirement {
   permissions?: readonly PermissionCode[];
   /** Module that the clinic plan must enable. Platform pages do not need one. */
   module?: string;
+  /** Account kinds allowed (e.g. only PATIENT accounts). Any kind when absent. */
+  kinds?: readonly AccountKind[];
 }
 
 export interface MenuItem extends AccessRequirement {
@@ -39,7 +55,14 @@ export const MENU_ITEMS: readonly MenuItem[] = [
     permissions: ['identity.users.read'],
     module: Modules.identity,
   },
+  {
+    label: 'Pacientes',
+    link: AppRoutes.patients,
+    permissions: ['patients.read'],
+    module: Modules.patients,
+  },
   { label: 'Roles', link: AppRoutes.roles, permissions: ['roles.read'], module: Modules.identity },
+  { label: 'Mis contactos autorizados', link: AppRoutes.myGuardianLinks, kinds: ['PATIENT'] },
   {
     label: 'Catálogo de permisos',
     link: AppRoutes.platformPermissions,
@@ -56,7 +79,8 @@ export function canAccess(account: CurrentSession | null, requirement: AccessReq
   const permissionsOk = (requirement.permissions ?? []).every((code) => granted.has(code));
   const moduleOk =
     !requirement.module || (account.enabledModules ?? []).includes(requirement.module);
-  return permissionsOk && moduleOk;
+  const kindOk = !requirement.kinds || requirement.kinds.includes(account.kind);
+  return permissionsOk && moduleOk && kindOk;
 }
 
 /** Name of the protected clinic-wide role (Role.systemKey and CurrentSession.roles). */

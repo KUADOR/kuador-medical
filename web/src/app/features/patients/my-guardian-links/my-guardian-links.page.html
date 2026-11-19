@@ -1,0 +1,115 @@
+<section class="page" aria-labelledby="my-links-title">
+  <h1 id="my-links-title">Mis contactos autorizados</h1>
+  <p class="hint">
+    Como paciente mayor de edad decides quién puede ser tu contacto de emergencia o tener acceso
+    delegado. Los vínculos de tu representante anterior terminaron al cumplir la mayoría de edad y
+    solo continúan si los autorizas aquí.
+  </p>
+
+  <div aria-live="polite">
+    @if (notice(); as message) {
+      <p class="alert alert--success" role="status" data-testid="notice">{{ message }}</p>
+    }
+  </div>
+
+  <section class="card" aria-labelledby="my-links-list-title">
+    <h2 id="my-links-list-title">Mis vínculos</h2>
+    <div [attr.aria-busy]="state().kind === 'loading'">
+      @switch (state().kind) {
+        @case ('loading') {
+          <p class="hint">Cargando…</p>
+        }
+        @case ('failed') {
+          <p class="alert" role="alert" data-testid="load-error">{{ loadFailure() }}</p>
+          <div class="actions">
+            <button type="button" class="button" (click)="load()">Volver a intentar</button>
+          </div>
+        }
+        @default {
+          <mk-guardian-link-list
+            [links]="links()"
+            emptyMessage="No tienes representantes ni contactos registrados."
+          />
+        }
+      }
+    </div>
+  </section>
+
+  @if (state().kind === 'loaded') {
+    <form class="form card" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <h2>Autorizar a una persona</h2>
+      @if (failure(); as message) {
+        <p class="alert" role="alert" data-testid="form-error" tabindex="-1">{{ message }}</p>
+      }
+
+      <fieldset class="fieldset">
+        <legend>¿A quién autorizas?</legend>
+        @for (person of people(); track person.id) {
+          <label class="checkbox">
+            <input type="radio" formControlName="personChoice" [value]="person.id" />
+            <span>{{ person.name }} ({{ person.relationship }})</span>
+          </label>
+        }
+        <label class="checkbox">
+          <input
+            type="radio"
+            formControlName="personChoice"
+            [value]="newPerson"
+            data-testid="choice-new"
+          />
+          <span>Otra persona</span>
+        </label>
+      </fieldset>
+
+      @if (choice() === newPerson) {
+        <fieldset class="fieldset" data-testid="new-person">
+          <legend>Datos de la persona</legend>
+          <mk-guardian-person-fields [group]="form.controls.person" idPrefix="authorized" />
+        </fieldset>
+      }
+
+      <fieldset class="fieldset">
+        <legend>¿Qué autorizas?</legend>
+        @for (type of linkTypes; track type.code) {
+          <label class="checkbox">
+            <input
+              type="radio"
+              formControlName="linkType"
+              [value]="type.code"
+              [attr.aria-invalid]="error('linkType') ? 'true' : null"
+              [attr.aria-describedby]="
+                'linkType-' + type.code + '-hint' + (error('linkType') ? ' linkType-error' : '')
+              "
+            />
+            <span>{{ type.label }}</span>
+          </label>
+          <p [id]="'linkType-' + type.code + '-hint'" class="field__hint">{{ type.hint }}</p>
+        }
+        @if (error('linkType'); as message) {
+          <p id="linkType-error" class="field__error">{{ message }}</p>
+        }
+      </fieldset>
+
+      <div class="field">
+        <label for="authorized-relationship">Parentesco o relación</label>
+        <input
+          id="authorized-relationship"
+          type="text"
+          formControlName="relationship"
+          autocomplete="off"
+          [attr.aria-invalid]="error('relationship') ? 'true' : null"
+          [attr.aria-describedby]="error('relationship') ? 'authorized-relationship-error' : null"
+        />
+        @if (error('relationship'); as message) {
+          <p id="authorized-relationship-error" class="field__error">{{ message }}</p>
+        }
+      </div>
+
+      <div class="actions">
+        <button type="submit" class="button" [disabled]="saving()">
+          {{ saving() ? 'Guardando…' : 'Autorizar' }}
+        </button>
+      </div>
+    </form>
+  }
+</section>

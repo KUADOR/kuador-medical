@@ -11,10 +11,11 @@ import org.jspecify.annotations.Nullable;
 record UpdateRoleRequest(
         @NotBlank @Size(max = RoleLimits.NAME_MAX) String name,
         @Size(max = RoleLimits.DESCRIPTION_MAX) @Nullable String description,
+        @Nullable Boolean clinical,
         @NotNull List<@NotNull String> permissions,
         @NotNull @PositiveOrZero Long version) {
 
     RoleCommand toCommand() {
-        return new RoleCommand(name, description, permissions);
+        return new RoleCommand(name, description, Boolean.TRUE.equals(clinical), permissions);
     }
 }

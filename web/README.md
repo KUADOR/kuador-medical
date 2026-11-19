@@ -24,7 +24,7 @@ Requires Node.js `^22.22.3` or `^24.15.0`.
 |---|---|
 | `npm start` | Dev server on `http://localhost:4200`, proxying `/api` to the real API on `http://localhost:8080` (`proxy.conf.json`). |
 | `npm run mock` | Prism mocks: `identity.openapi.yaml` on `http://localhost:4010` and `user-registration.openapi.yaml` on `http://localhost:4011`. |
-| `npm run start:mock` | Dev server proxying `/api/v1` to the mocks, stripping the prefix (`proxy.mock.conf.json`): `/auth/*` (except `/auth/password`), `/me`, `/public/*`, `/staff-users`, `/roles` and `/permissions` go to 4011, the rest to 4010. |
+| `npm run start:mock` | Dev server proxying `/api/v1` to the mocks, stripping the prefix (`proxy.mock.conf.json`): `/auth/*` (except `/auth/password`), `/me`, `/public/*`, `/patients`, `/patient-registration-settings`, `/staff-users`, `/roles` and `/permissions` go to 4011, the rest to 4010. |
 | `npm run dev:mock` | `mock` and `start:mock` together. |
 | `npm run api:generate` | Regenerates `identity.schema.d.ts` and `user-registration.schema.d.ts` in `src/app/core/api/`. |
 | `npm run api:check` | Fails if the generated types are out of date with the contracts. |
@@ -64,6 +64,9 @@ src/app/
     roles/      RolesService (/roles, /permissions), isOwnerRole, Spanish permission and module labels
     staff/      StaffUsersService (/staff-users, invitation, disable, enable, role-assignments) with
                 client id + Idempotency-Key on creation
+    patients/   PatientsService (/patients, guardian links, consents, account invitation,
+                /me/guardian-links, /patient-registration-settings; creations send Idempotency-Key)
+                and Spanish labels, minor-age check and date formatting
     platform/   PlatformService (/platform/permissions)
     system/     SystemInfoService (GET /system/info)
   features/
@@ -78,6 +81,9 @@ src/app/
                       role-assignments/ holds the per-branch editor and its pure rules
     roles/            Role list (delete with confirmation) and role editor over the catalog grouped by module
                       (clinical flag; permissions the person lacks cannot be added)
+    patients/         Patient list and search, registration (consent, legal guardian of minors) and
+                      edit, detail (consent, account invitation, guardian links and history),
+                      self-registration switch and public link, adult patient authorized contacts
     platform/         Full permission catalog for the SUPER_ADMIN
     message/          Informative page (forbidden, not found)
 src/testing/    Test-only fixtures and app harness (real routes, guards and interceptor)
@@ -115,6 +121,12 @@ src/testing/    Test-only fixtures and app harness (real routes, guards and inte
 | `/roles` | `roles.read` + module `identity` | Create / edit / delete buttons follow `roles.create`, `roles.update`, `roles.delete`. OWNER and ADMIN are never deletable. |
 | `/roles/new` | `roles.read` + `roles.create` + module `identity` | |
 | `/roles/:id` | `roles.read` + module `identity` | Read-only for OWNER, for ADMIN unless the person is OWNER, and without `roles.update`. |
+| `/patients` | `patients.read` + module `patients` | "Registrar paciente" follows `patients.register`. |
+| `/patients/new` | `patients.register` + module `patients` | Minors (by the browser date) require a legal guardian; the API decides with the clinic time zone. |
+| `/patients/:id` | `patients.read` + module `patients` | Edit (`patients.edit`), consent and invitation (`patients.register`), guardian links (`patients.guardians.manage`). |
+| `/patients/:id/edit` | `patients.read` + `patients.edit` + module `patients` | `PATCH` with only the changed fields and `version`. |
+| `/patients/self-registration` | `patients.read` + module `patients` | Switch only with `patients.selfRegistration.configure`; public link while enabled. |
+| `/my-contacts` | account kind `PATIENT` | Adult patient: link history and authorization of an emergency contact or delegated access. |
 | `/platform/permissions` | `platform.permissions.read` | SUPER_ADMIN only; clinic accounts get `/forbidden`. |
 
 The header menu is built from the permissions and `enabledModules` of `GET /me` and is empty while a password
@@ -138,6 +150,11 @@ For the identity flows open `http://localhost:4200/signup`. Prism answers with t
 signup logs in as the example owner, `POST /roles` returns the example role and `/roles/{id}` shows OWNER
 (read-only). Other branches can be forced with the `Prefer` header (e.g. `Prefer: code=409` on
 `/tenants/signup` for `EMAIL_TAKEN`, `Prefer: example=superAdmin` on `/me` for the SUPER_ADMIN flow).
+
+Patient pages: open `/patients` after logging in through the mock (the example reception account has the patient
+permissions). Creations (`POST /patients`, `/consents`, `/guardian-links`, `/me/guardian-links`) send an
+`Idempotency-Key` and a client `id`; both are kept while retrying after a network error and renewed once the
+server answers.
 
 ## Errors
 

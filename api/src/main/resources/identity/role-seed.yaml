@@ -1,0 +1,54 @@
+# Roles every new clinic receives (plan of MEDK-12, ADR-003). Versioned with the code: a change
+# here applies to clinics created afterwards; existing clinics keep their roles.
+#
+# - key: stable identifier (identity_role.suggested_key); never rename it.
+# - system: OWNER or ADMIN for the protected roles.
+# - name / description: shown to people, in Spanish. The clinic may rename suggested roles.
+# - clinical: users with the role need a professional registration.
+# - permissions: codes of the clinic catalog (Permission, scope TENANT), or "*" for all of them.
+#
+# [POR DEFINIR: permisos de cada rol sugerido, pendiente en el Glosario]. Until they are defined,
+# suggested roles other than reception carry no permission of epic MEDK-12.
+version: 1
+roles:
+  - key: OWNER
+    system: OWNER
+    name: OWNER
+    description: Dueño de la clínica
+    permissions: ["*"]
+  - key: ADMIN
+    system: ADMIN
+    name: ADMIN
+    description: Administrador de la clínica
+    permissions: ["*"]
+  - key: RECEPTION
+    name: Recepción
+    description: Registro y atención de pacientes en recepción
+    permissions: [patients.read, patients.register, patients.edit, patients.guardians.manage]
+  - key: DOCTOR
+    name: Médico
+    clinical: true
+    permissions: []
+  - key: DENTIST
+    name: Odontólogo
+    clinical: true
+    permissions: []
+  - key: NURSE
+    name: Enfermería
+    clinical: true
+    permissions: []
+  - key: CASHIER
+    name: Cajero
+    permissions: []
+  - key: PHARMACIST
+    name: Farmacéutico
+    permissions: []
+  - key: WAREHOUSE_KEEPER
+    name: Bodeguero
+    permissions: []
+  - key: COLLECTIONS
+    name: Cobranzas
+    permissions: []
+  - key: PATIENT
+    name: Paciente
+    permissions: []

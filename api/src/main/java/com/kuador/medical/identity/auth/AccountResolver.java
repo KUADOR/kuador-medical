@@ -10,6 +10,7 @@ import com.kuador.medical.identity.account.UserAccountRepository;
 import com.kuador.medical.identity.membership.MembershipStatus;
 import com.kuador.medical.identity.membership.TenantMembership;
 import com.kuador.medical.identity.membership.TenantMembershipRepository;
+import com.kuador.medical.identity.role.EffectivePermissions;
 import com.kuador.medical.shared.tenancy.TenantContext;
 import java.util.List;
 import java.util.Objects;
@@ -32,11 +33,17 @@ class AccountResolver {
     private final UserAccountRepository accounts;
     private final TenantMembershipRepository memberships;
     private final TenantDirectory tenants;
+    private final EffectivePermissions effectivePermissions;
 
-    AccountResolver(UserAccountRepository accounts, TenantMembershipRepository memberships, TenantDirectory tenants) {
+    AccountResolver(
+            UserAccountRepository accounts,
+            TenantMembershipRepository memberships,
+            TenantDirectory tenants,
+            EffectivePermissions effectivePermissions) {
         this.accounts = accounts;
         this.memberships = memberships;
         this.tenants = tenants;
+        this.effectivePermissions = effectivePermissions;
     }
 
     @Transactional(readOnly = true)
@@ -68,11 +75,13 @@ class AccountResolver {
         }
         Optional<TenantMembership> membership =
                 memberships.findByUserAccountIdAndStatus(account.getId(), MembershipStatus.ACTIVE);
-        return membership.map(found -> new AuthenticatedAccount(
-                account.getId(), account.getDisplayName(), AccountScope.TENANT, claims.tenantId(),
-                memberships.roleNames(found.getId()),
-                codes(Permission.ofScope(PermissionScope.TENANT), Set.copyOf(memberships.permissionCodes(found.getId()))),
-                account.isMustChangePassword()));
+        // The token has no active branch yet (MEDK-15 adds it): only clinic-wide assignments apply.
+        return membership.map(found -> {
+            EffectivePermissions.Grant grant = effectivePermissions.of(account.getId(), null);
+            return new AuthenticatedAccount(
+                    account.getId(), account.getDisplayName(), AccountScope.TENANT, claims.tenantId(),
+                    grant.roleNames(), grant.permissionCodes(), account.isMustChangePassword());
+        });
     }
 
     /** Codes of {@code catalog} (in catalog order) that are granted; all of them when {@code granted} is null. */
