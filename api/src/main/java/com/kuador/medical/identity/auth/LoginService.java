@@ -7,9 +7,9 @@ import com.kuador.medical.identity.TenantDirectory;
 import com.kuador.medical.identity.account.EmailAddresses;
 import com.kuador.medical.identity.account.UserAccount;
 import com.kuador.medical.identity.account.UserAccountRepository;
-import com.kuador.medical.identity.membership.MembershipLookup;
 import com.kuador.medical.shared.web.ApiException;
 import com.kuador.medical.shared.web.ErrorCode;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -25,7 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 class LoginService {
 
     private final UserAccountRepository accounts;
-    private final MembershipLookup memberships;
+    private final ClinicCredentialLookup clinicAccounts;
     private final TenantDirectory tenants;
     private final PasswordEncoder passwordEncoder;
     private final AccessTokenService tokens;
@@ -34,13 +34,13 @@ class LoginService {
 
     LoginService(
             UserAccountRepository accounts,
-            MembershipLookup memberships,
+            ClinicCredentialLookup clinicAccounts,
             TenantDirectory tenants,
             PasswordEncoder passwordEncoder,
             AccessTokenService tokens,
             AuditRecorder audit) {
         this.accounts = accounts;
-        this.memberships = memberships;
+        this.clinicAccounts = clinicAccounts;
         this.tenants = tenants;
         this.passwordEncoder = passwordEncoder;
         this.tokens = tokens;
@@ -50,26 +50,37 @@ class LoginService {
 
     @Transactional
     public LoginResponse login(String email, String password) {
-        Optional<UserAccount> found = accounts.findByEmail(EmailAddresses.normalize(email));
-        if (found.isEmpty()) {
+        String normalized = EmailAddresses.normalize(email);
+        Optional<UserAccount> platform = accounts.findByEmail(normalized)
+                .filter(account -> account.isActive() && passwordEncoder.matches(password, account.getPasswordHash()));
+        if (platform.isPresent()) {
+            return platformLogin(platform.get());
+        }
+        // One account per clinic (ADR-012). Until MEDK-15 adds the clinic selection, the oldest
+        // active clinic account whose password matches is used.
+        List<ClinicCredentialLookup.Candidate> candidates = clinicAccounts.activeAccounts(normalized);
+        if (candidates.isEmpty()) {
             passwordEncoder.matches(password, unknownAccountHash);
             throw invalidCredentials();
         }
-        UserAccount account = found.get();
-        if (!passwordEncoder.matches(password, account.getPasswordHash()) || !account.isActive()) {
-            throw invalidCredentials();
+        for (ClinicCredentialLookup.Candidate candidate : candidates) {
+            if (passwordEncoder.matches(password, candidate.passwordHash()) && activeClinic(candidate.tenantId())) {
+                audit.record(AuditAction.LOGIN_SUCCEEDED, candidate.tenantId(), candidate.accountId(), null);
+                IssuedToken token = tokens.issue(candidate.accountId(), AccountScope.TENANT, candidate.tenantId());
+                return new LoginResponse(token.value(), token.expiresInSeconds(), AccountScope.TENANT, false);
+            }
         }
-        AccountScope scope = account.isPlatformAdmin() ? AccountScope.PLATFORM : AccountScope.TENANT;
-        UUID tenantId = scope == AccountScope.PLATFORM ? null : activeTenantOf(account);
-        audit.record(AuditAction.LOGIN_SUCCEEDED, tenantId, account.getId(), null);
-        IssuedToken token = tokens.issue(account.getId(), scope, tenantId);
-        return new LoginResponse(token.value(), token.expiresInSeconds(), scope, account.isMustChangePassword());
+        throw invalidCredentials();
     }
 
-    private UUID activeTenantOf(UserAccount account) {
-        return memberships.activeTenantOf(account.getId())
-                .filter(tenantId -> tenants.find(tenantId).filter(TenantDirectory.TenantInfo::active).isPresent())
-                .orElseThrow(LoginService::invalidCredentials);
+    private LoginResponse platformLogin(UserAccount account) {
+        audit.record(AuditAction.LOGIN_SUCCEEDED, null, account.getId(), null);
+        IssuedToken token = tokens.issue(account.getId(), AccountScope.PLATFORM, null);
+        return new LoginResponse(token.value(), token.expiresInSeconds(), AccountScope.PLATFORM, account.isMustChangePassword());
+    }
+
+    private boolean activeClinic(UUID tenantId) {
+        return tenants.find(tenantId).filter(TenantDirectory.TenantInfo::active).isPresent();
     }
 
     static ApiException invalidCredentials() {

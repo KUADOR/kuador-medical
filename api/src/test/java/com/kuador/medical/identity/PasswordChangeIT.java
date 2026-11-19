@@ -101,7 +101,7 @@ class PasswordChangeIT {
 
     @Test
     void changeIsAudited() {
-        UUID accountId = jdbc.queryForObject("select id from user_account where email = ?", UUID.class, email);
+        UUID accountId = jdbc.queryForObject("select id from identity_user_account where email_normalized = ?", UUID.class, email);
 
         api.changePassword(token, password, IdentityApi.randomPassword());
 

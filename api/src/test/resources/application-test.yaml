@@ -14,3 +14,8 @@ kuador:
   bootstrap-admin:
     email: bootstrap-admin@example.test
     password: ${random.uuid}
+  links:
+    # Fictitious domain: tests only read the links from the captured emails.
+    web-base-url: https://app.example.test
+  mail:
+    from: no-reply@example.test

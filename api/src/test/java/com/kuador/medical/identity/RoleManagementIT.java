@@ -284,7 +284,7 @@ class RoleManagementIT {
     @Test
     void everyRoleOperationIsAuditedWithoutPersonalData() {
         UUID ownerId = jdbc.queryForObject(
-                "select user_account_id from tenant_membership where tenant_id = ?", UUID.class, clinic.tenantId());
+                "select id from identity_user_account where tenant_id = ?", UUID.class, clinic.tenantId());
         String id = createdId("Reception", List.of("roles.read"));
         update(id, "Front desk", null, List.of(), 0);
         api.delete("/api/v1/roles/" + id, clinic.token());

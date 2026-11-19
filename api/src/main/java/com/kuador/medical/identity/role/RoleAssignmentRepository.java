@@ -22,10 +22,10 @@ public interface RoleAssignmentRepository extends JpaRepository<RoleAssignment, 
     @Query("select count(a) > 0 from RoleAssignment a where a.roleId = :roleId and a.userId = :userId")
     boolean existsByRoleAndUser(@Param("roleId") UUID roleId, @Param("userId") UUID userId);
 
-    /** Distinct users holding one of the roles, whose membership is active. */
+    /** Distinct users holding one of the roles, whose account is active. */
     @Query("""
-            select count(distinct a.userId) from RoleAssignment a, TenantMembership m
-            where m.userAccountId = a.userId and m.status = com.kuador.medical.identity.membership.MembershipStatus.ACTIVE
+            select count(distinct a.userId) from RoleAssignment a, ClinicAccount u
+            where u.id = a.userId and u.status = com.kuador.medical.identity.ClinicAccountStatus.ACTIVE
             and a.roleId in :roleIds""")
     long countActiveUsersWithRoles(@Param("roleIds") Collection<UUID> roleIds);
 }

@@ -7,8 +7,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
- * Test data the API cannot create yet: branches (clinics module, later task) and staff users
- * (MEDK-16). Every value is random test data, never a real person or credential.
+ * Test data written directly: branches (the clinics module has no API yet) and active staff
+ * users with a known password, which the API only creates through an invitation (MEDK-16).
+ * Every value is random test data, never a real person or credential.
  */
 public final class StaffFixture {
 
@@ -26,14 +27,18 @@ public final class StaffFixture {
         return id;
     }
 
-    /** A staff user of the clinic without assignments; returns its account id. */
+    /**
+     * An active staff user of the clinic without assignments, with a professional registration so
+     * that clinical roles can be assigned to it; returns its account id.
+     */
     public UUID staffUser(UUID tenantId, String email, String password) {
         UUID accountId = UUID.randomUUID();
         jdbc.update("""
-                insert into user_account (id, email, password_hash, display_name)
-                values (?, ?, ?, 'Staff member')""", accountId, email, passwordEncoder.encode(password));
-        jdbc.update("insert into tenant_membership (id, tenant_id, user_account_id) values (?, ?, ?)",
-                UUID.randomUUID(), tenantId, accountId);
+                insert into identity_user_account
+                    (id, tenant_id, email_normalized, password_hash, status, kind, first_names, last_names, job_title,
+                     professional_registration)
+                values (?, ?, ?, ?, 'ACTIVE', 'STAFF', 'Staff', 'Member', 'Staff', 'REG-TEST-FIXTURE')""",
+                accountId, tenantId, email.toLowerCase(java.util.Locale.ROOT), passwordEncoder.encode(password));
         return accountId;
     }
 

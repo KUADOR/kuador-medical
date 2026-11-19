@@ -68,8 +68,8 @@ class SignupIT {
         assertThat(jdbc.queryForList("""
                 select coalesce(ra.branch_id::text, 'clinic-wide') || ':' || r.system_code from identity_role_assignment ra
                 join identity_role r on r.id = ra.role_id
-                join user_account a on a.id = ra.user_id
-                where a.email = ? and ra.tenant_id = ?""", String.class, email, tenantId))
+                join identity_user_account a on a.id = ra.user_id
+                where a.email_normalized = ? and ra.tenant_id = ?""", String.class, email, tenantId))
                 .containsExactly("clinic-wide:OWNER");
     }
 
@@ -116,22 +116,18 @@ class SignupIT {
         assertThat(meB.get("tenant")).isEqualTo(Map.of("id", tenantB.toString(), "name", "Clinica B"));
     }
 
+    /** ADR-012: one account per clinic, so the same email signs up an independent clinic account. */
     @Test
-    void repeatedEmailRespondsConflictAndCreatesNothing() {
+    void repeatedEmailSignsUpAnIndependentAccountInTheNewClinic() {
         String email = IdentityApi.uniqueEmail("owner");
-        api.signUp("Clinica Original", email, IdentityApi.randomPassword());
-        String clinicName = "Clinica Duplicada " + UUID.randomUUID();
+        UUID first = api.signUp("Clinica Original", email, IdentityApi.randomPassword());
 
-        MvcTestResult result = api.signUp(
-                IdentityApi.signupRequest(clinicName, email.toUpperCase(), IdentityApi.randomPassword()));
+        UUID second = api.signUp("Clinica Segunda " + UUID.randomUUID(), email.toUpperCase(), IdentityApi.randomPassword());
 
-        assertThat(result)
-                .hasStatus(HttpStatus.CONFLICT)
-                .hasContentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON)
-                .bodyJson()
-                .hasPathSatisfying("$.code", code -> assertThat(code).asString().isEqualTo("EMAIL_TAKEN"));
-        assertThat(jdbc.queryForObject("select count(*) from tenant where name = ?", Integer.class, clinicName))
-                .isZero();
+        assertThat(second).isNotEqualTo(first);
+        assertThat(jdbc.queryForList(
+                "select tenant_id from identity_user_account where email_normalized = ?", UUID.class, email))
+                .containsExactlyInAnyOrder(first, second);
     }
 
     @Test
@@ -141,7 +137,7 @@ class SignupIT {
 
         api.signUp("Clinica Mayusculas", email.toUpperCase(), password);
 
-        assertThat(jdbc.queryForObject("select count(*) from user_account where email = ?", Integer.class,
+        assertThat(jdbc.queryForObject("select count(*) from identity_user_account where email_normalized = ?", Integer.class,
                 email.toLowerCase())).isOne();
         assertThat(api.login(email.toLowerCase(), password)).hasStatus(HttpStatus.OK);
     }
@@ -153,7 +149,7 @@ class SignupIT {
 
         api.signUp("Clinica Hash", email, password);
 
-        String hash = jdbc.queryForObject("select password_hash from user_account where email = ?", String.class, email);
+        String hash = jdbc.queryForObject("select password_hash from identity_user_account where email_normalized = ?", String.class, email);
         assertThat(hash).startsWith("{argon2}").doesNotContain(password);
     }
 
@@ -175,7 +171,7 @@ class SignupIT {
     void signupIsAuditedWithoutPersonalData() {
         String email = IdentityApi.uniqueEmail("owner");
         UUID tenantId = api.signUp("Clinica Auditada", email, IdentityApi.randomPassword());
-        UUID accountId = jdbc.queryForObject("select id from user_account where email = ?", UUID.class, email);
+        UUID accountId = jdbc.queryForObject("select id from identity_user_account where email_normalized = ?", UUID.class, email);
 
         var events = jdbc.queryForList(
                 "select actor_account_id, target_type, target_id from audit_event where tenant_id = ? and action = 'TENANT_SIGNED_UP'",
@@ -195,7 +191,6 @@ class SignupIT {
 
         ContractSchema contract = ContractSchema.identity();
         contract.assertResponse("/tenants/signup", "POST", 201, "application/json", api.body(api.signUp(request)));
-        contract.assertResponse("/tenants/signup", "POST", 409, "application/problem+json", api.body(api.signUp(request)));
         request.put("email", "");
         contract.assertResponse("/tenants/signup", "POST", 400, "application/problem+json", api.body(api.signUp(request)));
     }

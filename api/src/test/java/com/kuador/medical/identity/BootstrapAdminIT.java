@@ -64,7 +64,7 @@ class BootstrapAdminIT {
         assertThat(account.get("platform_admin")).isEqualTo(true);
         assertThat(account.get("password_hash").toString()).startsWith("{argon2}").doesNotContain(bootstrap.password());
         assertThat(jdbc.queryForObject(
-                "select count(*) from tenant_membership m join user_account a on a.id = m.user_account_id where a.email = ?",
+                "select count(*) from identity_user_account where email_normalized = ?",
                 Integer.class, bootstrap.email())).isZero();
     }
 
