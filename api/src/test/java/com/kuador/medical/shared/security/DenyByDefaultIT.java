@@ -46,7 +46,8 @@ class DenyByDefaultIT {
                 .hasHeader(HttpHeaders.WWW_AUTHENTICATE, "Bearer")
                 .hasContentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON)
                 .bodyJson()
-                .hasPathSatisfying("$.code", code -> assertThat(code).asString().isEqualTo("UNAUTHENTICATED"));
+                .hasPathSatisfying("$.code", code -> assertThat(code).asString().isEqualTo("UNAUTHENTICATED"))
+                .hasPathSatisfying("$.type", type -> assertThat(type).asString().isEqualTo("about:blank"));
     }
 
     @Test
@@ -55,7 +56,8 @@ class DenyByDefaultIT {
                 .hasStatus(HttpStatus.NOT_FOUND)
                 .hasContentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON)
                 .bodyJson()
-                .hasPathSatisfying("$.code", code -> assertThat(code).asString().isEqualTo("NOT_FOUND"));
+                .hasPathSatisfying("$.code", code -> assertThat(code).asString().isEqualTo("NOT_FOUND"))
+                .hasPathSatisfying("$.type", type -> assertThat(type).asString().isEqualTo("about:blank"));
     }
 
     @Test

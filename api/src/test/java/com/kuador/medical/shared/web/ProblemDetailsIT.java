@@ -61,7 +61,7 @@ class ProblemDetailsIT {
     }
 
     @Test
-    void unexpectedErrorRespondsInternalErrorWithoutLeakingDetails() {
+    void unexpectedErrorRespondsInternalErrorWithoutLeakingDetails() throws Exception {
         var result = mvc.get().uri("/api/v1/test/problems/boom").exchange();
 
         assertThat(result)

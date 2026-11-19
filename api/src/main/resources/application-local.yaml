@@ -1,0 +1,9 @@
+# Local development against the "db" service of compose.yaml (values from .env).
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/medical}
+    username: ${DB_USERNAME:medical}
+
+kuador:
+  cors:
+    allowed-origins: ${KUADOR_CORS_ALLOWED_ORIGINS:http://localhost:4200}

@@ -59,7 +59,7 @@ class SystemInfoControllerTest {
         DataSource dataSource = mock(DataSource.class);
         when(dataSource.getConnection()).thenThrow(new SQLException("down"));
 
-        var info = new SystemInfoController(dataSource, null, "medical-kuador-api").systemInfo();
+        var info = new SystemInfoController(dataSource, (BuildProperties) null, "medical-kuador-api").systemInfo();
 
         assertThat(info.version()).isEqualTo("unknown");
     }
