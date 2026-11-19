@@ -1,0 +1,11 @@
+extends:
+  - recommended
+
+apis:
+  identity:
+    root: contracts/identity.openapi.yaml
+
+rules:
+  operation-4xx-problem-details-rfc7807: error
+  no-server-example.com: error
+  info-license-strict: off

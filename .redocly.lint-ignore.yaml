@@ -1,0 +1,6 @@
+# This file instructs Redocly's linter to ignore the rules contained for specific parts of your API.
+# See https://redocly.com/docs/cli/ for more information.
+# GET /system/info is public and has no client error by design.
+contracts/identity.openapi.yaml:
+  operation-4xx-response:
+    - '#/paths/~1system~1info/get/responses'
