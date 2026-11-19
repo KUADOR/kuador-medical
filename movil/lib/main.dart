@@ -11,6 +11,9 @@ import 'core/session/session_controller.dart';
 import 'core/session/token_store.dart';
 import 'features/auth/data/auth_api.dart';
 import 'features/auth/deep_links/deep_link.dart';
+import 'features/patients/data/patients_api.dart';
+import 'features/roles/data/roles_api.dart';
+import 'features/staff_users/data/staff_api.dart';
 import 'system_status/system_info_client.dart';
 
 void main() {
@@ -52,5 +55,9 @@ AppServices buildServices({
       httpClient: httpClient,
       baseUrl: config.apiBaseUrl,
     ),
+    staffApi: StaffApi(api),
+    rolesApi: RolesApi(api),
+    patientsApi: PatientsApi(api),
+    clock: clock ?? DateTime.now,
   );
 }
