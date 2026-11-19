@@ -11,5 +11,7 @@ RUN npm run build \
 
 FROM nginxinc/nginx-unprivileged:stable-alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /out/ /usr/share/nginx/html/
+COPY --chmod=0755 docker-entrypoint.d/40-runtime-config.sh /docker-entrypoint.d/40-runtime-config.sh
+# The nginx user (uid 101) must be able to rewrite config.json at start (API_BASE_URL).
+COPY --from=build --chown=101:0 /out/ /usr/share/nginx/html/
 EXPOSE 8080
