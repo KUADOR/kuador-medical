@@ -55,7 +55,7 @@ Solo nombres: los valores nunca van en este documento ni en el repo. En local vi
 | DB_PASSWORD | api, db | local, pruebas, producción | `.env` / gestor de secretos | sí | Clave de la base |
 | DB_NAME | db | local | `.env` | no | Nombre de la base que crea Compose (por defecto `medical`) |
 | DB_PORT | db | local | `.env` | no | Puerto del host para PostgreSQL (por defecto 5432) |
-| KUADOR_JWT_SECRET | api | local, pruebas, producción | `.env` / gestor de secretos | sí | Firma de los tokens (≥ 256 bits; distinta por entorno) |
+| KUADOR_JWT_SECRET | api | local, pruebas, producción | `.env` / gestor de secretos | sí | Firma de los tokens (≥ 256 bits, es decir ≥ 32 bytes; distinta por entorno). Obligatoria: sin ella la api no arranca |
 | KUADOR_JWT_TTL | api | todos | `.env` / variables del entorno | no | Vida del token (por defecto `PT30M`) |
 | KUADOR_BOOTSTRAP_ADMIN_EMAIL | api | local, pruebas, producción | `.env` / variables del entorno | no | Correo de la cuenta inicial SUPER_ADMIN (el acordado en MEDK-1) |
 | KUADOR_BOOTSTRAP_ADMIN_PASSWORD | api | local, pruebas, producción | `.env` / gestor de secretos | sí | Clave inicial del SUPER_ADMIN; ver «Cuenta inicial del SUPER_ADMIN» |
@@ -134,6 +134,7 @@ Comprobar en local lo mismo que el CI: ver «Comandos del proyecto» en `AGENTS.
 ## Verificación
 
 - Local: `docker compose ps` muestra `db` como `healthy` y la base responde a `select version();`.
+- api: `POST /api/v1/auth/login` con la cuenta inicial responde 200 con `scope: PLATFORM` y `mustChangePassword: true`; hasta cambiar la clave (`POST /api/v1/auth/password`) solo responden `/auth/password` y `/me`.
 - api: `GET /api/v1/system/info` (público) responde 200 con `status` y `database` en `UP`; si la base no responde, devuelve `DOWN` en ambos (sigue respondiendo 200). Las migraciones Flyway (`api/src/main/resources/db/migration`) se aplican al arrancar.
 - [POR DEFINIR: revisión de logs y una prueba de punta a punta por entorno, incluyendo que un usuario de un tenant no accede a datos de otro.]
 
@@ -143,5 +144,7 @@ Comprobar en local lo mismo que el CI: ver «Comandos del proyecto» en `AGENTS.
 |---|---|---|
 | {date} | Primera versión | — |
 | 2026-11-19 | Entorno local con Docker Compose (PostgreSQL 18 y perfil `full` con api y web), `.env.example`, perfiles `local`/`test`/`prod`, variables y secretos de la api (renombra `SPRING_DATASOURCE_*` a `DB_*` según el plan), carga de la clave inicial del SUPER_ADMIN como secreto | MEDK-3 |
+| 2026-11-19 | Esqueleto de la api: migración base Flyway `V1__baseline.sql` aplicada al arrancar, comprobación de salud `GET /api/v1/system/info`, `./mvnw -B verify` necesita Docker (Testcontainers). Sin variables ni secretos nuevos | MEDK-4 |
+| 2026-11-19 | Autorregistro, login JWT, `GET /me`, cambio de clave y creación de la cuenta inicial SUPER_ADMIN al arrancar. `KUADOR_JWT_SECRET` pasa a ser obligatoria (la api no arranca sin ella o si tiene menos de 32 bytes); `KUADOR_BOOTSTRAP_ADMIN_*` ya se usan. Sin variables, puertos ni servicios nuevos | MEDK-5 |
 | 2026-11-19 | Web Angular: `config.json` en tiempo de ejecución con `API_BASE_URL` (por defecto `/api/v1`, mismo origen), reescritura de `config.json` al arrancar el contenedor web si recibe `API_BASE_URL`, proxy local a la api (`npm start`) y mock Prism del contrato en el puerto 4010 (`npm run dev:mock`) | MEDK-7 |
 | 2026-11-19 | CI por pieza en GitHub Actions (`ci`, `api`, `web`, `movil`, `contract`) con filtros por ruta; Flutter `3.47.9` fijado en CI; checks a marcar como requeridos hacia `develop` y `main` | MEDK-10 |

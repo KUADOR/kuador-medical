@@ -12,4 +12,12 @@ public interface AccessChecker {
 
     /** Whether the current caller holds the permission; always {@code false} when not authenticated. */
     boolean hasPermission(String permission);
+
+    /**
+     * Whether the authenticated caller must change its password before operating. While it is
+     * {@code true}, only handlers marked {@link AllowedWhilePasswordChangeRequired} answer.
+     */
+    default boolean isPasswordChangeRequired() {
+        return false;
+    }
 }

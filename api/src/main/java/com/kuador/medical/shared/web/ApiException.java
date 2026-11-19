@@ -33,6 +33,11 @@ public class ApiException extends RuntimeException {
         return new ApiException(HttpStatus.UNAUTHORIZED, ErrorCode.UNAUTHENTICATED, "Authentication is required.");
     }
 
+    public static ApiException passwordChangeRequired() {
+        return new ApiException(
+                HttpStatus.FORBIDDEN, ErrorCode.PASSWORD_CHANGE_REQUIRED, "The password must be changed first.");
+    }
+
     public static ApiException notFound() {
         return new ApiException(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND, "The resource does not exist.");
     }
