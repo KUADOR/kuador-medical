@@ -114,7 +114,7 @@ Un solo workflow, `.github/workflows/ci.yml` (nombre `ci`), corre en cada Pull R
 | `ci` | siempre | Comprueba que existan los documentos de la metodología |
 | `api` | `api/**`, `contracts/**` | JDK 25 (Temurin) y `./mvnw -B verify` en `api/`; Docker del runner para Testcontainers (PostgreSQL) |
 | `web` | `web/**`, `contracts/**` | Node.js 24, `npm ci`, `npm run api:check` (tipos generados al día con el contrato), `npm run build`, `npm test -- --watch=false` |
-| `movil` | `movil/**` | Flutter estable, `flutter pub get`, `flutter analyze`, `flutter test` |
+| `movil` | `movil/**` | Flutter estable fijado en `3.47.9` (la 3.50 depreca `package:flutter/material.dart` y `flutter analyze` falla; subir la versión es una tarea aparte que migra el código), `flutter pub get`, `flutter analyze`, `flutter test` |
 | `contract` | `contracts/**`, `redocly.yaml`, `.redocly.lint-ignore.yaml` | `npx @redocly/cli@2 lint` con la configuración de la raíz |
 
 Cualquier cambio en `.github/workflows/ci.yml` corre los cinco checks. El filtro por ruta lo hace el job `changes` dentro del workflow: un check cuya pieza no cambió queda «skipped», y GitHub lo cuenta como aprobado, así los checks pueden ser requeridos sin bloquear PRs que no tocan esa pieza.
@@ -144,4 +144,4 @@ Comprobar en local lo mismo que el CI: ver «Comandos del proyecto» en `AGENTS.
 | {date} | Primera versión | — |
 | 2026-11-19 | Entorno local con Docker Compose (PostgreSQL 18 y perfil `full` con api y web), `.env.example`, perfiles `local`/`test`/`prod`, variables y secretos de la api (renombra `SPRING_DATASOURCE_*` a `DB_*` según el plan), carga de la clave inicial del SUPER_ADMIN como secreto | MEDK-3 |
 | 2026-11-19 | Web Angular: `config.json` en tiempo de ejecución con `API_BASE_URL` (por defecto `/api/v1`, mismo origen), reescritura de `config.json` al arrancar el contenedor web si recibe `API_BASE_URL`, proxy local a la api (`npm start`) y mock Prism del contrato en el puerto 4010 (`npm run dev:mock`) | MEDK-7 |
-| 2026-11-19 | CI por pieza en GitHub Actions (`ci`, `api`, `web`, `movil`, `contract`) con filtros por ruta; checks a marcar como requeridos hacia `develop` y `main` | MEDK-10 |
+| 2026-11-19 | CI por pieza en GitHub Actions (`ci`, `api`, `web`, `movil`, `contract`) con filtros por ruta; Flutter `3.47.9` fijado en CI; checks a marcar como requeridos hacia `develop` y `main` | MEDK-10 |
