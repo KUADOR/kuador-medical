@@ -3,7 +3,19 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/medical}
     username: ${DB_USERNAME:medical}
+  # Mailpit (compose.yaml): catches every email, web UI on http://localhost:8025. No credentials.
+  mail:
+    host: ${KUADOR_SMTP_HOST:localhost}
+    port: ${KUADOR_SMTP_PORT:1025}
+    properties:
+      mail.smtp.auth: ${KUADOR_SMTP_AUTH:false}
+      mail.smtp.starttls.enable: ${KUADOR_SMTP_STARTTLS:false}
+      mail.smtp.starttls.required: ${KUADOR_SMTP_STARTTLS:false}
 
 kuador:
   cors:
     allowed-origins: ${KUADOR_CORS_ALLOWED_ORIGINS:http://localhost:4200}
+  links:
+    web-base-url: ${KUADOR_WEB_BASE_URL:http://localhost:4200}
+  mail:
+    from: ${KUADOR_MAIL_FROM:no-reply@medical.example.test}

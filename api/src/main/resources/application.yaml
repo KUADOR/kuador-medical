@@ -24,6 +24,17 @@ spring:
   web:
     resources:
       add-mappings: false
+  # Outgoing email (invitations, password reset, email verification). Local: Mailpit (compose.yaml).
+  # Provider for staging and production [POR DEFINIR]; KUADOR_SMTP_PASSWORD is a secret.
+  mail:
+    host: ${KUADOR_SMTP_HOST:}
+    port: ${KUADOR_SMTP_PORT:587}
+    username: ${KUADOR_SMTP_USERNAME:}
+    password: ${KUADOR_SMTP_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${KUADOR_SMTP_AUTH:true}
+      mail.smtp.starttls.enable: ${KUADOR_SMTP_STARTTLS:true}
+      mail.smtp.starttls.required: ${KUADOR_SMTP_STARTTLS:true}
 
 server:
   error:
@@ -36,7 +47,40 @@ kuador:
   jwt:
     # Secret (ADR-006): at least 32 bytes. The api refuses to start without it.
     secret: ${KUADOR_JWT_SECRET:}
+    # Access token lifetime. ADR-013 sets 15 minutes for MEDK-12; the task that implements it
+    # (MEDK-15) lowers this default.
     ttl: ${KUADOR_JWT_TTL:PT30M}
+    # Opaque rotating refresh token, stored only as a hash (ADR-013).
+    refresh-ttl: ${KUADOR_JWT_REFRESH_TTL:P7D}
+    # Short-lived token between login and clinic/branch selection (ADR-012).
+    pre-auth-ttl: ${KUADOR_JWT_PRE_AUTH_TTL:PT5M}
+  login-throttle:
+    # Failed logins allowed per email + IP and per account inside the window, then a temporary lock.
+    max-failures: ${KUADOR_LOGIN_MAX_FAILURES:5}
+    window: ${KUADOR_LOGIN_FAILURE_WINDOW:PT15M}
+    lock-duration: ${KUADOR_LOGIN_LOCK_DURATION:PT15M}
+  one-time-tokens:
+    # ADR-014: single-use tokens, stored only as SHA-256 hashes.
+    invitation-ttl: ${KUADOR_INVITATION_TTL:PT72H}
+    password-reset-ttl: ${KUADOR_PASSWORD_RESET_TTL:PT30M}
+    email-verification-ttl: ${KUADOR_EMAIL_VERIFICATION_TTL:PT24H}
+  links:
+    # Base URL of the web, used in emails as the fallback of every link.
+    web-base-url: ${KUADOR_WEB_BASE_URL:}
+    # https://<deep link domain>: the same link is an Android App Link, an iOS Universal Link and
+    # the web fallback (ADR-014). It must serve web/public/.well-known/*. Defaults to the web URL.
+    app-link-base-url: ${KUADOR_APP_LINK_BASE_URL:${kuador.links.web-base-url}}
+    # Paths declared in .well-known/apple-app-site-association; the token goes in the fragment (#t=).
+    invitation-path: /invitation
+    password-reset-path: /password-reset
+    email-verification-path: /email-verification
+  mail:
+    from: ${KUADOR_MAIL_FROM:}
+  sms:
+    # SMS provider [POR DEFINIR]. Empty provider: SMS invitations stay disabled.
+    provider: ${KUADOR_SMS_PROVIDER:}
+    api-key: ${KUADOR_SMS_API_KEY:}
+    sender: ${KUADOR_SMS_SENDER:}
   password:
     min-length: 12
   bootstrap-admin:
