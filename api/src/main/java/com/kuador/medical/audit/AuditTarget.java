@@ -22,4 +22,8 @@ public record AuditTarget(String type, UUID id) {
     public static AuditTarget role(UUID id) {
         return new AuditTarget("ROLE", id);
     }
+
+    public static AuditTarget patient(UUID id) {
+        return new AuditTarget("PATIENT", id);
+    }
 }

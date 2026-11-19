@@ -62,7 +62,13 @@ class EndpointPermissionContractTest {
                 "DELETE /roles/{id}", "PUT /staff-users/{id}/role-assignments",
                 "POST /auth/login", "POST /auth/login/clinic", "POST /auth/login/branch", "POST /auth/refresh",
                 "POST /auth/logout", "POST /auth/password-reset/request", "POST /auth/password-reset/confirm",
-                "POST /auth/switch-branch", "GET /me");
+                "POST /auth/switch-branch", "GET /me",
+                "GET /patients", "POST /patients", "GET /patients/{id}", "PATCH /patients/{id}",
+                "POST /patients/{id}/consents", "GET /patients/{id}/guardian-links",
+                "POST /patients/{id}/guardian-links", "POST /patients/{id}/guardian-links/{linkId}/end",
+                "POST /patients/{id}/account-invitation", "GET /patient-registration-settings",
+                "PUT /patient-registration-settings", "POST /public/clinics/{publicCode}/patient-registrations",
+                "POST /auth/email-verification/confirm");
         handlers.forEach((operation, handler) -> {
             if (required.containsKey(operation)) {
                 assertThat(accessOf(handler)).as("access of %s", operation).isEqualTo(required.get(operation));

@@ -135,6 +135,26 @@ public class ClinicAccount implements Persistable<UUID> {
         return account;
     }
 
+    /** A self-registered patient that chose its password and must verify its email first. */
+    public static ClinicAccount pendingEmailVerification(
+            String email, String passwordHash, String firstNames, String lastNames, UUID patientRef) {
+        ClinicAccount account = new ClinicAccount(
+                UUID.randomUUID(), AccountKind.PATIENT, email, firstNames, lastNames,
+                ClinicAccountStatus.PENDING_EMAIL_VERIFICATION, null);
+        account.passwordHash = Objects.requireNonNull(passwordHash, "passwordHash");
+        account.patientRef = patientRef;
+        return account;
+    }
+
+    /** Activates a self-registered account once its email is verified. */
+    public void verifyEmail() {
+        if (status != ClinicAccountStatus.PENDING_EMAIL_VERIFICATION) {
+            throw new IllegalStateException("Only an account pending verification verifies its email");
+        }
+        this.status = ClinicAccountStatus.ACTIVE;
+        touch(id);
+    }
+
     /** The owner of a clinic being signed up, with the password it chose. */
     public static ClinicAccount activeOwner(String email, String passwordHash, String displayName) {
         String name = displayName.strip();
