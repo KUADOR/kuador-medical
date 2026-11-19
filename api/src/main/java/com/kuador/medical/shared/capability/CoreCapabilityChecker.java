@@ -6,10 +6,11 @@ import java.util.Set;
 /**
  * Justified exception to Constitution VII (plan of MEDK-1): plans do not exist yet, so only the
  * core capabilities, which belong to every plan, are enabled. Remove when the plans module lands.
+ * Patient registration (MEDK-17) is core: every clinic registers its patients.
  */
 public final class CoreCapabilityChecker implements CapabilityChecker {
 
-    private static final Set<Capability> CORE = EnumSet.of(Capability.PLATFORM, Capability.IDENTITY);
+    private static final Set<Capability> CORE = EnumSet.of(Capability.PLATFORM, Capability.IDENTITY, Capability.PATIENTS);
 
     @Override
     public boolean isEnabled(Capability capability) {

@@ -101,7 +101,7 @@ class BranchSessionIT {
                 .containsEntry("activeBranch", Map.of("id", north.toString(), "name", "Norte"))
                 .containsEntry("permissions", RECEPTION_PERMISSIONS)
                 .containsEntry("roles", List.of("Recepción"))
-                .containsEntry("enabledModules", List.of("identity"));
+                .containsEntry("enabledModules", List.of("identity", "patients"));
         assertThat(branchIds(me, "availableBranches")).containsExactlyInAnyOrder(main.toString(), north.toString());
         ContractSchema.userRegistration().assertResponse("/me", "GET", 200, "application/json", me);
     }

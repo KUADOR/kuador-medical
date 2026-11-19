@@ -40,4 +40,25 @@ public interface AccountProvisioning {
 
     /** The account in the current clinic; empty for an unknown id or an account of another clinic. */
     Optional<ClinicAccountInfo> find(UUID accountId);
+
+    /** Whether the email (compared case-insensitively) already has an account in the current clinic. */
+    boolean isEmailRegistered(String email);
+
+    /**
+     * Checks the first password of a new account against the password policy.
+     *
+     * @throws com.kuador.medical.shared.web.ApiException {@code WEAK_PASSWORD}
+     */
+    void checkFirstPassword(String password);
+
+    /**
+     * Creates a {@code PATIENT} account that chose its password (self-registration) in state
+     * {@code PENDING_EMAIL_VERIFICATION}, and emails it a one-time verification link (ADR-014).
+     * The account can log in only after {@code POST /auth/email-verification/confirm}. Joins the
+     * transaction of the caller; the email leaves after commit.
+     *
+     * @return id of the new account
+     * @throws com.kuador.medical.shared.web.ApiException {@code EMAIL_TAKEN} or {@code WEAK_PASSWORD}
+     */
+    UUID registerPendingVerification(NewSelfRegisteredAccount account);
 }

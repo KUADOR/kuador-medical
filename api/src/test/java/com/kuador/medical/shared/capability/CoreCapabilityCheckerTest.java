@@ -18,6 +18,7 @@ class CoreCapabilityCheckerTest {
     void coreCapabilitiesAreEnabled() {
         assertThat(checker.isEnabled(Capability.PLATFORM)).isTrue();
         assertThat(checker.isEnabled(Capability.IDENTITY)).isTrue();
+        assertThat(checker.isEnabled(Capability.PATIENTS)).isTrue();
     }
 
     @Test
@@ -31,6 +32,7 @@ class CoreCapabilityCheckerTest {
         assertThat(resolver.resolve(CoreCapabilityCheckerTest.class)).contains(Capability.PLATFORM);
         assertThat(resolver.resolvePackage("com.kuador.medical.identity.role")).contains(Capability.IDENTITY);
         assertThat(resolver.resolvePackage("com.kuador.medical.audit")).contains(Capability.PLATFORM);
+        assertThat(resolver.resolvePackage("com.kuador.medical.patients.registration")).contains(Capability.PATIENTS);
     }
 
     @Test

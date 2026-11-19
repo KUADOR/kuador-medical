@@ -17,7 +17,8 @@ public final class ModuleCapabilityResolver implements Function<Class<?>, Option
             "platform", Capability.PLATFORM,
             "audit", Capability.PLATFORM,
             "shared", Capability.PLATFORM,
-            "identity", Capability.IDENTITY);
+            "identity", Capability.IDENTITY,
+            "patients", Capability.PATIENTS);
 
     @Override
     public Optional<Capability> apply(Class<?> type) {

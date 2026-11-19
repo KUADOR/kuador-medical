@@ -78,6 +78,9 @@ kuador:
     email-verification-path: /email-verification
   mail:
     from: ${KUADOR_MAIL_FROM:}
+  clinics:
+    # Time zone used to compute minority of patients (under 18) [POR DEFINIR: zona horaria por clínica].
+    time-zone: ${KUADOR_CLINIC_TIME_ZONE:UTC}
   sms:
     # SMS provider [POR DEFINIR]. Empty provider: SMS invitations stay disabled.
     provider: ${KUADOR_SMS_PROVIDER:}

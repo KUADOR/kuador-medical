@@ -6,11 +6,15 @@ import com.kuador.medical.audit.AuditTarget;
 import com.kuador.medical.identity.AccountProvisioning;
 import com.kuador.medical.identity.ClinicAccountInfo;
 import com.kuador.medical.identity.NewClinicAccount;
+import com.kuador.medical.identity.NewSelfRegisteredAccount;
 import com.kuador.medical.identity.NewTenantOwner;
 import com.kuador.medical.identity.account.ClinicAccount;
 import com.kuador.medical.identity.account.ClinicAccountRepository;
 import com.kuador.medical.identity.account.ClinicAccountStore;
+import com.kuador.medical.identity.account.EmailAddresses;
+import com.kuador.medical.identity.account.EmailVerificationService;
 import com.kuador.medical.identity.account.InvitationService;
+import com.kuador.medical.identity.account.PasswordPolicy;
 import com.kuador.medical.identity.role.Role;
 import com.kuador.medical.identity.role.RoleAssignment;
 import com.kuador.medical.identity.role.RoleRepository;
@@ -34,6 +38,8 @@ class DefaultAccountProvisioning implements AccountProvisioning {
     private final PasswordEncoder passwordEncoder;
     private final RoleRepository roles;
     private final AuditRecorder audit;
+    private final EmailVerificationService verifications;
+    private final PasswordPolicy passwordPolicy;
 
     DefaultAccountProvisioning(
             EntityManager entityManager,
@@ -42,7 +48,9 @@ class DefaultAccountProvisioning implements AccountProvisioning {
             InvitationService invitations,
             PasswordEncoder passwordEncoder,
             RoleRepository roles,
-            AuditRecorder audit) {
+            AuditRecorder audit,
+            EmailVerificationService verifications,
+            PasswordPolicy passwordPolicy) {
         this.entityManager = entityManager;
         this.accounts = accounts;
         this.store = store;
@@ -50,6 +58,8 @@ class DefaultAccountProvisioning implements AccountProvisioning {
         this.passwordEncoder = passwordEncoder;
         this.roles = roles;
         this.audit = audit;
+        this.verifications = verifications;
+        this.passwordPolicy = passwordPolicy;
     }
 
     @Override
@@ -95,5 +105,29 @@ class DefaultAccountProvisioning implements AccountProvisioning {
         return accounts.findInCurrentTenant(accountId)
                 .map(account -> new ClinicAccountInfo(
                         account.getId(), account.getKind(), account.getStatus(), account.getPatientRef()));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isEmailRegistered(String email) {
+        return accounts.existsByEmailInCurrentTenant(EmailAddresses.normalize(email));
+    }
+
+    @Override
+    public void checkFirstPassword(String password) {
+        passwordPolicy.checkFirstPassword(password);
+    }
+
+    @Override
+    @Transactional
+    public UUID registerPendingVerification(NewSelfRegisteredAccount request) {
+        passwordPolicy.checkFirstPassword(request.password());
+        ClinicAccount account = ClinicAccount.pendingEmailVerification(
+                request.email(), passwordEncoder.encode(request.password()),
+                request.firstNames(), request.lastNames(), request.patientRef());
+        store.persistNew(account);
+        audit.record(AuditAction.ACCOUNT_PROVISIONED, account.getTenantId(), null, AuditTarget.account(account.getId()));
+        verifications.send(account);
+        return account.getId();
     }
 }

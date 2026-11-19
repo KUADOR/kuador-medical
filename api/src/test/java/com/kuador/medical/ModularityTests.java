@@ -21,6 +21,6 @@ class ModularityTests {
     @Test
     void skeletonModulesExist() {
         assertThat(MODULES.stream().map(ApplicationModule::getIdentifier).map(Object::toString))
-                .contains("platform", "identity", "audit", "shared", "notifications");
+                .contains("platform", "identity", "audit", "shared", "notifications", "patients");
     }
 }
