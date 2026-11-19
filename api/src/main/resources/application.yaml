@@ -37,6 +37,9 @@ spring:
       mail.smtp.starttls.required: ${KUADOR_SMTP_STARTTLS:true}
 
 server:
+  # Behind the web proxy: the client address (login attempt limit) comes from X-Forwarded-For,
+  # trusted only from internal proxies (Tomcat RemoteIpValve defaults).
+  forward-headers-strategy: native
   error:
     include-message: never
     include-stacktrace: never
@@ -47,9 +50,8 @@ kuador:
   jwt:
     # Secret (ADR-006): at least 32 bytes. The api refuses to start without it.
     secret: ${KUADOR_JWT_SECRET:}
-    # Access token lifetime. ADR-013 sets 15 minutes for MEDK-12; the task that implements it
-    # (MEDK-15) lowers this default.
-    ttl: ${KUADOR_JWT_TTL:PT30M}
+    # Access token lifetime (ADR-013).
+    ttl: ${KUADOR_JWT_TTL:PT15M}
     # Opaque rotating refresh token, stored only as a hash (ADR-013).
     refresh-ttl: ${KUADOR_JWT_REFRESH_TTL:P7D}
     # Short-lived token between login and clinic/branch selection (ADR-012).

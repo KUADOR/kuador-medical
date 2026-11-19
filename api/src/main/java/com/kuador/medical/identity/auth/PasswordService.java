@@ -30,9 +30,9 @@ class PasswordService {
 
     @Transactional
     public void change(AuthenticatedAccount caller, String currentPassword, String newPassword) {
-        UserAccount account = accounts.findById(caller.accountId()).orElseThrow(LoginService::invalidCredentials);
+        UserAccount account = accounts.findById(caller.accountId()).orElseThrow(SessionErrors::invalidCredentials);
         if (!passwordEncoder.matches(currentPassword, account.getPasswordHash())) {
-            throw LoginService.invalidCredentials();
+            throw SessionErrors.invalidCredentials();
         }
         policy.checkNewPassword(newPassword, account.getPasswordHash());
         account.changePassword(passwordEncoder.encode(newPassword));

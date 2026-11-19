@@ -61,7 +61,7 @@ class AccountResolver {
 
     private static AuthenticatedAccount platformCaller(UserAccount account) {
         return new AuthenticatedAccount(
-                account.getId(), account.getDisplayName(), AccountScope.PLATFORM, null,
+                account.getId(), account.getDisplayName(), AccountScope.PLATFORM, null, null,
                 List.of(SUPER_ADMIN_ROLE), codes(Permission.ofScope(PermissionScope.PLATFORM), null),
                 account.isMustChangePassword());
     }
@@ -75,12 +75,13 @@ class AccountResolver {
         }
         Optional<TenantMembership> membership =
                 memberships.findByUserAccountIdAndStatus(account.getId(), MembershipStatus.ACTIVE);
-        // The token has no active branch yet (MEDK-15 adds it): only clinic-wide assignments apply.
+        // ADR-013: the permissions of the clinic-wide assignment plus those of the active branch,
+        // read now, so a change of role or an assignment removed applies to this request.
         return membership.map(found -> {
-            EffectivePermissions.Grant grant = effectivePermissions.of(account.getId(), null);
+            EffectivePermissions.Grant grant = effectivePermissions.of(account.getId(), claims.branchId());
             return new AuthenticatedAccount(
                     account.getId(), account.getDisplayName(), AccountScope.TENANT, claims.tenantId(),
-                    grant.roleNames(), grant.permissionCodes(), account.isMustChangePassword());
+                    claims.branchId(), grant.roleNames(), grant.permissionCodes(), account.isMustChangePassword());
         });
     }
 

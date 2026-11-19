@@ -47,6 +47,9 @@ class ProblemDetailsHandler extends ResponseEntityExceptionHandler {
         if (ex.status() == HttpStatus.UNAUTHORIZED) {
             headers.set(HttpHeaders.WWW_AUTHENTICATE, "Bearer");
         }
+        if (ex instanceof TooManyAttemptsException tooMany) {
+            headers.set(HttpHeaders.RETRY_AFTER, String.valueOf(tooMany.retryAfterSeconds()));
+        }
         return ResponseEntity.status(ex.status()).headers(headers).body(problem);
     }
 

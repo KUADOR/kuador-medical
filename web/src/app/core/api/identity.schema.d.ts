@@ -46,28 +46,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/auth/login": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Log in with email and password
-         * @description Returns a signed JWT access token (no refresh token in the skeleton).
-         *     `scope` tells whether the account operates a clinic (`TENANT`) or the
-         *     platform (`PLATFORM`).
-         */
-        post: operations["login"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/auth/password": {
         parameters: {
             query?: never;
@@ -85,28 +63,6 @@ export interface paths {
          *     the change remain valid until they expire.
          */
         post: operations["changePassword"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/me": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get the current account
-         * @description Returns the authenticated account with its scope, clinic (only for
-         *     `TENANT` scope), roles and effective permissions. Allowed while a password
-         *     change is required.
-         */
-        get: operations["getCurrentAccount"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -268,11 +224,6 @@ export interface components {
         /** @enum {string} */
         HealthStatus: "UP" | "DOWN";
         /**
-         * @description `TENANT` for clinic staff, `PLATFORM` for the SUPER_ADMIN.
-         * @enum {string}
-         */
-        AccountScope: "TENANT" | "PLATFORM";
-        /**
          * @description `TENANT` permissions are assignable to clinic roles; `PLATFORM` permissions never are.
          * @enum {string}
          */
@@ -312,22 +263,6 @@ export interface components {
              */
             tenantId: string;
         };
-        LoginRequest: {
-            email: components["schemas"]["Email"];
-            /** Format: password */
-            password: string;
-        };
-        LoginResponse: {
-            /** @description Signed JWT access token. */
-            accessToken: string;
-            /** @constant */
-            tokenType: "Bearer";
-            /** @description Lifetime of the token in seconds. */
-            expiresIn: number;
-            scope: components["schemas"]["AccountScope"];
-            /** @description When true, only `POST /auth/password` and `GET /me` are allowed. */
-            mustChangePassword: boolean;
-        };
         ChangePasswordRequest: {
             /** Format: password */
             currentPassword: string;
@@ -336,24 +271,6 @@ export interface components {
              * @description At least 12 characters and different from the current password (enforced as `WEAK_PASSWORD`).
              */
             newPassword: string;
-        };
-        TenantSummary: {
-            /** Format: uuid */
-            id: string;
-            name: string;
-        };
-        CurrentAccount: {
-            /** Format: uuid */
-            accountId: string;
-            displayName: string;
-            scope: components["schemas"]["AccountScope"];
-            /** @description Present only for `TENANT` scope. */
-            tenant?: components["schemas"]["TenantSummary"];
-            /** @description Names of the roles of the account (`SUPER_ADMIN` for the platform account). */
-            roles: string[];
-            /** @description Effective permissions, resolved on every request. */
-            permissions: components["schemas"]["PermissionCode"][];
-            mustChangePassword: boolean;
         };
         /** @description Role name, unique per clinic (case-insensitive). */
         RoleName: string;
@@ -409,15 +326,6 @@ export interface components {
     responses: {
         /** @description The request is malformed or breaks a validation rule (`VALIDATION`). */
         ValidationError: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/problem+json": components["schemas"]["Problem"];
-            };
-        };
-        /** @description Email or password is wrong (`INVALID_CREDENTIALS`). The response does not reveal which one. */
-        InvalidCredentials: {
             headers: {
                 [name: string]: unknown;
             };
@@ -533,33 +441,6 @@ export interface operations {
             500: components["responses"]["InternalError"];
         };
     };
-    login: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["LoginRequest"];
-            };
-        };
-        responses: {
-            /** @description Authenticated. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LoginResponse"];
-                };
-            };
-            400: components["responses"]["ValidationError"];
-            401: components["responses"]["InvalidCredentials"];
-            500: components["responses"]["InternalError"];
-        };
-    };
     changePassword: {
         parameters: {
             query?: never;
@@ -604,28 +485,6 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            500: components["responses"]["InternalError"];
-        };
-    };
-    getCurrentAccount: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Current account. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CurrentAccount"];
-                };
-            };
-            401: components["responses"]["Unauthenticated"];
             500: components["responses"]["InternalError"];
         };
     };

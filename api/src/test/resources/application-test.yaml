@@ -11,6 +11,10 @@ kuador:
   jwt:
     # Random per test context: no signing key is ever stored in the repository.
     secret: ${random.uuid}${random.uuid}
+  links:
+    web-base-url: http://localhost:4200
+  mail:
+    from: no-reply@medical.example.test
   bootstrap-admin:
     email: bootstrap-admin@example.test
     password: ${random.uuid}

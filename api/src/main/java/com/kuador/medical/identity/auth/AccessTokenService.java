@@ -12,8 +12,10 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import java.text.ParseException;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
@@ -21,15 +23,22 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
- * Issues and verifies the HS256 access tokens of ADR-006. Claims: {@code sub} (account),
- * {@code scope} ({@code TENANT} or {@code PLATFORM}) and {@code tid} (clinic, only for TENANT).
+ * Issues and verifies the HS256 tokens of ADR-006, signed with {@code KUADOR_JWT_SECRET}.
+ *
+ * Claims: {@code use=access}, {@code sub} (account), {@code scope}, {@code tid} (clinic, only
+ * TENANT), {@code bid} (active branch, when there is one) and {@code permissions} of that
+ * assignment (ADR-013). Pre-auth and refresh tokens are opaque and live elsewhere.
  */
 @Component
 public class AccessTokenService {
 
     static final String ISSUER = "medical-kuador";
+    private static final String USE_CLAIM = "use";
+    private static final String ACCESS_USE = "access";
     private static final String SCOPE_CLAIM = "scope";
     private static final String TENANT_CLAIM = "tid";
+    private static final String BRANCH_CLAIM = "bid";
+    private static final String PERMISSIONS_CLAIM = "permissions";
 
     private final JWSSigner signer;
     private final JWSVerifier verifier;
@@ -52,30 +61,68 @@ public class AccessTokenService {
         }
     }
 
-    public IssuedToken issue(UUID accountId, AccountScope scope, @Nullable UUID tenantId) {
+    IssuedToken issue(AccessGrant grant) {
+        if ((grant.scope() == AccountScope.TENANT) != (grant.tenantId() != null)
+                || (grant.branchId() != null && grant.tenantId() == null)) {
+            throw new IllegalArgumentException("A TENANT token needs a clinic; a PLATFORM token has no clinic nor branch");
+        }
+        JWTClaimsSet.Builder claims = base(ACCESS_USE, grant.accountId().toString(), properties.ttl())
+                .claim(SCOPE_CLAIM, grant.scope().name())
+                .claim(PERMISSIONS_CLAIM, grant.permissions());
+        if (grant.tenantId() != null) {
+            claims.claim(TENANT_CLAIM, grant.tenantId().toString());
+        }
+        if (grant.branchId() != null) {
+            claims.claim(BRANCH_CLAIM, grant.branchId().toString());
+        }
+        return sign(claims, properties.ttl());
+    }
+
+    /** Claims of a valid access token; empty when it is malformed, tampered, expired, foreign or not an access token. */
+    public Optional<AccessTokenClaims> verify(String token) {
+        return safely(() -> verified(token, ACCESS_USE).flatMap(claims -> {
+            UUID accountId = UUID.fromString(claims.getSubject());
+            AccountScope scope = AccountScope.valueOf(stringClaim(claims, SCOPE_CLAIM));
+            UUID tenant = uuidClaim(claims, TENANT_CLAIM);
+            UUID branch = uuidClaim(claims, BRANCH_CLAIM);
+            if ((scope == AccountScope.TENANT) != (tenant != null) || (branch != null && tenant == null)) {
+                return Optional.empty();
+            }
+            return Optional.of(new AccessTokenClaims(accountId, scope, tenant, branch));
+        }));
+    }
+
+    /** A malformed claim (bad UUID, unknown scope, missing value) makes the token invalid. */
+    private static <T> Optional<T> safely(java.util.function.Supplier<Optional<T>> reading) {
+        try {
+            return reading.get();
+        } catch (IllegalArgumentException | NullPointerException | ClassCastException e) {
+            return Optional.empty();
+        }
+    }
+
+    private JWTClaimsSet.Builder base(String use, String subject, Duration ttl) {
         Instant now = clock.instant();
-        Instant expiresAt = now.plus(properties.ttl());
-        var claims = new JWTClaimsSet.Builder()
+        return new JWTClaimsSet.Builder()
                 .issuer(ISSUER)
-                .subject(accountId.toString())
+                .subject(subject)
                 .jwtID(UUID.randomUUID().toString())
                 .issueTime(Date.from(now))
-                .expirationTime(Date.from(expiresAt))
-                .claim(SCOPE_CLAIM, scope.name());
-        if (tenantId != null) {
-            claims.claim(TENANT_CLAIM, tenantId.toString());
-        }
+                .expirationTime(Date.from(now.plus(ttl)))
+                .claim(USE_CLAIM, use);
+    }
+
+    private IssuedToken sign(JWTClaimsSet.Builder claims, Duration ttl) {
         SignedJWT jwt = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), claims.build());
         try {
             jwt.sign(signer);
         } catch (JOSEException e) {
-            throw new IllegalStateException("Cannot sign the access token", e);
+            throw new IllegalStateException("Cannot sign the token", e);
         }
-        return new IssuedToken(jwt.serialize(), properties.ttl().toSeconds());
+        return new IssuedToken(jwt.serialize(), ttl.toSeconds());
     }
 
-    /** Claims of a valid token; empty when the token is malformed, tampered, expired or foreign. */
-    public Optional<AccessTokenClaims> verify(String token) {
+    private Optional<JWTClaimsSet> verified(String token, String use) {
         try {
             SignedJWT jwt = SignedJWT.parse(token);
             if (!JWSAlgorithm.HS256.equals(jwt.getHeader().getAlgorithm()) || !jwt.verify(verifier)) {
@@ -83,18 +130,28 @@ public class AccessTokenService {
             }
             JWTClaimsSet claims = jwt.getJWTClaimsSet();
             Date expiration = claims.getExpirationTime();
-            if (!ISSUER.equals(claims.getIssuer()) || expiration == null || !expiration.toInstant().isAfter(clock.instant())) {
+            if (!ISSUER.equals(claims.getIssuer())
+                    || !use.equals(claims.getStringClaim(USE_CLAIM))
+                    || expiration == null
+                    || !expiration.toInstant().isAfter(clock.instant())) {
                 return Optional.empty();
             }
-            UUID accountId = UUID.fromString(claims.getSubject());
-            AccountScope scope = AccountScope.valueOf(claims.getStringClaim(SCOPE_CLAIM));
-            String tenant = claims.getStringClaim(TENANT_CLAIM);
-            if ((scope == AccountScope.TENANT) != (tenant != null)) {
-                return Optional.empty();
-            }
-            return Optional.of(new AccessTokenClaims(accountId, scope, tenant != null ? UUID.fromString(tenant) : null));
+            return Optional.of(claims);
         } catch (ParseException | JOSEException | IllegalArgumentException | NullPointerException e) {
             return Optional.empty();
         }
+    }
+
+    private static String stringClaim(JWTClaimsSet claims, String name) {
+        try {
+            return claims.getStringClaim(name);
+        } catch (ParseException e) {
+            throw new IllegalArgumentException("Invalid claim " + name, e);
+        }
+    }
+
+    private static @Nullable UUID uuidClaim(JWTClaimsSet claims, String name) {
+        String value = stringClaim(claims, name);
+        return value == null ? null : UUID.fromString(value);
     }
 }

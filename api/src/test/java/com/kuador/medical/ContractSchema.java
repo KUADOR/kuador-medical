@@ -64,6 +64,10 @@ public final class ContractSchema {
 
     @SuppressWarnings("unchecked")
     private void assertObject(Map<String, Object> schema, Map<String, Object> body, String where) {
+        if (schema.containsKey("oneOf")) {
+            assertObject(variant(schema, body, where), body, where);
+            return;
+        }
         Map<String, Object> properties = map(schema, "properties");
         List<String> required = (List<String>) schema.getOrDefault("required", List.of());
         assertThat(body).as("required properties of %s", where).containsKeys(required.toArray(String[]::new));
@@ -73,10 +77,23 @@ public final class ContractSchema {
             if (property.containsKey("enum")) {
                 assertThat((List<Object>) property.get("enum")).as("enum of %s.%s", where, name).contains(value);
             }
+            if (property.containsKey("const")) {
+                assertThat(value).as("const of %s.%s", where, name).isEqualTo(property.get("const"));
+            }
             if ("string".equals(property.get("type"))) {
                 assertThat(value).as("type of %s.%s", where, name).isInstanceOf(String.class);
             }
         });
+    }
+
+    /** The {@code oneOf} variant named by the discriminator value of {@code body}. */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> variant(Map<String, Object> schema, Map<String, Object> body, String where) {
+        Map<String, Object> discriminator = map(schema, "discriminator");
+        Object value = body.get(discriminator.get("propertyName").toString());
+        Object ref = map(discriminator, "mapping").get(String.valueOf(value));
+        assertThat(ref).as("discriminator value %s of %s", value, where).isNotNull();
+        return resolve(Map.of("$ref", ref));
     }
 
     @SuppressWarnings("unchecked")

@@ -86,7 +86,7 @@ class AssignmentRulesIT {
         List<String> adminPermissions = Permission.ofScope(com.kuador.medical.identity.PermissionScope.TENANT)
                 .stream().map(Permission::code).toList();
         adminInMain = new AuthenticatedAccount(
-                admin, "Staff member", AccountScope.TENANT, tenantId, List.of("ADMIN"), adminPermissions, false);
+                admin, "Staff member", AccountScope.TENANT, tenantId, main, List.of("ADMIN"), adminPermissions, false);
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setAttribute(REQUEST_ACCOUNT, adminInMain);
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
