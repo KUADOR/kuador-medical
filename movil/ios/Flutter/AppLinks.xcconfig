@@ -1,0 +1,5 @@
+// Host of the deep link domain for Associated Domains (Universal Links).
+// Same host as KUADOR_APP_LINK_BASE_URL of the api [POR DEFINIR: domain].
+// Override it per environment in AppLinks.local.xcconfig (not committed), e.g.
+//   APP_LINK_HOST = links.example.com
+APP_LINK_HOST = localhost
