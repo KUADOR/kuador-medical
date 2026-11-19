@@ -1,4 +1,10 @@
-import { ACCOUNT, FULL_ACCOUNT, SUPER_ADMIN } from '../../../testing/fixtures';
+import {
+  ACCOUNT,
+  FULL_ACCOUNT,
+  PATIENT_ACCOUNT,
+  RECEPTION_ACCOUNT,
+  SUPER_ADMIN,
+} from '../../../testing/fixtures';
 import { canAccess, landingUrl, menuFor, safeReturnUrl } from './navigation';
 
 describe('navigation', () => {
@@ -24,6 +30,21 @@ describe('navigation', () => {
     expect(canAccess({ ...ACCOUNT, enabledModules: [] }, { module: 'identity' })).toBe(false);
     expect(canAccess(SUPER_ADMIN, { permissions: ['platform.permissions.read'] })).toBe(true);
     expect(canAccess(null, {})).toBe(false);
+  });
+
+  it('shows the patients entry with patients.read and the patients module', () => {
+    expect(menuFor(RECEPTION_ACCOUNT).map((item) => item.label)).toEqual(['Pacientes']);
+    expect(landingUrl(RECEPTION_ACCOUNT)).toBe('/patients');
+    expect(menuFor({ ...RECEPTION_ACCOUNT, enabledModules: ['identity'] })).toEqual([]);
+  });
+
+  it('gives patient accounts only their own pages', () => {
+    expect(menuFor(PATIENT_ACCOUNT).map((item) => item.label)).toEqual([
+      'Mis contactos autorizados',
+    ]);
+    expect(landingUrl(PATIENT_ACCOUNT)).toBe('/my-contacts');
+    expect(canAccess(PATIENT_ACCOUNT, { kinds: ['PATIENT'] })).toBe(true);
+    expect(canAccess(RECEPTION_ACCOUNT, { kinds: ['PATIENT'] })).toBe(false);
   });
 
   it('shows no menu while the password change is pending', () => {

@@ -58,6 +58,25 @@ export type BranchSelectionResult = Registration['BranchSelectionResult'];
 export type CurrentSession = Registration['CurrentSession'];
 export type SelfRegistrationRequest = Registration['SelfRegistrationRequest'];
 
+// Patients, guardians and self-registration settings (MEDK-22).
+export type Patient = Registration['Patient'];
+export type PatientPage = Registration['PatientPage'];
+export type PatientAccountStatus = Registration['PatientAccountStatus'];
+export type RegisterPatientRequest = Registration['RegisterPatientRequest'];
+export type UpdatePatientRequest = Registration['UpdatePatientRequest'];
+export type ConsentGrantor = Registration['ConsentGrantor'];
+export type Consent = Registration['Consent'];
+export type RecordConsentRequest = Registration['RecordConsentRequest'];
+export type GuardianPersonInput = Registration['GuardianPersonInput'];
+export type GuardianInput = Registration['GuardianInput'];
+export type LinkType = Registration['LinkType'];
+export type GuardianLink = Registration['GuardianLink'];
+export type CreateGuardianLinkRequest = Registration['CreateGuardianLinkRequest'];
+export type AuthorizeLinkRequest = Registration['AuthorizeLinkRequest'];
+export type PatientInvitationRequest = Registration['PatientInvitationRequest'];
+export type RegistrationSettings = Registration['RegistrationSettings'];
+export type UpdateRegistrationSettingsRequest = Registration['UpdateRegistrationSettingsRequest'];
+
 /** Paths of the identity contract, relative to API_BASE_URL. */
 export const ApiPaths = {
   systemInfo: '/system/info',
@@ -104,6 +123,34 @@ export const PUBLIC_SESSION_PATHS: readonly string[] = [
 /** Path of a single role (GET, PUT, DELETE /roles/{id}). */
 export function rolePath(id: string): `/roles/${string}` {
   return `/roles/${encodeURIComponent(id)}`;
+}
+
+/** Paths of the user registration contract used by the patient pages (MEDK-22). */
+export const PatientPaths = {
+  patients: '/patients',
+  myGuardianLinks: '/me/guardian-links',
+  registrationSettings: '/patient-registration-settings',
+} as const satisfies Record<string, keyof RegistrationPaths>;
+
+/** Path of a single patient (GET, PATCH /patients/{id}). */
+export function patientPath(id: string): `/patients/${string}` {
+  return `/patients/${encodeURIComponent(id)}`;
+}
+
+/** Sub-resource of a patient: consents, guardian-links or account-invitation. */
+export function patientSubPath(
+  id: string,
+  resource: 'consents' | 'guardian-links' | 'account-invitation',
+): `/patients/${string}/${typeof resource}` {
+  return `${patientPath(id)}/${resource}`;
+}
+
+/** POST /patients/{id}/guardian-links/{linkId}/end. */
+export function endGuardianLinkPath(
+  id: string,
+  linkId: string,
+): `/patients/${string}/guardian-links/${string}/end` {
+  return `${patientPath(id)}/guardian-links/${encodeURIComponent(linkId)}/end`;
 }
 
 /** Public self-registration of a clinic (POST /public/clinics/{publicCode}/patient-registrations). */
