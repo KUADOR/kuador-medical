@@ -97,7 +97,7 @@ class RoleRulesTest {
 
     @Test
     void unknownPermissionIsRejectedWithItsPosition() {
-        assertThatThrownBy(() -> AssignablePermissions.parse(List.of("roles.read", "patients.read")))
+        assertThatThrownBy(() -> AssignablePermissions.parse(List.of("roles.read", "billing.unknown")))
                 .asInstanceOf(type(ApiException.class))
                 .satisfies(e -> {
                     assertThat(e.status()).isEqualTo(HttpStatus.BAD_REQUEST);
