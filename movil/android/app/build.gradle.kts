@@ -1,3 +1,5 @@
+import java.util.Base64
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -28,6 +30,8 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // Host of the App Links (same as KUADOR_APP_LINK_BASE_URL of the api).
+        manifestPlaceholders["appLinkHost"] = appLinkHost()
     }
 
     buildTypes {
@@ -41,4 +45,21 @@ android {
 
 flutter {
     source = "../.."
+}
+
+/**
+ * Reads APP_LINK_HOST from the `--dart-define` values that Flutter passes to Gradle
+ * (base64, comma separated), so the Dart code and the manifest use the same host.
+ * Falls back to `localhost` for local builds without a deep link domain.
+ */
+fun appLinkHost(): String {
+    val defines = (project.findProperty("dart-defines") as String?).orEmpty()
+    val host = defines.split(",")
+        .filter { it.isNotBlank() }
+        .map { String(Base64.getDecoder().decode(it)) }
+        .firstOrNull { it.startsWith("APP_LINK_HOST=") }
+        ?.substringAfter("=")
+        ?.trim()
+        ?.lowercase()
+    return if (host.isNullOrEmpty()) "localhost" else host
 }
