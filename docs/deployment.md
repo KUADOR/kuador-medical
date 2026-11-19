@@ -32,7 +32,7 @@ Perfiles de Compose:
 |---|---|---|---|
 | api | `./mvnw -B package` en `api/`; imagen con `api/Dockerfile` (JRE 25, usuario sin privilegios) | 8080 en el contenedor; `API_PORT` en local (por defecto 8080) | [POR DEFINIR: pruebas / producción] |
 | web | `npm run build` en `web/` (Node.js `^22.22.3` o `^24.15.0`); imagen con `web/Dockerfile` (nginx sin privilegios, sirve el build y hace proxy de `/api/` a la api; al arrancar reescribe `config.json` si recibe `API_BASE_URL`) | 8080 en el contenedor; `WEB_PORT` en local (por defecto 4200) | [POR DEFINIR: pruebas / producción] |
-| movil | Build de Flutter en `movil/` con `--dart-define=API_BASE_URL=…` [POR DEFINIR: distribución a tiendas o canal interno] | No aplica | No aplica |
+| movil | Build de Flutter en `movil/` con `--dart-define=API_BASE_URL=…` (iOS mínimo 15.0) [POR DEFINIR: distribución a tiendas o canal interno] | No aplica | No aplica |
 
 En local los puertos se publican solo en `127.0.0.1`.
 
@@ -60,6 +60,7 @@ Solo nombres: los valores nunca van en este documento ni en el repo. En local vi
 | KUADOR_BOOTSTRAP_ADMIN_EMAIL | api | local, pruebas, producción | `.env` / variables del entorno | no | Correo de la cuenta inicial SUPER_ADMIN (el acordado en MEDK-1) |
 | KUADOR_BOOTSTRAP_ADMIN_PASSWORD | api | local, pruebas, producción | `.env` / gestor de secretos | sí | Clave inicial del SUPER_ADMIN; ver «Cuenta inicial del SUPER_ADMIN» |
 | KUADOR_CORS_ALLOWED_ORIGINS | api | local, pruebas, producción | `.env` / variables del entorno | no | Origen permitido de la web |
+| SMOKE_SUPER_ADMIN_NEW_PASSWORD | `scripts/smoke-test.sh` | local | `.env` | sí | Clave que la prueba de humo pone al SUPER_ADMIN en su primera corrida sobre una base nueva (≥ 12 caracteres) y con la que ingresa en las siguientes. Solo local; la api la ignora |
 | API_PORT | api | local | `.env` | no | Puerto del host para la api en el perfil `full` |
 | WEB_PORT | web | local | `.env` | no | Puerto del host para la web en el perfil `full` |
 | API_BASE_URL | web (`config.json`), movil (`--dart-define`) | todos | web: `public/config.json` (por defecto `/api/v1`, mismo origen) o variable del contenedor web, que reescribe `config.json` al arrancar; movil: `--dart-define` | no | URL de la api (`…/api/v1`). En la web, una URL de otro origen exige incluir el origen de la web en `KUADOR_CORS_ALLOWED_ORIGINS` |
@@ -136,7 +137,37 @@ Comprobar en local lo mismo que el CI: ver «Comandos del proyecto» en `AGENTS.
 - Local: `docker compose ps` muestra `db` como `healthy` y la base responde a `select version();`.
 - api: `POST /api/v1/auth/login` con la cuenta inicial responde 200 con `scope: PLATFORM` y `mustChangePassword: true`; hasta cambiar la clave (`POST /api/v1/auth/password`) solo responden `/auth/password` y `/me`.
 - api: `GET /api/v1/system/info` (público) responde 200 con `status` y `database` en `UP`; si la base no responde, devuelve `DOWN` en ambos (sigue respondiendo 200). Las migraciones Flyway (`api/src/main/resources/db/migration`) se aplican al arrancar.
-- [POR DEFINIR: revisión de logs y una prueba de punta a punta por entorno, incluyendo que un usuario de un tenant no accede a datos de otro.]
+- Punta a punta (local): `scripts/smoke-test.sh` con el perfil `full` arriba; debe terminar en 0. Ver «Prueba de humo».
+- [POR DEFINIR: revisión de logs y prueba de punta a punta en pruebas y producción (el script sirve apuntando `API_URL`/`WEB_URL` al entorno, pero cambia la clave del SUPER_ADMIN en su primera corrida: ahí se usa solo después de cambiarla a mano).]
+
+### Prueba de humo
+
+`scripts/smoke-test.sh` (requiere `bash`, `curl`, `jq` y `openssl`) recorre la api real y, si `WEB_URL` no está vacío, también el contenedor web y su proxy `/api/`:
+
+1. `GET /system/info` con `status` y `database` en `UP`; `GET /me` sin token responde 401.
+2. Autorregistro de dos clínicas (A y B) con correos `@example.test` únicos por corrida; correo repetido responde 409 `EMAIL_TAKEN`.
+3. Login (clave errónea 401; dueño con `scope: TENANT`) y `GET /me` con OWNER y ADMIN en su propia clínica.
+4. CRUD de roles en A: catálogo solo `TENANT`, roles OWNER y ADMIN, crear, nombre repetido (409), permiso fuera del catálogo o de plataforma (400), leer, editar, versión vieja (409), editar o borrar OWNER (409 `SYSTEM_ROLE_IMMUTABLE`), borrar.
+5. Entre tenants: B lee, edita o borra el rol de A y recibe 404; el listado de B no incluye roles de A y el rol de A queda intacto.
+6. Separación de alcance: token `TENANT` en `/platform/**` responde 403 `FORBIDDEN`.
+7. SUPER_ADMIN: en la primera corrida sobre una base nueva ingresa con la clave inicial (`mustChangePassword: true`), comprueba que solo `/me` y `/auth/password` responden (resto 403 `PASSWORD_CHANGE_REQUIRED`), rechaza una clave débil, cambia a `SMOKE_SUPER_ADMIN_NEW_PASSWORD` y verifica que la inicial ya no sirve. En corridas siguientes verifica que la inicial se rechaza. Siempre: ingreso con la clave nueva, catálogo completo en `/platform/permissions` y 403 `FORBIDDEN` en endpoints de clínica.
+8. Web: sirve la app, `config.json` tiene `API_BASE_URL`, la api responde a través de esa URL (también con token) y las rutas profundas devuelven `index.html`.
+
+Cómo correrla en local:
+
+```bash
+docker compose --profile full up -d --build   # con .env completo, incluido SMOKE_SUPER_ADMIN_NEW_PASSWORD
+scripts/smoke-test.sh                          # imprime PASS/FAIL por paso; termina en 0 si todo pasa
+```
+
+Si en `.env` se cambia la clave inicial o la nueva después de la primera corrida, la prueba ya no puede ingresar como SUPER_ADMIN: empezar con una base nueva (`docker compose down -v`). Nunca imprime claves ni tokens; los datos que crea (clínicas `Smoke Clinic A/B`) quedan en la base local.
+
+Resultado de MEDK-11 (2026-11-19, perfil `full` en macOS con Docker 29): 45 pasos en verde en la primera corrida sobre base nueva y 39 en las siguientes; código de salida 0. Además se verificó a mano:
+
+- Web (contenedor, Chrome sin interfaz): estado del sistema «Disponible», autorregistro que lleva a «Roles» con OWNER y ADMIN, creación de un rol que aparece en el listado, SUPER_ADMIN enviado a «Cambiar contraseña» sin poder saltarlo, luego al catálogo de plataforma y a «Sin permiso» si intenta ver roles de clínica. Sin errores en la consola.
+- Base caída (`docker compose stop db`): `GET /system/info` responde 200 con `DOWN` y la web lo muestra como no disponible; el resto de la api responde 500 `INTERNAL_ERROR` sin detalles internos, que la web traduce a un mensaje en español.
+- Base caída, en la web: «Estado del sistema» muestra la base «No disponible» con el aviso «Algunos servicios no están disponibles…» y el login muestra «Ocurrió un error inesperado. Intenta de nuevo en unos minutos.». Observación: con la base caída cada solicitud tarda unos 10–13 s en responder (espera de conexión a la base); queda anotado para la api, no bloquea.
+- Movil (simulador iPhone 17 Pro, iOS 26, Xcode 27, `--dart-define=API_BASE_URL=http://localhost:8080/api/v1`): la pantalla «Estado del sistema» muestra «El sistema funciona correctamente» con aplicación y base «Disponible» y versión 0.1.0. Para compilar en Xcode 27 se subió el mínimo de iOS de 13.0 a 15.0 (Xcode 27 ya no admite 13.0). En el emulador de Android la URL es `http://10.0.2.2:8080/api/v1`; no se probó en Android en esta tarea.
 
 ## Cambios
 
@@ -148,3 +179,4 @@ Comprobar en local lo mismo que el CI: ver «Comandos del proyecto» en `AGENTS.
 | 2026-11-19 | Autorregistro, login JWT, `GET /me`, cambio de clave y creación de la cuenta inicial SUPER_ADMIN al arrancar. `KUADOR_JWT_SECRET` pasa a ser obligatoria (la api no arranca sin ella o si tiene menos de 32 bytes); `KUADOR_BOOTSTRAP_ADMIN_*` ya se usan. Sin variables, puertos ni servicios nuevos | MEDK-5 |
 | 2026-11-19 | Web Angular: `config.json` en tiempo de ejecución con `API_BASE_URL` (por defecto `/api/v1`, mismo origen), reescritura de `config.json` al arrancar el contenedor web si recibe `API_BASE_URL`, proxy local a la api (`npm start`) y mock Prism del contrato en el puerto 4010 (`npm run dev:mock`) | MEDK-7 |
 | 2026-11-19 | CI por pieza en GitHub Actions (`ci`, `api`, `web`, `movil`, `contract`) con filtros por ruta; Flutter `3.47.9` fijado en CI; checks a marcar como requeridos hacia `develop` y `main` | MEDK-10 |
+| 2026-11-19 | Prueba de humo de punta a punta `scripts/smoke-test.sh` (api y web del perfil `full`), variable local `SMOKE_SUPER_ADMIN_NEW_PASSWORD` en `.env.example`, resultado de la verificación manual de web y movil contra la api real; mínimo de iOS de la app movil sube de 13.0 a 15.0 para compilar con Xcode 27 | MEDK-11 |
