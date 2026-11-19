@@ -3,6 +3,9 @@ import 'package:flutter/widgets.dart';
 import 'config.dart';
 import 'core/session/session_controller.dart';
 import 'features/auth/data/auth_api.dart';
+import 'features/patients/data/patients_api.dart';
+import 'features/roles/data/roles_api.dart';
+import 'features/staff_users/data/staff_api.dart';
 import 'system_status/system_info_client.dart';
 
 /// Services shared by the screens.
@@ -12,12 +15,22 @@ class AppServices {
     required this.session,
     required this.authApi,
     required this.systemInfoClient,
+    required this.staffApi,
+    required this.rolesApi,
+    required this.patientsApi,
+    this.clock = DateTime.now,
   });
 
   final AppConfig config;
   final SessionController session;
   final AuthApi authApi;
   final SystemInfoClient systemInfoClient;
+  final StaffApi staffApi;
+  final RolesApi rolesApi;
+  final PatientsApi patientsApi;
+
+  /// Current instant; fixed in tests.
+  final DateTime Function() clock;
 }
 
 class AppScope extends InheritedWidget {

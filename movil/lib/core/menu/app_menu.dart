@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../session/session_models.dart';
 
 /// Destinations of the main menu. The screens behind them belong to the
-/// features of each module (staff users, roles and patients come in MEDK-24).
+/// features of each module (`home_screen.dart`, `moduleScreen`).
 enum MenuDestination {
   staffUsers,
   roles,

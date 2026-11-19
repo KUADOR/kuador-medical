@@ -7,6 +7,11 @@ import '../../core/menu/app_menu.dart';
 import '../../core/session/session_models.dart';
 import '../../system_status/system_status_screen.dart';
 import '../auth/ui/auth_messages.dart';
+import '../patients/ui/my_guardian_links_screen.dart';
+import '../patients/ui/patients_screen.dart';
+import '../patients/ui/self_registration_settings_screen.dart';
+import '../roles/ui/roles_screen.dart';
+import '../staff_users/ui/staff_users_screen.dart';
 
 /// Home of a signed-in account: clinic, active branch, branch switching and
 /// the menu built from `GET /me`.
@@ -108,7 +113,7 @@ class HomeScreen extends StatelessWidget {
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
-                          builder: (_) => ModulePendingScreen(entry: entry),
+                          builder: (_) => moduleScreen(entry.destination),
                         ),
                       ),
                     ),
@@ -194,28 +199,12 @@ class _Notice extends StatelessWidget {
   }
 }
 
-/// Placeholder for the module screens that arrive in MEDK-24.
-class ModulePendingScreen extends StatelessWidget {
-  const ModulePendingScreen({super.key, required this.entry});
-
-  final MenuEntry entry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(entry.label)),
-      body: const SafeArea(
-        child: Center(
-          child: Padding(
-            padding: EdgeInsets.all(24),
-            child: Text(
-              'Este módulo estará disponible en la app en una próxima versión. '
-              'Mientras tanto, úsalo desde la web.',
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
+/// Screen behind each menu destination.
+Widget moduleScreen(MenuDestination destination) => switch (destination) {
+  MenuDestination.staffUsers => const StaffUsersScreen(),
+  MenuDestination.roles => const RolesScreen(),
+  MenuDestination.patients => const PatientsScreen(),
+  MenuDestination.selfRegistrationSettings =>
+    const SelfRegistrationSettingsScreen(),
+  MenuDestination.myGuardianLinks => const MyGuardianLinksScreen(),
+};
