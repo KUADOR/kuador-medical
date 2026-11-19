@@ -1,16 +1,13 @@
 import {
   ACCOUNT,
   FULL_ACCOUNT,
+  PATIENT_ACCOUNT,
+  RECEPTION_ACCOUNT,
   STAFF_ADMIN_ACCOUNT,
   STAFF_OWNER_ACCOUNT,
   SUPER_ADMIN,
 } from '../../../testing/fixtures';
 import { canAccess, isOwner, landingUrl, menuFor, safeReturnUrl } from './navigation';
-  PATIENT_ACCOUNT,
-  RECEPTION_ACCOUNT,
-  SUPER_ADMIN,
-} from '../../../testing/fixtures';
-import { canAccess, landingUrl, menuFor, safeReturnUrl } from './navigation';
 
 describe('navigation', () => {
   it('builds the menu from the permissions of GET /me', () => {
@@ -21,9 +18,15 @@ describe('navigation', () => {
   });
 
   it('shows the staff entry first with identity.users.read and lands there', () => {
-    expect(menuFor(STAFF_ADMIN_ACCOUNT).map((item) => item.label)).toEqual(['Personal', 'Roles']);
+    expect(menuFor(STAFF_ADMIN_ACCOUNT).map((item) => item.label)).toEqual([
+      'Personal',
+      'Pacientes',
+      'Roles',
+    ]);
     expect(landingUrl(STAFF_ADMIN_ACCOUNT)).toBe('/staff');
-    expect(menuFor({ ...STAFF_ADMIN_ACCOUNT, enabledModules: [] })).toEqual([]);
+    expect(
+      menuFor({ ...STAFF_ADMIN_ACCOUNT, enabledModules: ['patients'] }).map((item) => item.label),
+    ).toEqual(['Pacientes']);
   });
 
   it('knows when the active assignment is OWNER', () => {

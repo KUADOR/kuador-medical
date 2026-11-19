@@ -54,6 +54,8 @@ export const MENU_ITEMS: readonly MenuItem[] = [
     link: AppRoutes.staff,
     permissions: ['identity.users.read'],
     module: Modules.identity,
+  },
+  {
     label: 'Pacientes',
     link: AppRoutes.patients,
     permissions: ['patients.read'],

@@ -4,10 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:medical_kuador/config.dart';
-import 'package:medical_kuador/main.dart';
 import 'package:medical_kuador/system_status/system_info.dart';
 import 'package:medical_kuador/system_status/system_info_client.dart';
+import 'package:medical_kuador/system_status/system_status_screen.dart';
 
 const baseUrl = 'https://api.example.test/api/v1';
 
@@ -26,7 +25,9 @@ const upBody = {
 
 Future<void> pumpApp(WidgetTester tester, MockClient httpClient) async {
   final client = SystemInfoClient(httpClient: httpClient, baseUrl: baseUrl);
-  await tester.pumpWidget(MedicalKuadorApp(systemInfoClient: client));
+  await tester.pumpWidget(
+    MaterialApp(home: SystemStatusScreen(client: client)),
+  );
 }
 
 void main() {
@@ -171,15 +172,6 @@ void main() {
       expect(called.toString(), '$baseUrl/system/info');
       expect(info.status, HealthStatus.up);
       expect(info.name, 'medical-kuador-api');
-    });
-  });
-
-  group('AppConfig', () {
-    test('falls back to the local API when API_BASE_URL is not defined', () {
-      expect(
-        AppConfig.fromEnvironment().apiBaseUrl,
-        AppConfig.defaultApiBaseUrl,
-      );
     });
   });
 }

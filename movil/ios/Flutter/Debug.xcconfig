@@ -1,1 +1,3 @@
 #include "Generated.xcconfig"
+#include "AppLinks.xcconfig"
+#include? "AppLinks.local.xcconfig"

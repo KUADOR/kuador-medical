@@ -153,6 +153,8 @@ export function staffUserActionPath(
   action: StaffUserAction,
 ): `/staff-users/${string}/${StaffUserAction}` {
   return `/staff-users/${encodeURIComponent(id)}/${action}`;
+}
+
 /** Paths of the user registration contract used by the patient pages (MEDK-22). */
 export const PatientPaths = {
   patients: '/patients',
