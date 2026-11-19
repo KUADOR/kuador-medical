@@ -21,6 +21,9 @@ import { PlatformPermissionsPage } from './features/platform/platform-permission
 import { RoleFormPage } from './features/roles/role-form.page';
 import { RolesPage } from './features/roles/roles.page';
 import { SignupPage } from './features/signup/signup.page';
+import { StaffUserDetailPage } from './features/staff-users/staff-user-detail.page';
+import { StaffUserFormPage } from './features/staff-users/staff-user-form.page';
+import { StaffUsersPage } from './features/staff-users/staff-users.page';
 import { StatusPage } from './features/status/status.page';
 
 const APP_TITLE = 'Medical Kuador';
@@ -87,6 +90,34 @@ export const routes: Routes = [
     component: ChangePasswordPage,
     canActivate: [pendingPasswordChangeGuard],
     title: `Cambiar contraseña · ${APP_TITLE}`,
+  },
+  {
+    path: 'staff',
+    component: StaffUsersPage,
+    canActivate: [
+      requireAccess({ permissions: ['identity.users.read'], module: Modules.identity }),
+    ],
+    title: `Personal · ${APP_TITLE}`,
+  },
+  {
+    // Inviting also needs the roles to choose from.
+    path: 'staff/new',
+    component: StaffUserFormPage,
+    canActivate: [
+      requireAccess({
+        permissions: ['identity.users.read', 'identity.users.manage', 'roles.read'],
+        module: Modules.identity,
+      }),
+    ],
+    title: `Invitar persona · ${APP_TITLE}`,
+  },
+  {
+    path: 'staff/:id',
+    component: StaffUserDetailPage,
+    canActivate: [
+      requireAccess({ permissions: ['identity.users.read'], module: Modules.identity }),
+    ],
+    title: `Persona del personal · ${APP_TITLE}`,
   },
   {
     path: 'roles',

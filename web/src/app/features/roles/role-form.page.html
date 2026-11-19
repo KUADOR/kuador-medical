@@ -17,11 +17,18 @@
     @default {
       @if (readOnly()) {
         <p class="alert alert--info" data-testid="read-only">
-          @if (role()?.systemRole) {
-            OWNER y ADMIN son roles del sistema: puedes consultarlos, pero no editarlos ni
-            eliminarlos.
-          } @else {
-            No tienes permiso para editar roles: solo puedes consultarlo.
+          @switch (readOnlyReason()) {
+            @case ('owner') {
+              OWNER es el rol protegido de la clínica: tiene todos los permisos y no se puede editar
+              ni eliminar.
+            }
+            @case ('admin') {
+              Solo una persona con el rol OWNER puede editar el rol ADMIN. ADMIN no se puede
+              eliminar.
+            }
+            @default {
+              No tienes permiso para editar roles: solo puedes consultarlo.
+            }
           }
         </p>
       }
@@ -68,6 +75,22 @@
           }
         </div>
 
+        <label class="checkbox" for="role-clinical">
+          <input
+            id="role-clinical"
+            type="checkbox"
+            formControlName="clinical"
+            aria-describedby="role-clinical-hint"
+          />
+          <span>
+            Rol clínico
+            <span id="role-clinical-hint" class="checkbox__code"
+              >Quien tenga este rol necesita un registro profesional (por ejemplo, médicos u
+              odontólogos).</span
+            >
+          </span>
+        </label>
+
         <fieldset
           class="field"
           [attr.aria-invalid]="error('permissions') ? 'true' : null"
@@ -77,24 +100,32 @@
         >
           <legend>Permisos</legend>
           <p id="role-permissions-hint" class="field__hint">
-            Elige qué puede hacer quien tenga este rol. Los permisos vienen del catálogo del
+            Elige qué puede hacer quien tenga este rol. Los permisos vienen del catálogo fijo del
             sistema.
+            @if (!readOnly() && locked().size) {
+              No puedes otorgar permisos que tú no tienes: aparecen deshabilitados.
+            }
           </p>
-          @for (option of options(); track option.code) {
-            <label class="checkbox">
-              <input
-                type="checkbox"
-                [value]="option.code"
-                [checked]="selected().has(option.code)"
-                [disabled]="readOnly()"
-                (change)="toggle(option.code, $event)"
-                data-testid="permission"
-              />
-              <span>
-                {{ permissionLabel(option) }}
-                <span class="checkbox__code">{{ option.code }}</span>
-              </span>
-            </label>
+          @for (group of groups(); track group.module) {
+            <fieldset class="field" data-testid="permission-group">
+              <legend>{{ group.label }}</legend>
+              @for (option of group.permissions; track option.code) {
+                <label class="checkbox">
+                  <input
+                    type="checkbox"
+                    [value]="option.code"
+                    [checked]="selected().has(option.code)"
+                    [disabled]="readOnly() || locked().has(option.code)"
+                    (change)="toggle(option.code, $event)"
+                    data-testid="permission"
+                  />
+                  <span>
+                    {{ permissionLabel(option) }}
+                    <span class="checkbox__code">{{ option.code }}</span>
+                  </span>
+                </label>
+              }
+            </fieldset>
           } @empty {
             <p class="hint">No hay permisos disponibles.</p>
           }

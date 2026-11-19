@@ -17,9 +17,9 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   NOT_FOUND: 'No encontramos lo que buscas.',
   ROLE_NAME_TAKEN: 'Ya existe un rol con ese nombre en tu clínica.',
   VERSION_CONFLICT:
-    'Otra persona modificó este rol mientras lo editabas. Recarga para ver los cambios.',
+    'Otra persona modificó estos datos mientras los editabas. Recarga para ver los cambios.',
   SYSTEM_ROLE_IMMUTABLE:
-    'Los roles OWNER y ADMIN están protegidos: no se pueden editar ni eliminar.',
+    'El rol OWNER está protegido: no se puede editar ni eliminar. El rol ADMIN no se puede eliminar.',
   ROLE_IN_USE: 'No se puede eliminar el rol porque está asignado a personas de tu clínica.',
   INTERNAL_ERROR: 'Ocurrió un error inesperado. Intenta de nuevo en unos minutos.',
   TOO_MANY_ATTEMPTS:
@@ -54,6 +54,8 @@ export const FIELD_ERROR_MESSAGES: Readonly<Record<string, string>> = {
   UNKNOWN_PERMISSION: 'El permiso no existe en el catálogo del sistema.',
   MINOR_NOT_ALLOWED: 'Solo las personas mayores de edad pueden registrarse por su cuenta.',
   DUPLICATE: 'Este valor ya está registrado.',
+  UNKNOWN_BRANCH: 'La sucursal no existe en tu clínica.',
+  UNKNOWN_ROLE: 'El rol no existe en tu clínica.',
 };
 
 export const NETWORK_ERROR_MESSAGE =

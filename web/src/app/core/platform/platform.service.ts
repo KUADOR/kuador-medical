@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { ApiPaths, PermissionInfo } from '../api/api-types';
+import { ApiPaths, PlatformPermissionInfo } from '../api/api-types';
 import { AppConfigService } from '../config/app-config.service';
 
 /** Platform-level endpoints of the SUPER_ADMIN (PLATFORM scope only). */
@@ -11,7 +11,9 @@ export class PlatformService {
   private readonly config = inject(AppConfigService);
 
   /** GET /platform/permissions (platform.permissions.read): full catalog. */
-  permissions(): Observable<PermissionInfo[]> {
-    return this.http.get<PermissionInfo[]>(this.config.apiUrl(ApiPaths.platformPermissions));
+  permissions(): Observable<PlatformPermissionInfo[]> {
+    return this.http.get<PlatformPermissionInfo[]>(
+      this.config.apiUrl(ApiPaths.platformPermissions),
+    );
   }
 }

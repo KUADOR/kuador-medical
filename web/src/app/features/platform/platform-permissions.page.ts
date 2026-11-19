@@ -1,12 +1,12 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import type { PermissionInfo } from '../../core/api/api-types';
+import type { PlatformPermissionInfo } from '../../core/api/api-types';
 import { errorMessage } from '../../core/errors/error-messages';
 import { PlatformService } from '../../core/platform/platform.service';
 import { PERMISSION_SCOPE_LABELS, permissionLabel } from '../../core/roles/permission-labels';
 
 type LoadState =
   | { kind: 'loading' }
-  | { kind: 'loaded'; permissions: PermissionInfo[] }
+  | { kind: 'loaded'; permissions: PlatformPermissionInfo[] }
   | { kind: 'failed'; message: string };
 
 /** SUPER_ADMIN view of the full permission catalog (platform level, no clinic data). */

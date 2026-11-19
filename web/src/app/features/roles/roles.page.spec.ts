@@ -2,7 +2,10 @@ import { ERROR_MESSAGES } from '../../core/errors/error-messages';
 import { NoticeService } from '../../core/notice/notice.service';
 import {
   ADMIN_ROLE,
+  DOCTOR_ROLE,
   FULL_ACCOUNT,
+  STAFF_ADMIN_ACCOUNT,
+  STAFF_OWNER_ACCOUNT,
   OWNER_ROLE,
   READ_ONLY_ACCOUNT,
   RECEPTION_ROLE,
@@ -66,6 +69,23 @@ describe('RolesPage', () => {
     expect(actions(owner)).toEqual(['Ver']);
     expect(actions(roleCard('Recepción'))).toEqual(['Editar', 'Eliminar']);
     expect(byTestId(app.page(), 'new-role')).not.toBeNull();
+  });
+
+  it('never offers to delete ADMIN and only lets an OWNER edit it', async () => {
+    await open(STAFF_ADMIN_ACCOUNT);
+    expect(byTestId(roleCard('ADMIN'), 'system-badge')?.textContent).toContain(
+      'no se puede eliminar',
+    );
+    expect(actions(roleCard('ADMIN'))).toEqual(['Ver']);
+    expect(actions(roleCard('OWNER'))).toEqual(['Ver']);
+  });
+
+  it('lets an OWNER edit ADMIN but never delete it, and OWNER stays read-only', async () => {
+    await open(STAFF_OWNER_ACCOUNT, [OWNER_ROLE, ADMIN_ROLE, DOCTOR_ROLE]);
+    expect(actions(roleCard('ADMIN'))).toEqual(['Editar']);
+    expect(actions(roleCard('OWNER'))).toEqual(['Ver']);
+    expect(byTestId(roleCard('Médico'), 'clinical-badge')?.textContent).toContain('Rol clínico');
+    expect(byTestId(roleCard('ADMIN'), 'clinical-badge')).toBeNull();
   });
 
   it('hides create, edit and delete without those permissions', async () => {

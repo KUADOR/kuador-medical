@@ -13,12 +13,8 @@ import {
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
-import type {
-  PermissionInfo,
-  Role,
-  RolePermissionCode as PermissionCode,
-} from '../../core/api/api-types';
-import { AppRoutes } from '../../core/session/navigation';
+import type { PermissionCode, PermissionInfo, Role } from '../../core/api/api-types';
+import { AppRoutes, isOwner } from '../../core/session/navigation';
 import { SessionStore } from '../../core/session/session.store';
 import { ERROR_MESSAGES, errorMessage, toProblem } from '../../core/errors/error-messages';
 import {
@@ -28,8 +24,8 @@ import {
   notBlank,
 } from '../../core/forms/form-errors';
 import { NoticeService } from '../../core/notice/notice.service';
-import { permissionLabel } from '../../core/roles/permission-labels';
-import { RolesService } from '../../core/roles/roles.service';
+import { groupByModule, permissionLabel } from '../../core/roles/permission-labels';
+import { RolesService, isOwnerRole } from '../../core/roles/roles.service';
 
 type LoadState =
   | { kind: 'loading' }
@@ -39,9 +35,14 @@ type LoadState =
 export const ROLE_NAME_MAX_LENGTH = 80;
 export const ROLE_DESCRIPTION_MAX_LENGTH = 500;
 
+/** Why a role opens read-only, or null when it can be edited. */
+export type ReadOnlyReason = 'owner' | 'admin' | 'permission';
+
 /**
- * Create (/roles/new), edit or view (/roles/:id) a role of the clinic.
- * System roles (OWNER, ADMIN) and accounts without roles.update only get a read-only view.
+ * Create (/roles/new), edit or view (/roles/:id) a role of the clinic over the fixed catalog.
+ * OWNER is always read-only; ADMIN is editable only by an OWNER; accounts without roles.update
+ * only get a read-only view. Permissions the person does not hold cannot be added (anti-escalation,
+ * enforced again by the API).
  */
 @Component({
   selector: 'mk-role-form-page',
@@ -79,13 +80,20 @@ export class RoleFormPage implements OnInit {
     const current = this.state();
     return current.kind === 'failed' ? current : null;
   });
-  protected readonly readOnly = computed(() => {
+  protected readonly readOnlyReason = computed<ReadOnlyReason | null>(() => {
     const role = this.role();
     if (!role) {
-      return false;
+      return null;
     }
-    return role.systemRole || !this.session.permissions().has('roles.update');
+    if (isOwnerRole(role)) {
+      return 'owner';
+    }
+    if (role.systemKey === 'ADMIN' && !isOwner(this.session.account())) {
+      return 'admin';
+    }
+    return this.session.permissions().has('roles.update') ? null : 'permission';
   });
+  protected readonly readOnly = computed(() => this.readOnlyReason() !== null);
   protected readonly heading = computed(() => {
     const role = this.role();
     if (this.isNew()) {
@@ -105,13 +113,33 @@ export class RoleFormPage implements OnInit {
     const known = new Set(current.catalog.map((permission) => permission.code));
     const extra = (current.role?.permissions ?? [])
       .filter((code) => !known.has(code))
-      .map((code): PermissionInfo => ({ code, scope: 'TENANT', description: code }));
+      .map((code): PermissionInfo => ({
+        code,
+        module: 'other',
+        scope: 'TENANT',
+        description: code,
+      }));
     return [...current.catalog, ...extra];
+  });
+  protected readonly groups = computed(() => groupByModule(this.options()));
+  /**
+   * Codes the person cannot add: those they do not hold, unless the role already had them
+   * (removing a permission is always allowed).
+   */
+  protected readonly locked = computed<ReadonlySet<PermissionCode>>(() => {
+    const held = this.session.permissions();
+    const initial = new Set(this.role()?.permissions ?? []);
+    return new Set(
+      this.options()
+        .map((option) => option.code)
+        .filter((code) => !held.has(code) && !initial.has(code)),
+    );
   });
 
   protected readonly form = inject(NonNullableFormBuilder).group({
     name: ['', [Validators.required, Validators.maxLength(ROLE_NAME_MAX_LENGTH), notBlank]],
     description: ['', [Validators.maxLength(ROLE_DESCRIPTION_MAX_LENGTH)]],
+    clinical: [false],
     permissions: [[] as PermissionCode[]],
   });
   protected readonly selected = signal<ReadonlySet<PermissionCode>>(new Set());
@@ -147,7 +175,7 @@ export class RoleFormPage implements OnInit {
     });
   }
 
-  protected error(name: 'name' | 'description' | 'permissions'): string | null {
+  protected error(name: 'name' | 'description' | 'clinical' | 'permissions'): string | null {
     const control = this.form.controls[name];
     return control.touched ? controlErrorMessage(control) : null;
   }
@@ -184,10 +212,11 @@ export class RoleFormPage implements OnInit {
       return;
     }
 
-    const { name, description, permissions } = this.form.getRawValue();
+    const { name, description, clinical, permissions } = this.form.getRawValue();
     const body = {
       name: name.trim(),
       description: description.trim() || null,
+      clinical,
       permissions,
     };
     const role = this.role();
@@ -218,6 +247,7 @@ export class RoleFormPage implements OnInit {
     this.form.reset({
       name: role?.name ?? '',
       description: role?.description ?? '',
+      clinical: role?.clinical ?? false,
       permissions,
     });
     this.selected.set(new Set(permissions));

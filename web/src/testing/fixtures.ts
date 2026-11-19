@@ -5,7 +5,9 @@ import type {
   ClinicSelectionResult,
   CurrentSession,
   PermissionInfo,
+  PlatformPermissionInfo,
   Role,
+  StaffUser,
 } from '../app/core/api/api-types';
 
 export const CLINIC = { id: '00000000-0000-0000-0000-0000000000a1', name: 'Test Clinic' };
@@ -101,15 +103,26 @@ export const SUPER_ADMIN: CurrentSession = {
 export const TENANT_CATALOG: PermissionInfo[] = [
   {
     code: 'roles.read',
+    module: 'identity',
     scope: 'TENANT',
-    description: 'View roles and the assignable permission catalog.',
+    description: 'Ver roles y el catálogo de permisos.',
   },
-  { code: 'roles.create', scope: 'TENANT', description: 'Create roles.' },
-  { code: 'roles.update', scope: 'TENANT', description: 'Update roles.' },
-  { code: 'roles.delete', scope: 'TENANT', description: 'Delete roles.' },
+  { code: 'roles.create', module: 'identity', scope: 'TENANT', description: 'Crear roles.' },
+  { code: 'roles.update', module: 'identity', scope: 'TENANT', description: 'Editar roles.' },
+  { code: 'roles.delete', module: 'identity', scope: 'TENANT', description: 'Eliminar roles.' },
 ];
 
-export const FULL_CATALOG: PermissionInfo[] = [
+export const PATIENTS_CATALOG: PermissionInfo[] = [
+  { code: 'patients.read', module: 'patients', scope: 'TENANT', description: 'Ver pacientes.' },
+  {
+    code: 'patients.register',
+    module: 'patients',
+    scope: 'TENANT',
+    description: 'Registrar pacientes.',
+  },
+];
+
+export const FULL_CATALOG: PlatformPermissionInfo[] = [
   ...TENANT_CATALOG,
   { code: 'platform.permissions.read', scope: 'PLATFORM', description: 'View the full catalog.' },
 ];
@@ -118,7 +131,9 @@ export const OWNER_ROLE: Role = {
   id: '7c9e6679-7425-40de-944b-e07fc1f90ae7',
   name: 'OWNER',
   description: null,
+  systemKey: 'OWNER',
   systemRole: true,
+  clinical: false,
   permissions: ['roles.read', 'roles.create', 'roles.update', 'roles.delete'],
   version: 0,
 };
@@ -127,15 +142,91 @@ export const ADMIN_ROLE: Role = {
   ...OWNER_ROLE,
   id: '7c9e6679-7425-40de-944b-e07fc1f90ae8',
   name: 'ADMIN',
+  systemKey: 'ADMIN',
 };
 
 export const RECEPTION_ROLE: Role = {
   id: '3f2a1b0c-9d8e-4f7a-8b6c-5d4e3f2a1b0c',
   name: 'Recepción',
   description: 'Personal de recepción.',
+  systemKey: null,
   systemRole: false,
+  clinical: false,
   permissions: ['roles.read'],
   version: 3,
+};
+
+export const DOCTOR_ROLE: Role = {
+  id: '4b3a2c1d-0e9f-4a8b-8c7d-6e5f4a3b2c1d',
+  name: 'Médico',
+  description: null,
+  systemKey: null,
+  systemRole: false,
+  clinical: true,
+  permissions: ['patients.read'],
+  version: 1,
+};
+
+/** Clinic manager with every staff permission, but not OWNER. */
+export const STAFF_ADMIN_ACCOUNT: CurrentSession = {
+  ...ACCOUNT,
+  roles: ['ADMIN'],
+  availableBranches: [MAIN_BRANCH, NORTH_BRANCH],
+  permissions: [
+    'roles.read',
+    'roles.create',
+    'roles.update',
+    'roles.delete',
+    'identity.users.read',
+    'identity.users.manage',
+    'identity.assignments.manage',
+    'patients.read',
+  ],
+};
+
+export const STAFF_OWNER_ACCOUNT: CurrentSession = {
+  ...STAFF_ADMIN_ACCOUNT,
+  roles: ['OWNER'],
+};
+
+/** Can see the staff list and records, nothing else. */
+export const STAFF_READER_ACCOUNT: CurrentSession = {
+  ...ACCOUNT,
+  roles: ['Recepción'],
+  permissions: ['identity.users.read'],
+};
+
+export const INVITED_DOCTOR: StaffUser = {
+  id: '1d2c3b4a-5f6e-4789-8a9b-0c1d2e3f4a5b',
+  firstNames: 'Ana',
+  lastNames: 'Pérez',
+  email: 'ana.perez@example.com',
+  jobTitle: 'Médica general',
+  professionalRegistration: 'REG-0000-EXAMPLE',
+  status: 'INVITED',
+  roleAssignments: [
+    { branch: MAIN_BRANCH, role: { id: DOCTOR_ROLE.id, name: DOCTOR_ROLE.name } },
+    { branch: NORTH_BRANCH, role: { id: DOCTOR_ROLE.id, name: DOCTOR_ROLE.name } },
+  ],
+  invitationExpiresAt: '2030-01-04T15:00:00Z',
+  createdAt: '2030-01-01T15:00:00Z',
+  version: 2,
+};
+
+export const ACTIVE_RECEPTIONIST: StaffUser = {
+  id: '2e3d4c5b-6a7f-4890-9bac-1d2e3f4a5b6c',
+  firstNames: 'Luis',
+  lastNames: 'Gómez',
+  email: 'luis.gomez@example.com',
+  jobTitle: 'Recepcionista',
+  professionalRegistration: null,
+  status: 'ACTIVE',
+  roleAssignments: [
+    { branch: MAIN_BRANCH, role: { id: RECEPTION_ROLE.id, name: RECEPTION_ROLE.name } },
+  ],
+  invitationExpiresAt: null,
+  createdAt: '2030-01-01T15:00:00Z',
+  version: 5,
 };
 
 export function problem(status: number, code: string, errors?: { field: string; code: string }[]) {

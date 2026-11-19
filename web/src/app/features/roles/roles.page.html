@@ -67,10 +67,17 @@
               <li class="card" data-testid="role">
                 <div class="card__title">
                   <h2>{{ role.name }}</h2>
-                  @if (role.systemRole) {
+                  @if (isOwnerRole(role)) {
                     <span class="badge" data-testid="system-badge"
-                      >Rol del sistema · solo lectura</span
+                      >Rol protegido · solo lectura</span
                     >
+                  } @else if (role.systemRole) {
+                    <span class="badge" data-testid="system-badge"
+                      >Rol del sistema · no se puede eliminar</span
+                    >
+                  }
+                  @if (role.clinical) {
+                    <span class="badge" data-testid="clinical-badge">Rol clínico</span>
                   }
                 </div>
                 @if (role.description) {
@@ -86,7 +93,7 @@
                   <p class="hint">Sin permisos asignados.</p>
                 }
                 <div class="actions">
-                  @if (!role.systemRole && canUpdate()) {
+                  @if (canEdit(role)) {
                     <a class="button button--secondary" [routerLink]="[rolesLink, role.id]">
                       Editar<span class="visually-hidden"> {{ role.name }}</span>
                     </a>
@@ -95,7 +102,7 @@
                       Ver<span class="visually-hidden"> {{ role.name }}</span>
                     </a>
                   }
-                  @if (!role.systemRole && canDelete()) {
+                  @if (canRemove(role)) {
                     <button
                       type="button"
                       class="button button--danger"

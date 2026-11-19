@@ -4,7 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
 import { OWNER_ROLE, RECEPTION_ROLE, TENANT_CATALOG } from '../../../testing/fixtures';
 import { PlatformService } from '../platform/platform.service';
-import { RolesService } from './roles.service';
+import { RolesService, isOwnerRole } from './roles.service';
 
 describe('RolesService and PlatformService', () => {
   let roles: RolesService;
@@ -35,12 +35,18 @@ describe('RolesService and PlatformService', () => {
 
   it('creates, reads, updates and deletes a role by id', async () => {
     const created = firstValueFrom(
-      roles.create({ name: 'Recepción', description: null, permissions: ['roles.read'] }),
+      roles.create({
+        name: 'Recepción',
+        description: null,
+        clinical: false,
+        permissions: ['roles.read'],
+      }),
     );
     const create = backend.expectOne({ method: 'POST', url: '/api/v1/roles' });
     expect(create.request.body).toEqual({
       name: 'Recepción',
       description: null,
+      clinical: false,
       permissions: ['roles.read'],
     });
     expect(create.request.body).not.toHaveProperty('tenantId');
@@ -56,6 +62,7 @@ describe('RolesService and PlatformService', () => {
       roles.update(RECEPTION_ROLE.id, {
         name: 'Recepción',
         description: null,
+        clinical: false,
         permissions: [],
         version: 3,
       }),
@@ -82,5 +89,12 @@ describe('RolesService and PlatformService', () => {
     const result = firstValueFrom(platform.permissions());
     backend.expectOne({ method: 'GET', url: '/api/v1/platform/permissions' }).flush(TENANT_CATALOG);
     expect(await result).toEqual(TENANT_CATALOG);
+  });
+
+  it('treats OWNER, and a system role without systemKey, as the protected OWNER', () => {
+    expect(isOwnerRole({ systemKey: 'OWNER', systemRole: true })).toBe(true);
+    expect(isOwnerRole({ systemKey: null, systemRole: true })).toBe(true);
+    expect(isOwnerRole({ systemKey: 'ADMIN', systemRole: true })).toBe(false);
+    expect(isOwnerRole({ systemKey: null, systemRole: false })).toBe(false);
   });
 });

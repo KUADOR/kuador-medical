@@ -1,0 +1,141 @@
+<section class="page" aria-labelledby="staff-form-title">
+  <p><a [routerLink]="staffLink">← Volver al personal</a></p>
+  <h1 id="staff-form-title">Invitar persona</h1>
+  <p class="hint">
+    Registra sus datos y sus roles. Le enviaremos por correo un enlace de un solo uso para que
+    active su cuenta.
+  </p>
+
+  @switch (state().kind) {
+    @case ('loading') {
+      <p class="hint" aria-live="polite">Cargando roles…</p>
+    }
+    @case ('failed') {
+      <p class="alert" role="alert" data-testid="load-error">{{ loadFailure() }}</p>
+      <div class="actions">
+        <button type="button" class="button" (click)="load()">Volver a intentar</button>
+      </div>
+    }
+    @default {
+      <form class="form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        @if (failure(); as message) {
+          <p class="alert" role="alert" data-testid="form-error" tabindex="-1">{{ message }}</p>
+        }
+
+        <div class="field">
+          <label for="staff-first-names">Nombres</label>
+          <input
+            id="staff-first-names"
+            type="text"
+            formControlName="firstNames"
+            autocomplete="off"
+            [attr.maxlength]="limits.name"
+            [attr.aria-invalid]="error('firstNames') ? 'true' : null"
+            [attr.aria-describedby]="error('firstNames') ? 'staff-first-names-error' : null"
+          />
+          @if (error('firstNames'); as message) {
+            <p id="staff-first-names-error" class="field__error">{{ message }}</p>
+          }
+        </div>
+
+        <div class="field">
+          <label for="staff-last-names">Apellidos</label>
+          <input
+            id="staff-last-names"
+            type="text"
+            formControlName="lastNames"
+            autocomplete="off"
+            [attr.maxlength]="limits.name"
+            [attr.aria-invalid]="error('lastNames') ? 'true' : null"
+            [attr.aria-describedby]="error('lastNames') ? 'staff-last-names-error' : null"
+          />
+          @if (error('lastNames'); as message) {
+            <p id="staff-last-names-error" class="field__error">{{ message }}</p>
+          }
+        </div>
+
+        <div class="field">
+          <label for="staff-email">Correo</label>
+          <input
+            id="staff-email"
+            type="email"
+            formControlName="email"
+            autocomplete="off"
+            [attr.maxlength]="limits.email"
+            [attr.aria-invalid]="error('email') ? 'true' : null"
+            [attr.aria-describedby]="error('email') ? 'staff-email-error' : 'staff-email-hint'"
+          />
+          <p id="staff-email-hint" class="field__hint">
+            Recibirá aquí la invitación. No se puede cambiar después.
+          </p>
+          @if (error('email'); as message) {
+            <p id="staff-email-error" class="field__error">{{ message }}</p>
+          }
+        </div>
+
+        <div class="field">
+          <label for="staff-job-title">Puesto de trabajo</label>
+          <input
+            id="staff-job-title"
+            type="text"
+            formControlName="jobTitle"
+            autocomplete="off"
+            [attr.maxlength]="limits.jobTitle"
+            [attr.aria-invalid]="error('jobTitle') ? 'true' : null"
+            [attr.aria-describedby]="error('jobTitle') ? 'staff-job-title-error' : null"
+          />
+          @if (error('jobTitle'); as message) {
+            <p id="staff-job-title-error" class="field__error">{{ message }}</p>
+          }
+        </div>
+
+        <div class="field">
+          <label for="staff-registration">
+            Registro profesional{{ registrationRequired() ? '' : ' (opcional)' }}
+          </label>
+          <input
+            id="staff-registration"
+            type="text"
+            formControlName="professionalRegistration"
+            autocomplete="off"
+            [attr.maxlength]="limits.professionalRegistration"
+            [attr.aria-required]="registrationRequired()"
+            [attr.aria-invalid]="error('professionalRegistration') ? 'true' : null"
+            [attr.aria-describedby]="
+              error('professionalRegistration')
+                ? 'staff-registration-error'
+                : 'staff-registration-hint'
+            "
+          />
+          <p id="staff-registration-hint" class="field__hint" data-testid="registration-hint">
+            @if (registrationRequired()) {
+              Obligatorio: elegiste un rol clínico.
+            } @else {
+              Obligatorio solo para roles clínicos.
+            }
+          </p>
+          @if (error('professionalRegistration'); as message) {
+            <p id="staff-registration-error" class="field__error">{{ message }}</p>
+          }
+        </div>
+
+        <mk-role-assignments-editor
+          idPrefix="staff-assignments"
+          [draft]="draft()"
+          (draftChange)="changeDraft($event)"
+          [roles]="roles()"
+          [branches]="branches()"
+          [callerIsOwner]="callerIsOwner()"
+          [error]="assignmentError()"
+        />
+
+        <div class="actions">
+          <button type="submit" class="button" [disabled]="submitting()">
+            {{ submitting() ? 'Enviando invitación…' : 'Registrar y enviar invitación' }}
+          </button>
+          <a class="button button--secondary" [routerLink]="staffLink">Cancelar</a>
+        </div>
+      </form>
+    }
+  }
+</section>

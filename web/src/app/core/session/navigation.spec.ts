@@ -1,5 +1,11 @@
-import { ACCOUNT, FULL_ACCOUNT, SUPER_ADMIN } from '../../../testing/fixtures';
-import { canAccess, landingUrl, menuFor, safeReturnUrl } from './navigation';
+import {
+  ACCOUNT,
+  FULL_ACCOUNT,
+  STAFF_ADMIN_ACCOUNT,
+  STAFF_OWNER_ACCOUNT,
+  SUPER_ADMIN,
+} from '../../../testing/fixtures';
+import { canAccess, isOwner, landingUrl, menuFor, safeReturnUrl } from './navigation';
 
 describe('navigation', () => {
   it('builds the menu from the permissions of GET /me', () => {
@@ -7,6 +13,18 @@ describe('navigation', () => {
     expect(menuFor(SUPER_ADMIN).map((item) => item.label)).toEqual(['Catálogo de permisos']);
     expect(menuFor({ ...ACCOUNT, permissions: [] })).toEqual([]);
     expect(menuFor(null)).toEqual([]);
+  });
+
+  it('shows the staff entry first with identity.users.read and lands there', () => {
+    expect(menuFor(STAFF_ADMIN_ACCOUNT).map((item) => item.label)).toEqual(['Personal', 'Roles']);
+    expect(landingUrl(STAFF_ADMIN_ACCOUNT)).toBe('/staff');
+    expect(menuFor({ ...STAFF_ADMIN_ACCOUNT, enabledModules: [] })).toEqual([]);
+  });
+
+  it('knows when the active assignment is OWNER', () => {
+    expect(isOwner(STAFF_OWNER_ACCOUNT)).toBe(true);
+    expect(isOwner(STAFF_ADMIN_ACCOUNT)).toBe(false);
+    expect(isOwner(null)).toBe(false);
   });
 
   it('hides entries whose module the clinic plan does not enable', () => {
