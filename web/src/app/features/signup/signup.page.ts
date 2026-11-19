@@ -9,9 +9,9 @@ import {
 } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { AuthRoutes } from '../../core/auth/auth-routes';
-import { AuthService } from '../../core/auth/auth.service';
-import { landingUrl } from '../../core/auth/navigation';
+import { AuthRoutes } from '../../core/session/auth-routes';
+import { AuthService } from '../../core/session/auth.service';
+import { nextUrlAfterLogin } from '../../core/session/login-navigation';
 import { ERROR_MESSAGES, errorMessage, toProblem } from '../../core/errors/error-messages';
 import {
   PASSWORD_MAX_LENGTH,
@@ -91,8 +91,12 @@ export class SignupPage {
     }
 
     try {
-      const account = await this.auth.login({ email: request.email, password: request.password });
-      await this.router.navigateByUrl(landingUrl(account));
+      const outcome = await this.auth.login({ email: request.email, password: request.password });
+      const next = nextUrlAfterLogin(this.router, outcome, null);
+      if (!next) {
+        throw new Error('GET /me failed after signup');
+      }
+      await this.router.navigateByUrl(next);
     } catch {
       // The clinic exists: let the person log in by hand instead of retrying the signup.
       this.auth.logout();

@@ -1,15 +1,23 @@
 import { TestBed } from '@angular/core/testing';
-import { ERROR_MESSAGES } from '../../core/errors/error-messages';
-import { NoticeService } from '../../core/notice/notice.service';
+import { ERROR_MESSAGES } from '../../../core/errors/error-messages';
+import { NoticeService } from '../../../core/notice/notice.service';
 import {
   ACCOUNT,
+  BRANCH_SELECTION,
+  CLINIC_SELECTION,
   FULL_ACCOUNT,
   LOGIN,
   PLATFORM_LOGIN,
   SUPER_ADMIN,
   problem,
-} from '../../../testing/fixtures';
-import { AppHarness, byTestId, createAppHarness, submit, type } from '../../../testing/app-harness';
+} from '../../../../testing/fixtures';
+import {
+  AppHarness,
+  byTestId,
+  createAppHarness,
+  submit,
+  type,
+} from '../../../../testing/app-harness';
 
 describe('LoginPage', () => {
   let app: AppHarness;
@@ -90,6 +98,49 @@ describe('LoginPage', () => {
     );
     expect((app.page().querySelector('#login-password') as HTMLInputElement).value).toBe('');
     expect(app.router.url).toBe('/login');
+  });
+
+  it('continues on the clinic selection when the password matches several clinics', async () => {
+    await open('/login?returnUrl=%2Froles%2Fnew');
+    type(app.page(), '#login-email', 'staff@example.com');
+    type(app.page(), '#login-password', 'a-long-example-passphrase');
+    submit(app.page());
+    app.backend.expectOne('/api/v1/auth/login').flush(CLINIC_SELECTION);
+    await app.settle();
+
+    expect(app.router.url).toBe('/login/clinic?returnUrl=%2Froles%2Fnew');
+    expect(app.session.isAuthenticated()).toBe(false);
+  });
+
+  it('continues on the branch selection when the account has several branches', async () => {
+    await open();
+    type(app.page(), '#login-email', 'staff@example.com');
+    type(app.page(), '#login-password', 'a-long-example-passphrase');
+    submit(app.page());
+    app.backend.expectOne('/api/v1/auth/login').flush(BRANCH_SELECTION);
+    await app.settle();
+
+    expect(app.router.url).toBe('/login/branch');
+  });
+
+  it('informs in Spanish when the access is temporarily blocked', async () => {
+    await open();
+    type(app.page(), '#login-email', 'owner@example.com');
+    type(app.page(), '#login-password', 'wrong');
+    submit(app.page());
+    const { body, init } = problem(429, 'TOO_MANY_ATTEMPTS');
+    app.backend.expectOne('/api/v1/auth/login').flush(body, init);
+    await app.settle();
+
+    expect(byTestId(app.page(), 'form-error')?.textContent?.trim()).toBe(
+      ERROR_MESSAGES.TOO_MANY_ATTEMPTS,
+    );
+  });
+
+  it('links to the password recovery', async () => {
+    await open();
+    const link = app.page().querySelector('a[href="/forgot-password"]');
+    expect(link?.textContent).toContain('¿Olvidaste tu contraseña?');
   });
 
   it('shows the notice left by the signup', async () => {

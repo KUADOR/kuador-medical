@@ -13,9 +13,13 @@ import {
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
-import type { PermissionCode, PermissionInfo, Role } from '../../core/api/api-types';
-import { AppRoutes } from '../../core/auth/navigation';
-import { SessionStore } from '../../core/auth/session.store';
+import type {
+  PermissionInfo,
+  Role,
+  RolePermissionCode as PermissionCode,
+} from '../../core/api/api-types';
+import { AppRoutes } from '../../core/session/navigation';
+import { SessionStore } from '../../core/session/session.store';
 import { ERROR_MESSAGES, errorMessage, toProblem } from '../../core/errors/error-messages';
 import {
   applyServerErrors,

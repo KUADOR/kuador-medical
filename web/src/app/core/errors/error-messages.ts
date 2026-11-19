@@ -22,6 +22,27 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
     'Los roles OWNER y ADMIN están protegidos: no se pueden editar ni eliminar.',
   ROLE_IN_USE: 'No se puede eliminar el rol porque está asignado a personas de tu clínica.',
   INTERNAL_ERROR: 'Ocurrió un error inesperado. Intenta de nuevo en unos minutos.',
+  TOO_MANY_ATTEMPTS:
+    'Hiciste demasiados intentos. Por seguridad el acceso quedó bloqueado por unos minutos; intenta de nuevo más tarde.',
+  INVALID_SESSION_TOKEN:
+    'Tu inicio de sesión venció. Vuelve a ingresar con tu correo y contraseña.',
+  ONE_TIME_TOKEN_INVALID:
+    'El enlace no es válido: venció o ya fue usado. Pide uno nuevo para continuar.',
+  BRANCH_NOT_ASSIGNED: 'No tienes una asignación en esa sucursal.',
+  PRIVILEGE_ESCALATION: 'No puedes otorgar permisos o roles que tú no tienes.',
+  SELF_MODIFICATION_FORBIDDEN: 'No puedes cambiar tus propios roles ni tu propio acceso.',
+  LAST_OWNER: 'La clínica debe conservar al menos una persona con el rol OWNER.',
+  PLAN_LIMIT_REACHED: 'Tu clínica alcanzó el límite de usuarios de su plan.',
+  IDEMPOTENCY_KEY_REUSED:
+    'Esta solicitud ya se envió con otros datos. Recarga la página e intenta de nuevo.',
+  RESOURCE_ID_TAKEN: 'Esta solicitud ya se envió. Recarga la página e intenta de nuevo.',
+  ACCOUNT_ALREADY_ACTIVE: 'La cuenta ya está activa. Ingresa con tu correo y contraseña.',
+  PATIENT_DUPLICATE: 'Ya existe un paciente con ese tipo y número de documento en la clínica.',
+  MINOR_CANNOT_HAVE_ACCOUNT: 'Un paciente menor de edad no puede tener una cuenta propia.',
+  ADULT_AUTHORIZATION_REQUIRED: 'Se necesita la autorización explícita del paciente adulto.',
+  LAST_LEGAL_GUARDIAN: 'Un paciente menor de edad debe conservar al menos un representante legal.',
+  CONTACT_CHANNEL_UNAVAILABLE:
+    'El paciente no tiene un correo o teléfono registrado para enviarle la invitación.',
 };
 
 /** Messages for field-level validation codes (Problem.errors[].code). */
@@ -31,6 +52,8 @@ export const FIELD_ERROR_MESSAGES: Readonly<Record<string, string>> = {
   TOO_SHORT: 'El texto es demasiado corto.',
   INVALID_FORMAT: 'El formato no es válido.',
   UNKNOWN_PERMISSION: 'El permiso no existe en el catálogo del sistema.',
+  MINOR_NOT_ALLOWED: 'Solo las personas mayores de edad pueden registrarse por su cuenta.',
+  DUPLICATE: 'Este valor ya está registrado.',
 };
 
 export const NETWORK_ERROR_MESSAGE =

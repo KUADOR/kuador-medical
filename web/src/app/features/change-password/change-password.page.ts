@@ -15,10 +15,10 @@ import {
   Validators,
 } from '@angular/forms';
 import { Router } from '@angular/router';
-import { AuthRoutes } from '../../core/auth/auth-routes';
-import { AuthService } from '../../core/auth/auth.service';
-import { landingUrl } from '../../core/auth/navigation';
-import { SessionStore } from '../../core/auth/session.store';
+import { AuthRoutes } from '../../core/session/auth-routes';
+import { AuthService } from '../../core/session/auth.service';
+import { landingUrl } from '../../core/session/navigation';
+import { SessionStore } from '../../core/session/session.store';
 import { ERROR_MESSAGES, errorMessage, toProblem } from '../../core/errors/error-messages';
 import {
   PASSWORD_MAX_LENGTH,

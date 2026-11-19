@@ -4,10 +4,10 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import type { CurrentAccount, LoginResponse } from '../app/core/api/api-types';
+import type { AuthenticatedResult, CurrentSession } from '../app/core/api/api-types';
 import { routes } from '../app/app.routes';
-import { authInterceptor } from '../app/core/auth/auth.interceptor';
-import { SessionStore } from '../app/core/auth/session.store';
+import { authInterceptor } from '../app/core/session/auth.interceptor';
+import { SessionStore } from '../app/core/session/session.store';
 import { LOGIN } from './fixtures';
 
 export interface AppHarness {
@@ -50,8 +50,8 @@ export async function createAppHarness(): Promise<AppHarness> {
 /** Starts a session whose GET /me answers with the given account. */
 export async function signIn(
   app: AppHarness,
-  account: CurrentAccount,
-  login: LoginResponse = { ...LOGIN, mustChangePassword: account.mustChangePassword },
+  account: CurrentSession,
+  login: AuthenticatedResult = { ...LOGIN, mustChangePassword: account.mustChangePassword },
 ): Promise<void> {
   app.session.start(login);
   const loading = app.session.ensureAccount();

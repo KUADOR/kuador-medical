@@ -1,0 +1,27 @@
+<section class="page page--narrow" aria-labelledby="selection-title">
+  <h1 id="selection-title">{{ heading() }}</h1>
+  <p class="hint">{{ hint() }}</p>
+
+  @if (failure(); as message) {
+    <p class="alert" role="alert" tabindex="-1" data-testid="form-error">{{ message }}</p>
+  }
+
+  <ul class="choice-list" [attr.aria-label]="isClinic() ? 'Clínicas' : 'Sucursales'">
+    @for (option of options(); track option.id) {
+      <li>
+        <button
+          type="button"
+          class="button button--secondary choice-list__button"
+          data-testid="choice"
+          [disabled]="submitting() !== null"
+          [attr.aria-busy]="submitting() === option.id ? 'true' : null"
+          (click)="choose(option.id)"
+        >
+          {{ option.name }}
+        </button>
+      </li>
+    }
+  </ul>
+
+  <p><a [routerLink]="loginLink" (click)="cancel()">Ingresar con otra cuenta</a></p>
+</section>

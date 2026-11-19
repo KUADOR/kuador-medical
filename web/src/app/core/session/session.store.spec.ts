@@ -34,14 +34,68 @@ describe('SessionStore', () => {
     expect(localStorage.length).toBe(0);
   });
 
-  it('drops the token once it expires', () => {
+  it('stops handing out the access token shortly before it expires, but keeps the session', () => {
     vi.useFakeTimers();
     store.start({ ...LOGIN, expiresIn: 60 });
-    vi.advanceTimersByTime(61_000);
+    vi.advanceTimersByTime(31_000);
 
     expect(store.accessToken()).toBeNull();
+    expect(store.refreshToken()).toBe('test-refresh');
+    expect(store.isAuthenticated()).toBe(true);
+    expect(store.hasUsableSession()).toBe(true);
+  });
+
+  it('ends the session once the refresh token expires', () => {
+    vi.useFakeTimers();
+    store.start({ ...LOGIN, refreshExpiresIn: 120 });
+    vi.advanceTimersByTime(121_000);
+
+    expect(store.refreshToken()).toBeNull();
     expect(store.isAuthenticated()).toBe(false);
     expect(sessionStorage.getItem('mk.session')).toBeNull();
+  });
+
+  it('replaces the tokens after a refresh without reloading GET /me', async () => {
+    store.start(LOGIN);
+    const loading = store.ensureAccount();
+    http.expectOne('/api/v1/me').flush(ACCOUNT);
+    await loading;
+
+    store.replaceTokens({ ...LOGIN, accessToken: 'next-token', refreshToken: 'next-refresh' });
+
+    expect(store.accessToken()).toBe('next-token');
+    expect(store.refreshToken()).toBe('next-refresh');
+    expect(store.account()).toEqual(ACCOUNT);
+    http.expectNone('/api/v1/me');
+  });
+
+  it('exposes the plan modules of GET /me', async () => {
+    store.start(LOGIN);
+    const loading = store.ensureAccount();
+    http.expectOne('/api/v1/me').flush({ ...ACCOUNT, enabledModules: ['patients'] });
+    await loading;
+
+    expect(store.hasModule('patients')).toBe(true);
+    expect(store.hasModule('identity')).toBe(false);
+  });
+
+  it('ignores a stored session of the previous format (without refresh token)', () => {
+    sessionStorage.setItem(
+      'mk.session',
+      JSON.stringify({
+        accessToken: 'old',
+        expiresAt: Date.now() + 60_000,
+        mustChangePassword: false,
+      }),
+    );
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+
+    expect(TestBed.inject(SessionStore).isAuthenticated()).toBe(false);
+    expect(sessionStorage.getItem('mk.session')).toBeNull();
+    http = TestBed.inject(HttpTestingController);
   });
 
   it('loads GET /me once and exposes its permissions', async () => {

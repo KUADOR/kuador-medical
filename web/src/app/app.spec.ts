@@ -5,7 +5,7 @@ import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { App } from './app';
 import { routes } from './app.routes';
-import { SessionStore } from './core/auth/session.store';
+import { SessionStore } from './core/session/session.store';
 import { FULL_ACCOUNT, LOGIN, SUPER_ADMIN } from '../testing/fixtures';
 
 describe('App', () => {
@@ -92,11 +92,26 @@ describe('App', () => {
     expect(navLabels(root)).toEqual(['Estado del sistema']);
   });
 
-  it('logs out from the header', async () => {
+  it('hides the modules the clinic plan does not enable', async () => {
+    const root = await shellWith({ ...FULL_ACCOUNT, enabledModules: ['patients'] });
+    expect(navLabels(root)).toEqual(['Estado del sistema']);
+  });
+
+  it('shows the active branch of the session', async () => {
+    const root = await shellWith(FULL_ACCOUNT);
+    expect(root.querySelector('[data-testid="active-branch"]')?.textContent).toContain(
+      'Main branch',
+    );
+  });
+
+  it('logs out from the header and revokes the refresh token', async () => {
     const root = await shellWith(FULL_ACCOUNT);
     (root.querySelector('.app-header__logout') as HTMLButtonElement).click();
     await Promise.resolve();
 
     expect(TestBed.inject(SessionStore).isAuthenticated()).toBe(false);
+    const logout = TestBed.inject(HttpTestingController).expectOne('/api/v1/auth/logout');
+    expect(logout.request.body).toEqual({ refreshToken: 'test-refresh' });
+    logout.flush(null, { status: 204, statusText: 'No Content' });
   });
 });

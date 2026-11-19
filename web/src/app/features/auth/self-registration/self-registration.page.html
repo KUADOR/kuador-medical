@@ -1,0 +1,234 @@
+<section class="page page--narrow" aria-labelledby="sr-title">
+  <h1 id="sr-title">Registrarme como paciente</h1>
+
+  @switch (state()) {
+    @case ('done') {
+      <p class="alert alert--success" role="status" data-testid="notice">{{ doneMessage }}</p>
+    }
+    @case ('unavailable') {
+      <p class="alert" role="alert" data-testid="unavailable">{{ unavailableMessage }}</p>
+    }
+    @default {
+      <p class="hint">Completa tus datos para crear tu cuenta de paciente en la clínica.</p>
+      <form class="form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        @if (failure(); as message) {
+          <p class="alert" role="alert" data-testid="form-error">{{ message }}</p>
+        }
+
+        <div class="field">
+          <label for="sr-documentType">Tipo de documento</label>
+          <select
+            id="sr-documentType"
+            formControlName="documentType"
+            [attr.aria-invalid]="error('documentType') ? 'true' : null"
+            [attr.aria-describedby]="error('documentType') ? 'sr-documentType-error' : null"
+          >
+            @for (option of documentTypes; track option.code) {
+              <option [value]="option.code">{{ option.label }}</option>
+            }
+          </select>
+          @if (error('documentType'); as message) {
+            <p id="sr-documentType-error" class="field__error">{{ message }}</p>
+          }
+        </div>
+
+        <div class="field">
+          <label for="sr-documentNumber">Número de documento</label>
+          <input
+            id="sr-documentNumber"
+            type="text"
+            formControlName="documentNumber"
+            autocomplete="off"
+            [attr.aria-invalid]="error('documentNumber') ? 'true' : null"
+            [attr.aria-describedby]="error('documentNumber') ? 'sr-documentNumber-error' : null"
+          />
+          @if (error('documentNumber'); as message) {
+            <p id="sr-documentNumber-error" class="field__error">{{ message }}</p>
+          }
+        </div>
+
+        <div class="field">
+          <label for="sr-firstNames">Nombres</label>
+          <input
+            id="sr-firstNames"
+            type="text"
+            formControlName="firstNames"
+            autocomplete="given-name"
+            [attr.aria-invalid]="error('firstNames') ? 'true' : null"
+            [attr.aria-describedby]="error('firstNames') ? 'sr-firstNames-error' : null"
+          />
+          @if (error('firstNames'); as message) {
+            <p id="sr-firstNames-error" class="field__error">{{ message }}</p>
+          }
+        </div>
+
+        <div class="field">
+          <label for="sr-lastNames">Apellidos</label>
+          <input
+            id="sr-lastNames"
+            type="text"
+            formControlName="lastNames"
+            autocomplete="family-name"
+            [attr.aria-invalid]="error('lastNames') ? 'true' : null"
+            [attr.aria-describedby]="error('lastNames') ? 'sr-lastNames-error' : null"
+          />
+          @if (error('lastNames'); as message) {
+            <p id="sr-lastNames-error" class="field__error">{{ message }}</p>
+          }
+        </div>
+
+        <div class="field">
+          <label for="sr-birthDate">Fecha de nacimiento</label>
+          <input
+            id="sr-birthDate"
+            type="date"
+            formControlName="birthDate"
+            autocomplete="bday"
+            [attr.aria-invalid]="error('birthDate') ? 'true' : null"
+            [attr.aria-describedby]="
+              error('birthDate') ? 'sr-birthDate-hint sr-birthDate-error' : 'sr-birthDate-hint'
+            "
+          />
+          <p id="sr-birthDate-hint" class="field__hint">
+            Solo las personas mayores de edad pueden registrarse por su cuenta.
+          </p>
+          @if (error('birthDate'); as message) {
+            <p id="sr-birthDate-error" class="field__error">{{ message }}</p>
+          }
+        </div>
+
+        <div class="field">
+          <label for="sr-sex">Sexo</label>
+          <select
+            id="sr-sex"
+            formControlName="sex"
+            [attr.aria-invalid]="error('sex') ? 'true' : null"
+            [attr.aria-describedby]="error('sex') ? 'sr-sex-error' : null"
+          >
+            <option value="" disabled>Elige una opción</option>
+            @for (option of sexOptions; track option.code) {
+              <option [value]="option.code">{{ option.label }}</option>
+            }
+          </select>
+          @if (error('sex'); as message) {
+            <p id="sr-sex-error" class="field__error">{{ message }}</p>
+          }
+        </div>
+
+        <div class="field">
+          <label for="sr-email">Correo</label>
+          <input
+            id="sr-email"
+            type="email"
+            formControlName="email"
+            autocomplete="email"
+            inputmode="email"
+            [attr.aria-invalid]="error('email') ? 'true' : null"
+            [attr.aria-describedby]="
+              error('email') ? 'sr-email-hint sr-email-error' : 'sr-email-hint'
+            "
+          />
+          <p id="sr-email-hint" class="field__hint">Te enviaremos un enlace para verificarlo.</p>
+          @if (error('email'); as message) {
+            <p id="sr-email-error" class="field__error">{{ message }}</p>
+          }
+        </div>
+
+        <div class="field">
+          <label for="sr-phone">Teléfono (opcional)</label>
+          <input
+            id="sr-phone"
+            type="tel"
+            formControlName="phone"
+            autocomplete="tel"
+            [attr.aria-invalid]="error('phone') ? 'true' : null"
+            [attr.aria-describedby]="
+              error('phone') ? 'sr-phone-hint sr-phone-error' : 'sr-phone-hint'
+            "
+          />
+          <p id="sr-phone-hint" class="field__hint">
+            Con el signo + y el código de país, sin espacios.
+          </p>
+          @if (error('phone'); as message) {
+            <p id="sr-phone-error" class="field__error">{{ message }}</p>
+          }
+        </div>
+
+        <div class="field">
+          <label for="sr-address">Dirección (opcional)</label>
+          <input
+            id="sr-address"
+            type="text"
+            formControlName="address"
+            autocomplete="street-address"
+            [attr.aria-invalid]="error('address') ? 'true' : null"
+            [attr.aria-describedby]="error('address') ? 'sr-address-error' : null"
+          />
+          @if (error('address'); as message) {
+            <p id="sr-address-error" class="field__error">{{ message }}</p>
+          }
+        </div>
+
+        <div class="field">
+          <label for="sr-password">Contraseña</label>
+          <input
+            id="sr-password"
+            type="password"
+            formControlName="password"
+            autocomplete="new-password"
+            [attr.aria-invalid]="error('password') ? 'true' : null"
+            [attr.aria-describedby]="
+              error('password') ? 'sr-password-hint sr-password-error' : 'sr-password-hint'
+            "
+          />
+          <p id="sr-password-hint" class="field__hint">
+            Al menos {{ passwordMinLength }} caracteres.
+          </p>
+          @if (error('password'); as message) {
+            <p id="sr-password-error" class="field__error">{{ message }}</p>
+          }
+        </div>
+
+        <div class="field">
+          <label for="sr-confirmPassword">Repite la contraseña</label>
+          <input
+            id="sr-confirmPassword"
+            type="password"
+            formControlName="confirmPassword"
+            autocomplete="new-password"
+            [attr.aria-invalid]="error('confirmPassword') ? 'true' : null"
+            [attr.aria-describedby]="error('confirmPassword') ? 'sr-confirmPassword-error' : null"
+          />
+          @if (error('confirmPassword'); as message) {
+            <p id="sr-confirmPassword-error" class="field__error">{{ message }}</p>
+          }
+        </div>
+
+        <div class="field">
+          <label class="checkbox" for="sr-consent">
+            <input
+              id="sr-consent"
+              type="checkbox"
+              formControlName="consent"
+              [attr.aria-invalid]="error('consent') ? 'true' : null"
+              [attr.aria-describedby]="error('consent') ? 'sr-consent-error' : 'sr-consent-hint'"
+            />
+            <span>Acepto el tratamiento de mis datos personales por parte de la clínica.</span>
+          </label>
+          <p id="sr-consent-hint" class="field__hint">Versión del texto: {{ consentVersion }}.</p>
+          @if (error('consent'); as message) {
+            <p id="sr-consent-error" class="field__error">{{ message }}</p>
+          }
+        </div>
+
+        <div class="actions">
+          <button type="submit" class="button" [disabled]="submitting()">
+            {{ submitting() ? 'Enviando…' : 'Registrarme' }}
+          </button>
+        </div>
+      </form>
+    }
+  }
+
+  <p>¿Ya tienes cuenta? <a [routerLink]="loginLink">Ingresar</a></p>
+</section>

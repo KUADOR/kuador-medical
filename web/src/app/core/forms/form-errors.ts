@@ -33,6 +33,12 @@ export function controlErrorMessage(control: AbstractControl | null): string | n
   if (errors['mismatch']) {
     return 'Las contraseñas no coinciden.';
   }
+  if (errors['futureDate']) {
+    return 'La fecha no puede ser posterior a hoy.';
+  }
+  if (errors['phone']) {
+    return 'Escribe el teléfono con el signo + y el código de país, sin espacios.';
+  }
   if (errors['samePassword']) {
     return 'La contraseña nueva debe ser distinta de la actual.';
   }
@@ -44,6 +50,27 @@ export const notBlank: ValidatorFn = (control): ValidationErrors | null => {
   const value: unknown = control.value;
   return typeof value === 'string' && value.length > 0 && value.trim().length === 0
     ? { whitespace: true }
+    : null;
+};
+
+/** Rejects dates (yyyy-MM-dd) after today, in the browser time zone. */
+export const notInFuture: ValidatorFn = (control): ValidationErrors | null => {
+  const value: unknown = control.value;
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return null;
+  }
+  const today = new Date();
+  const local = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  return value > local ? { futureDate: true } : null;
+};
+
+/** Optional phone in E.164 format, as the contract requires (`+` and 7 to 15 digits). */
+export const e164Phone: ValidatorFn = (control): ValidationErrors | null => {
+  const value: unknown = control.value;
+  return typeof value === 'string' &&
+    value.trim() !== '' &&
+    !/^\+[1-9][0-9]{6,14}$/.test(value.trim())
+    ? { phone: true }
     : null;
 };
 

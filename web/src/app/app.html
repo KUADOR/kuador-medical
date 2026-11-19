@@ -23,6 +23,7 @@
       @if (accountLabel(); as label) {
         <span data-testid="account-name">{{ label }}</span>
       }
+      <mk-branch-switcher />
       <button type="button" class="app-header__logout" (click)="logout()">Salir</button>
     } @else {
       <a [routerLink]="links.login" routerLinkActive="is-active" ariaCurrentWhenActive="page"

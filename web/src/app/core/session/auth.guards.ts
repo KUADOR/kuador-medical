@@ -2,14 +2,16 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router, UrlTree } from '@angular/router';
 import type { PermissionCode } from '../api/api-types';
 import { AuthRoutes, RETURN_URL_PARAM } from './auth-routes';
-import { AppRoutes, landingUrl } from './navigation';
+import { AuthService, LoginStep } from './auth.service';
+import { AccessRequirement, canAccess, landingUrl } from './navigation';
 import { SessionStore } from './session.store';
 
 /**
- * Requires a session whose password change is not pending, plus every permission given.
- * The API still enforces each permission (ADR-008); this guard only shapes navigation.
+ * Requires a session whose password change is not pending, plus the permissions of the active
+ * assignment and the plan module given. The API still enforces each operation (ADR-008); this
+ * guard only shapes navigation.
  */
-export function requirePermissions(...required: PermissionCode[]): CanActivateFn {
+export function requireAccess(requirement: AccessRequirement = {}): CanActivateFn {
   return async (_route, state): Promise<boolean | UrlTree> => {
     const session = inject(SessionStore);
     const router = inject(Router);
@@ -24,15 +26,20 @@ export function requirePermissions(...required: PermissionCode[]): CanActivateFn
     if (session.mustChangePassword()) {
       return router.createUrlTree([AuthRoutes.changePassword]);
     }
-    if (!required.every((code) => session.hasPermission(code))) {
+    if (!canAccess(account, requirement)) {
       return router.createUrlTree([AuthRoutes.forbidden]);
     }
     return true;
   };
 }
 
+/** Shorthand for pages that only need permissions (no plan module). */
+export function requirePermissions(...permissions: PermissionCode[]): CanActivateFn {
+  return requireAccess({ permissions });
+}
+
 /** Any authenticated account that already changed its password. */
-export const authenticatedGuard: CanActivateFn = requirePermissions();
+export const authenticatedGuard: CanActivateFn = requireAccess();
 
 /** Only lets in sessions that must change the password; everyone else goes home or to login. */
 export const pendingPasswordChangeGuard: CanActivateFn = async (): Promise<boolean | UrlTree> => {
@@ -53,17 +60,17 @@ export const homeGuard: CanActivateFn = async (): Promise<UrlTree> => {
   const router = inject(Router);
 
   if (!session.isAuthenticated()) {
-    return router.parseUrl(AppRoutes.status);
+    return router.parseUrl('/status');
   }
   const account = await session.ensureAccount();
   if (!account) {
     session.clear();
-    return router.parseUrl(AppRoutes.status);
+    return router.parseUrl('/status');
   }
   return router.parseUrl(landingUrl(account));
 };
 
-/** Login and signup are only for visitors: an active session goes to its landing page. */
+/** Login, signup and the email links are only for visitors: a session goes to its landing page. */
 export const guestGuard: CanActivateFn = async (): Promise<boolean | UrlTree> => {
   const session = inject(SessionStore);
   const router = inject(Router);
@@ -78,3 +85,14 @@ export const guestGuard: CanActivateFn = async (): Promise<boolean | UrlTree> =>
   }
   return router.parseUrl(landingUrl(account));
 };
+
+/**
+ * Clinic and branch selection pages: only while that login step is pending (in memory, never
+ * stored). A reload or an expired pre-auth token goes back to the login form.
+ */
+export function loginStepGuard(step: LoginStep['status']): CanActivateFn {
+  return (): boolean | UrlTree => {
+    const pending = inject(AuthService).pendingStep();
+    return pending?.status === step ? true : inject(Router).createUrlTree([AuthRoutes.login]);
+  };
+}

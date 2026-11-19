@@ -1,50 +1,98 @@
 // Test-only fixtures, shaped by the generated contract types.
 import type {
-  CurrentAccount,
-  LoginResponse,
+  AuthenticatedResult,
+  BranchSelectionResult,
+  ClinicSelectionResult,
+  CurrentSession,
   PermissionInfo,
   Role,
 } from '../app/core/api/api-types';
 
-export const LOGIN: LoginResponse = {
+export const CLINIC = { id: '00000000-0000-0000-0000-0000000000a1', name: 'Test Clinic' };
+export const OTHER_CLINIC = { id: '00000000-0000-0000-0000-0000000000a2', name: 'Other Dental' };
+export const MAIN_BRANCH = { id: '00000000-0000-0000-0000-0000000000b1', name: 'Main branch' };
+export const NORTH_BRANCH = { id: '00000000-0000-0000-0000-0000000000b2', name: 'North branch' };
+
+export const LOGIN: AuthenticatedResult = {
+  status: 'AUTHENTICATED',
   accessToken: 'test-token',
   tokenType: 'Bearer',
-  expiresIn: 1800,
+  expiresIn: 900,
+  refreshToken: 'test-refresh',
+  refreshExpiresIn: 604800,
   scope: 'TENANT',
+  clinic: CLINIC,
+  branch: MAIN_BRANCH,
   mustChangePassword: false,
 };
 
-export const ACCOUNT: CurrentAccount = {
+export const REFRESHED: AuthenticatedResult = {
+  ...LOGIN,
+  accessToken: 'refreshed-token',
+  refreshToken: 'refreshed-refresh',
+};
+
+export const CLINIC_SELECTION: ClinicSelectionResult = {
+  status: 'CLINIC_SELECTION_REQUIRED',
+  preAuthToken: 'pre-auth-token',
+  preAuthExpiresIn: 300,
+  clinics: [CLINIC, OTHER_CLINIC],
+};
+
+export const BRANCH_SELECTION: BranchSelectionResult = {
+  status: 'BRANCH_SELECTION_REQUIRED',
+  preAuthToken: 'pre-auth-token-2',
+  preAuthExpiresIn: 300,
+  clinic: CLINIC,
+  branches: [MAIN_BRANCH, NORTH_BRANCH],
+};
+
+export const ACCOUNT: CurrentSession = {
   accountId: '00000000-0000-0000-0000-000000000001',
+  kind: 'STAFF',
   displayName: 'Test Owner',
   scope: 'TENANT',
-  tenant: { id: '00000000-0000-0000-0000-0000000000a1', name: 'Test Clinic' },
+  clinic: CLINIC,
+  activeBranch: MAIN_BRANCH,
+  availableBranches: [MAIN_BRANCH],
   roles: ['OWNER', 'ADMIN'],
   permissions: ['roles.read', 'roles.create'],
+  enabledModules: ['identity', 'patients'],
   mustChangePassword: false,
 };
 
-export const FULL_ACCOUNT: CurrentAccount = {
+export const MULTI_BRANCH_ACCOUNT: CurrentSession = {
+  ...ACCOUNT,
+  availableBranches: [MAIN_BRANCH, NORTH_BRANCH],
+};
+
+export const FULL_ACCOUNT: CurrentSession = {
   ...ACCOUNT,
   permissions: ['roles.read', 'roles.create', 'roles.update', 'roles.delete'],
 };
 
-export const READ_ONLY_ACCOUNT: CurrentAccount = {
+export const READ_ONLY_ACCOUNT: CurrentSession = {
   ...ACCOUNT,
   roles: ['Reception'],
   permissions: ['roles.read'],
 };
 
-export const PLATFORM_LOGIN: LoginResponse = {
+export const PLATFORM_LOGIN: AuthenticatedResult = {
   ...LOGIN,
   scope: 'PLATFORM',
+  clinic: undefined,
+  branch: null,
   mustChangePassword: true,
 };
 
-export const SUPER_ADMIN: CurrentAccount = {
+export const SUPER_ADMIN: CurrentSession = {
   accountId: '00000000-0000-0000-0000-0000000000ff',
+  kind: 'STAFF',
   displayName: 'Kuador',
   scope: 'PLATFORM',
+  activeBranch: null,
+  availableBranches: [],
+  enabledModules: [],
   roles: ['SUPER_ADMIN'],
   permissions: ['platform.permissions.read'],
   mustChangePassword: false,
