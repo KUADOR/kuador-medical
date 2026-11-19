@@ -2,12 +2,15 @@
 
 Angular (standalone components, signals, zoneless) client of the Medical Kuador API.
 It is built contract-first (ADR-011): types come from `contracts/identity.openapi.yaml` (status, clinic
-signup, password change, roles, platform catalog) and `contracts/user-registration.openapi.yaml` (MEDK-12:
-authentication and session) and, while the API is not ready, it runs against Prism mocks of both.
+signup, password change, platform catalog) and `contracts/user-registration.openapi.yaml` (MEDK-12:
+authentication and session, staff users, branch role assignments and roles) and, while the API is not ready,
+it runs against Prism mocks of both.
 
 > Authentication and session already follow `user-registration.openapi.yaml` (MEDK-20): multi-clinic login,
 > refresh tokens, `GET /me` with branches and plan modules. Until the api implements it (MEDK-14 to MEDK-16),
 > log in with `npm run dev:mock`; `npm start` against the current api only serves the identity operations.
+> Staff users, assignments and roles (MEDK-21) also follow the target contract (`Role.clinical`, `systemKey`,
+> `PermissionInfo.module`); against the current api roles still list, but saving needs MEDK-14.
 
 | Build | Test | Run |
 |---|---|---|
@@ -21,7 +24,7 @@ Requires Node.js `^22.22.3` or `^24.15.0`.
 |---|---|
 | `npm start` | Dev server on `http://localhost:4200`, proxying `/api` to the real API on `http://localhost:8080` (`proxy.conf.json`). |
 | `npm run mock` | Prism mocks: `identity.openapi.yaml` on `http://localhost:4010` and `user-registration.openapi.yaml` on `http://localhost:4011`. |
-| `npm run start:mock` | Dev server proxying `/api/v1` to the mocks, stripping the prefix (`proxy.mock.conf.json`): `/auth/*` (except `/auth/password`), `/me`, `/public/*`, `/patients` and `/patient-registration-settings` go to 4011, the rest to 4010. |
+| `npm run start:mock` | Dev server proxying `/api/v1` to the mocks, stripping the prefix (`proxy.mock.conf.json`): `/auth/*` (except `/auth/password`), `/me`, `/public/*`, `/patients`, `/patient-registration-settings`, `/staff-users`, `/roles` and `/permissions` go to 4011, the rest to 4010. |
 | `npm run dev:mock` | `mock` and `start:mock` together. |
 | `npm run api:generate` | Regenerates `identity.schema.d.ts` and `user-registration.schema.d.ts` in `src/app/core/api/`. |
 | `npm run api:check` | Fails if the generated types are out of date with the contracts. |
@@ -58,7 +61,9 @@ src/app/
     errors/     ERROR_MESSAGES: every contract error `code` → Spanish message
     forms/      Spanish validation messages, server field errors on controls, focus helpers
     notice/     One-shot confirmation message carried across a navigation
-    roles/      RolesService (/roles, /permissions) and Spanish permission labels
+    roles/      RolesService (/roles, /permissions), isOwnerRole, Spanish permission and module labels
+    staff/      StaffUsersService (/staff-users, invitation, disable, enable, role-assignments) with
+                client id + Idempotency-Key on creation
     patients/   PatientsService (/patients, guardian links, consents, account invitation,
                 /me/guardian-links, /patient-registration-settings; creations send Idempotency-Key)
                 and Spanish labels, minor-age check and date formatting
@@ -71,7 +76,11 @@ src/app/
                       forgot / reset password, invitation, email verification, patient self-registration
                       and the header branch switcher
     change-password/  Mandatory password change; the only usable page while it is pending
-    roles/            Role list (delete with confirmation) and role form (create, edit, read-only view)
+    staff-users/      Staff list (search, status, branch, paging), invitation form and staff record
+                      (personal data, roles per branch, resend invitation, disable, enable);
+                      role-assignments/ holds the per-branch editor and its pure rules
+    roles/            Role list (delete with confirmation) and role editor over the catalog grouped by module
+                      (clinical flag; permissions the person lacks cannot be added)
     patients/         Patient list and search, registration (consent, legal guardian of minors) and
                       edit, detail (consent, account invitation, guardian links and history),
                       self-registration switch and public link, adult patient authorized contacts
@@ -106,9 +115,12 @@ src/testing/    Test-only fixtures and app harness (real routes, guards and inte
 | `/reset-password#t=…`, `/invitation#t=…`, `/verify-email#t=…` | — | Targets of the email links. |
 | `/clinics/:publicCode/register` | `guestGuard` | Patient self-registration; 404 from the API means disabled. |
 | `/change-password` | `pendingPasswordChangeGuard` | Only while `mustChangePassword` is true. |
-| `/roles` | `roles.read` + module `identity` | Create / edit / delete buttons follow `roles.create`, `roles.update`, `roles.delete`. |
+| `/staff` | `identity.users.read` + module `identity` | "Invitar persona" needs `identity.users.manage` + `roles.read`. |
+| `/staff/new` | `identity.users.read` + `identity.users.manage` + `roles.read` + module `identity` | Same role in every branch (default) or one per branch; professional registration required for clinical roles; OWNER offered only to an OWNER, for every branch. |
+| `/staff/:id` | `identity.users.read` + module `identity` | Data editable with `identity.users.manage`, roles with `identity.assignments.manage` + `roles.read`, access actions with `identity.users.manage`. The own record is read-only. |
+| `/roles` | `roles.read` + module `identity` | Create / edit / delete buttons follow `roles.create`, `roles.update`, `roles.delete`. OWNER and ADMIN are never deletable. |
 | `/roles/new` | `roles.read` + `roles.create` + module `identity` | |
-| `/roles/:id` | `roles.read` + module `identity` | Read-only for system roles (OWNER, ADMIN) or without `roles.update`. |
+| `/roles/:id` | `roles.read` + module `identity` | Read-only for OWNER, for ADMIN unless the person is OWNER, and without `roles.update`. |
 | `/patients` | `patients.read` + module `patients` | "Registrar paciente" follows `patients.register`. |
 | `/patients/new` | `patients.register` + module `patients` | Minors (by the browser date) require a legal guardian; the API decides with the clinic time zone. |
 | `/patients/:id` | `patients.read` + module `patients` | Edit (`patients.edit`), consent and invitation (`patients.register`), guardian links (`patients.guardians.manage`). |
@@ -127,6 +139,12 @@ change is pending. With more than one branch in `availableBranches`, the header 
 reception account with two branches (the header shows the branch selector). `/invitation#t=one-time-example-token`
 shows the example invitation. The clinic selection step can be seen with
 `curl -H 'Prefer: example=clinicSelection' -X POST …/api/v1/auth/login`.
+
+For staff open `http://localhost:4200/staff` after logging in: the list, `/staff/new` and
+`/staff/1d2c3b4a-5f6e-4789-8a9b-0c1d2e3f4a5b` use the contract examples. Errors can be forced with `Prefer`
+(e.g. `Prefer: code=409` on `POST /staff-users` for `EMAIL_TAKEN`). The branches offered in the assignment
+editor are the `availableBranches` of `GET /me` plus those where the user already has a role (the contract has
+no branch list).
 
 For the identity flows open `http://localhost:4200/signup`. Prism answers with the contract examples, so the
 signup logs in as the example owner, `POST /roles` returns the example role and `/roles/{id}` shows OWNER

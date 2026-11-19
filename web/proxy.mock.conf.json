@@ -3,19 +3,25 @@
     "target": "http://localhost:4010",
     "secure": false,
     "changeOrigin": true,
-    "pathRewrite": { "^/api/v1": "" }
+    "pathRewrite": {
+      "^/api/v1": ""
+    }
   },
   "/api/v1/auth": {
     "target": "http://localhost:4011",
     "secure": false,
     "changeOrigin": true,
-    "pathRewrite": { "^/api/v1": "" }
+    "pathRewrite": {
+      "^/api/v1": ""
+    }
   },
   "/api/v1/me": {
     "target": "http://localhost:4011",
     "secure": false,
     "changeOrigin": true,
-    "pathRewrite": { "^/api/v1": "" }
+    "pathRewrite": {
+      "^/api/v1": ""
+    }
   },
   "/api/v1/patients": {
     "target": "http://localhost:4011",
@@ -33,12 +39,40 @@
     "target": "http://localhost:4011",
     "secure": false,
     "changeOrigin": true,
-    "pathRewrite": { "^/api/v1": "" }
+    "pathRewrite": {
+      "^/api/v1": ""
+    }
+  },
+  "/api/v1/staff-users": {
+    "target": "http://localhost:4011",
+    "secure": false,
+    "changeOrigin": true,
+    "pathRewrite": {
+      "^/api/v1": ""
+    }
+  },
+  "/api/v1/roles": {
+    "target": "http://localhost:4011",
+    "secure": false,
+    "changeOrigin": true,
+    "pathRewrite": {
+      "^/api/v1": ""
+    }
+  },
+  "/api/v1/permissions": {
+    "target": "http://localhost:4011",
+    "secure": false,
+    "changeOrigin": true,
+    "pathRewrite": {
+      "^/api/v1": ""
+    }
   },
   "/api/v1": {
     "target": "http://localhost:4010",
     "secure": false,
     "changeOrigin": true,
-    "pathRewrite": { "^/api/v1": "" }
+    "pathRewrite": {
+      "^/api/v1": ""
+    }
   }
 }

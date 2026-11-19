@@ -1,0 +1,134 @@
+<section class="page page--wide" aria-labelledby="staff-title">
+  <div class="page__header">
+    <div>
+      <h1 id="staff-title">Personal</h1>
+      @if (clinicName(); as clinic) {
+        <p class="hint">Personal de {{ clinic }}, sus roles por sucursal y su acceso.</p>
+      }
+    </div>
+    @if (canInvite()) {
+      <a class="button" [routerLink]="newLink" data-testid="new-staff-user">Invitar persona</a>
+    }
+  </div>
+
+  <div aria-live="polite">
+    @if (notice(); as message) {
+      <p class="alert alert--success" role="status" data-testid="notice">{{ message }}</p>
+    }
+  </div>
+
+  <form
+    class="form filters"
+    [formGroup]="filters"
+    (ngSubmit)="search()"
+    role="search"
+    aria-label="Buscar personal"
+  >
+    <div class="field">
+      <label for="staff-q">Nombre o correo</label>
+      <input id="staff-q" type="text" formControlName="q" maxlength="100" autocomplete="off" />
+    </div>
+    <div class="field">
+      <label for="staff-status">Estado</label>
+      <select id="staff-status" formControlName="status">
+        <option value="">Todos</option>
+        @for (status of statuses; track status) {
+          <option [value]="status">{{ statusLabels[status] }}</option>
+        }
+      </select>
+    </div>
+    @if (branches().length > 1) {
+      <div class="field">
+        <label for="staff-branch">Sucursal</label>
+        <select id="staff-branch" formControlName="branchId">
+          <option value="">Todas</option>
+          @for (branch of branches(); track branch.id) {
+            <option [value]="branch.id">{{ branch.name }}</option>
+          }
+        </select>
+      </div>
+    }
+    <div class="actions">
+      <button type="submit" class="button">Buscar</button>
+      <button type="button" class="button button--secondary" (click)="clearFilters()">
+        Limpiar
+      </button>
+    </div>
+  </form>
+
+  <div [attr.aria-busy]="state().kind === 'loading'">
+    @switch (state().kind) {
+      @case ('loading') {
+        <p class="hint" aria-live="polite">Cargando personal…</p>
+      }
+      @case ('failed') {
+        <p class="alert" role="alert" data-testid="load-error">{{ loadFailure() }}</p>
+        <div class="actions">
+          <button type="button" class="button" (click)="load()">Volver a intentar</button>
+        </div>
+      }
+      @default {
+        @if (users().length === 0) {
+          <p class="hint" data-testid="empty">No hay personas que coincidan con la búsqueda.</p>
+        } @else {
+          <div class="table-wrapper">
+            <table class="table">
+              <caption class="visually-hidden">
+                Personal de la clínica
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Nombre</th>
+                  <th scope="col">Correo</th>
+                  <th scope="col">Puesto</th>
+                  <th scope="col">Roles por sucursal</th>
+                  <th scope="col">Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (user of users(); track user.id) {
+                  <tr data-testid="staff-row">
+                    <th scope="row">
+                      <a [routerLink]="[staffLink, user.id]">{{ fullName(user) }}</a>
+                    </th>
+                    <td>{{ user.email }}</td>
+                    <td>{{ user.jobTitle }}</td>
+                    <td>{{ describeAssignments(user.roleAssignments) }}</td>
+                    <td>
+                      <span class="badge" data-testid="status">{{
+                        statusLabels[user.status]
+                      }}</span>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+        @if (range(); as pages) {
+          <nav class="pagination" aria-label="Páginas del personal">
+            <p class="hint" data-testid="range">{{ pages.text }}</p>
+            <div class="actions">
+              <button
+                type="button"
+                class="button button--secondary"
+                [disabled]="!pages.hasPrevious"
+                (click)="goTo(-1)"
+              >
+                Anterior
+              </button>
+              <button
+                type="button"
+                class="button button--secondary"
+                [disabled]="!pages.hasNext"
+                (click)="goTo(1)"
+              >
+                Siguiente
+              </button>
+            </div>
+          </nav>
+        }
+      }
+    }
+  </div>
+</section>

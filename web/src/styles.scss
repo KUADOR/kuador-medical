@@ -96,6 +96,10 @@ h2 {
   max-width: 48rem;
 }
 
+.page--wide {
+  max-width: 72rem;
+}
+
 .page--narrow {
   max-width: 28rem;
   margin-inline: auto;
@@ -326,6 +330,45 @@ a.button {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+// Radio buttons stacked one per line (e.g. the assignment mode).
+.radio-group {
+  display: grid;
+  gap: var(--space-1);
+}
+
+// Key-value details of a record (e.g. a staff user).
+.details {
+  display: grid;
+  grid-template-columns: minmax(8rem, max-content) 1fr;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+
+  dt {
+    font-weight: 600;
+  }
+
+  dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+// Filters above a list: they wrap on narrow screens.
+.filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  align-items: end;
+  gap: var(--space-3);
+}
+
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
 }
 
 // Clinic and branch choices of the login (one large button per option).

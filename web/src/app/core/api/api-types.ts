@@ -3,11 +3,11 @@
 //
 // - identity.schema.d.ts (contracts/identity.openapi.yaml): operations the api serves today
 //   that the user registration contract does not replace (status, clinic signup, password
-//   change, roles, platform catalog).
+//   change, platform catalog).
 // - user-registration.schema.d.ts (contracts/user-registration.openapi.yaml): target contract
 //   of MEDK-12. Authentication and session (login, clinic and branch selection, refresh,
 //   logout, password reset, invitations, email verification, switch-branch, GET /me and
-//   patient self-registration) use it.
+//   patient self-registration), staff users, branch role assignments and roles use it.
 import type { components as IdentityComponents, paths as IdentityPaths } from './identity.schema';
 import type {
   components as RegistrationComponents,
@@ -21,15 +21,11 @@ type Registration = RegistrationComponents['schemas'];
 export type SystemInfo = Schemas['SystemInfo'];
 export type HealthStatus = Schemas['HealthStatus'];
 export type PermissionScope = Schemas['PermissionScope'];
-export type PermissionInfo = Schemas['PermissionInfo'];
+/** Entry of the whole platform catalog (GET /platform/permissions); it carries no module. */
+export type PlatformPermissionInfo = Schemas['PermissionInfo'];
 export type ChangePasswordRequest = Schemas['ChangePasswordRequest'];
 export type TenantSignupRequest = Schemas['TenantSignupRequest'];
 export type TenantSignupResponse = Schemas['TenantSignupResponse'];
-export type Role = Schemas['Role'];
-export type CreateRoleRequest = Schemas['CreateRoleRequest'];
-export type UpdateRoleRequest = Schemas['UpdateRoleRequest'];
-/** Permission code as the identity role operations carry it (free string in that contract). */
-export type RolePermissionCode = Schemas['PermissionCode'];
 
 // ---------------------------------------------------------------- user registration contract
 // Errors and permission codes come from the target contract: it is a superset of identity.
@@ -57,6 +53,20 @@ export type ClinicSelectionResult = Registration['ClinicSelectionResult'];
 export type BranchSelectionResult = Registration['BranchSelectionResult'];
 export type CurrentSession = Registration['CurrentSession'];
 export type SelfRegistrationRequest = Registration['SelfRegistrationRequest'];
+// Roles and permission catalog of the clinic.
+export type PermissionInfo = Registration['PermissionInfo'];
+export type Role = Registration['Role'];
+export type RoleSummary = Registration['RoleSummary'];
+export type CreateRoleRequest = Registration['CreateRoleRequest'];
+export type UpdateRoleRequest = Registration['UpdateRoleRequest'];
+// Staff users and their branch role assignments.
+export type AccountStatus = Registration['AccountStatus'];
+export type StaffUser = Registration['StaffUser'];
+export type StaffUserPage = Registration['StaffUserPage'];
+export type CreateStaffUserRequest = Registration['CreateStaffUserRequest'];
+export type UpdateStaffUserRequest = Registration['UpdateStaffUserRequest'];
+export type RoleAssignmentsRequest = Registration['RoleAssignmentsRequest'];
+export type RoleAssignment = Registration['RoleAssignment'];
 
 // Patients, guardians and self-registration settings (MEDK-22).
 export type Patient = Registration['Patient'];
@@ -82,8 +92,6 @@ export const ApiPaths = {
   systemInfo: '/system/info',
   changePassword: '/auth/password',
   signup: '/tenants/signup',
-  permissions: '/permissions',
-  roles: '/roles',
   platformPermissions: '/platform/permissions',
 } as const satisfies Record<string, keyof IdentityPaths>;
 
@@ -101,6 +109,13 @@ export const SessionPaths = {
   emailVerification: '/auth/email-verification/confirm',
   switchBranch: '/auth/switch-branch',
   me: '/me',
+} as const satisfies Record<string, keyof RegistrationPaths>;
+
+/** Paths of the user registration contract for staff users, assignments and roles. */
+export const ClinicPaths = {
+  permissions: '/permissions',
+  roles: '/roles',
+  staffUsers: '/staff-users',
 } as const satisfies Record<string, keyof RegistrationPaths>;
 
 /**
@@ -123,6 +138,21 @@ export const PUBLIC_SESSION_PATHS: readonly string[] = [
 /** Path of a single role (GET, PUT, DELETE /roles/{id}). */
 export function rolePath(id: string): `/roles/${string}` {
   return `/roles/${encodeURIComponent(id)}`;
+}
+
+/** Path of a single staff user (GET, PATCH /staff-users/{id}). */
+export function staffUserPath(id: string): `/staff-users/${string}` {
+  return `/staff-users/${encodeURIComponent(id)}`;
+}
+
+/** Actions on a staff user: resend invitation, disable, enable and replace role assignments. */
+export type StaffUserAction = 'invitation' | 'disable' | 'enable' | 'role-assignments';
+
+export function staffUserActionPath(
+  id: string,
+  action: StaffUserAction,
+): `/staff-users/${string}/${StaffUserAction}` {
+  return `/staff-users/${encodeURIComponent(id)}/${action}`;
 }
 
 /** Paths of the user registration contract used by the patient pages (MEDK-22). */
