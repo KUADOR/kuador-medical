@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.kuador.medical.ContractSchema;
 import com.kuador.medical.IdentityApi;
 import com.kuador.medical.TestcontainersConfiguration;
+import com.kuador.medical.identity.Permission;
+import com.kuador.medical.identity.PermissionScope;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -29,6 +31,9 @@ import tools.jackson.databind.json.JsonMapper;
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
 class SignupIT {
+
+    private static final List<String> TENANT_PERMISSION_CODES =
+            Permission.ofScope(PermissionScope.TENANT).stream().map(Permission::code).toList();
 
     @Autowired
     private MockMvcTester mvc;
@@ -78,7 +83,7 @@ class SignupIT {
         assertThat(me.get("tenant")).isEqualTo(Map.of("id", tenantId.toString(), "name", "Clinica Sur"));
         assertThat((List<Object>) me.get("roles")).containsExactlyInAnyOrder("OWNER", "ADMIN");
         assertThat((List<Object>) me.get("permissions"))
-                .containsExactlyInAnyOrder("roles.read", "roles.create", "roles.update", "roles.delete");
+                .containsExactlyInAnyOrderElementsOf(TENANT_PERMISSION_CODES);
     }
 
     @Test
@@ -88,7 +93,7 @@ class SignupIT {
         List<String> codes = jdbc.queryForList(
                 "select distinct permission_code from role_permission where tenant_id = ?", String.class, tenantId);
 
-        assertThat(codes).containsExactlyInAnyOrder("roles.read", "roles.create", "roles.update", "roles.delete");
+        assertThat(codes).containsExactlyInAnyOrderElementsOf(TENANT_PERMISSION_CODES);
     }
 
     @Test

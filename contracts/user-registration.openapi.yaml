@@ -1,0 +1,3351 @@
+openapi: 3.1.0
+info:
+  title: Medical Kuador User Registration API
+  version: 0.2.0
+  summary: Authentication, session, staff, roles, patients and self-registration (MEDK-12).
+  description: |
+    Contract-first definition (ADR-011) of the user registration epic (MEDK-12):
+    multi-clinic login, branch-scoped sessions, staff invitations, clinic roles
+    over the fixed permission catalog, patient registration with consent,
+    guardians of minors, adult patient links and optional self-registration.
+
+    This contract is the **target** for these operations. Overlapping operations of
+    `identity.openapi.yaml` (`/auth/login`, `/me`, `/permissions`, `/roles`) stay
+    there while they are the implemented version; the task that implements each
+    operation here removes it from `identity.openapi.yaml` (see `contracts/README.md`).
+
+    Cross-cutting rules:
+
+    - **Tenant from the token only (ADR-007).** No request carries a tenant
+      identifier. The clinic and the active branch are resolved from the access token.
+    - **One account per clinic (ADR-012).** The same email may exist in several
+      clinics as independent accounts. Login lists only the clinics where the
+      password matched.
+    - **Branch-scoped permissions (ADR-013).** Every staff session has an active
+      branch; effective permissions are those of the user + branch + role
+      assignment, resolved on every request.
+    - **Explicit permission, denied by default (ADR-008).** Every operation states
+      its required permission in `x-required-permission` (`public`, `authenticated`
+      or a permission code). Public operations are also marked `x-public: true` and
+      have no security requirement.
+    - **One-time tokens (ADR-014).** Invitation, password reset and email
+      verification tokens travel only in request bodies, never in paths or query
+      strings, so they never reach access logs.
+    - **Idempotent creations.** Creation requests accept an `Idempotency-Key` header
+      and an optional client-generated `id` (UUID), in preparation for offline mode.
+      Replaying the same key with the same body returns the original response;
+      reusing it with a different body responds `409` (`IDEMPOTENCY_KEY_REUSED`).
+      A client `id` already used by another resource responds `409`
+      (`RESOURCE_ID_TAKEN`).
+    - **Cross-tenant resources** respond `404` (`NOT_FOUND`); their existence is
+      never revealed.
+    - **Generic authentication errors.** Wrong email, wrong password, disabled or
+      unknown accounts all respond `INVALID_CREDENTIALS`; password reset always
+      responds `202`.
+    - **Errors** use Problem Details (RFC 9457) with a stable `code`; clients
+      translate the `code` into a user-facing message in Spanish.
+    - **Examples** use fictitious data only.
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Kuador-Proprietary
+servers:
+  - url: /api/v1
+    description: Same origin as the client (local, staging and production).
+tags:
+  - name: Auth
+    description: Login, clinic and branch selection, tokens, password reset, invitations and email verification.
+  - name: Session
+    description: Current session and branch switching.
+  - name: Staff
+    description: Staff users of the current clinic and their branch role assignments.
+  - name: Roles
+    description: Roles of the current clinic and the fixed permission catalog.
+  - name: Patients
+    description: Administrative patient registration, consent and guardians.
+  - name: Adult patient
+    description: Links an adult patient authorizes on their own account.
+  - name: Self-registration
+    description: Optional patient self-registration, enabled per clinic.
+security:
+  - bearerAuth: []
+paths:
+  # ---------------------------------------------------------------- Auth (public)
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      summary: Log in with email and password
+      description: |
+        Verifies the password against every active account with that email across
+        clinics (ADR-012) and returns one of three results:
+
+        - `AUTHENTICATED`: the password matched a single clinic with a single branch
+          (or the platform account); tokens are issued.
+        - `CLINIC_SELECTION_REQUIRED`: the password matched several clinics; only those
+          clinics are listed, with a short-lived `preAuthToken`.
+        - `BRANCH_SELECTION_REQUIRED`: one clinic matched and the account has several
+          branch assignments.
+
+        Wrong email or password, and disabled accounts, respond the same `401`.
+        After 5 failures in 15 minutes per email + IP or per account (configurable)
+        the attempt responds `429`.
+      x-required-permission: public
+      x-public: true
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              login:
+                value:
+                  email: jane.doe@example.com
+                  password: a-long-example-passphrase
+      responses:
+        '200':
+          $ref: '#/components/responses/LoginResult'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/InvalidCredentials'
+        '429':
+          $ref: '#/components/responses/TooManyAttempts'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /auth/login/clinic:
+    post:
+      tags: [Auth]
+      operationId: selectLoginClinic
+      summary: Choose the clinic after login
+      description: |
+        Completes a `CLINIC_SELECTION_REQUIRED` login. `clinicId` must be one of the
+        clinics listed in that response. Returns `AUTHENTICATED` or
+        `BRANCH_SELECTION_REQUIRED`. An expired, used or foreign `preAuthToken`, or a
+        clinic that was not listed, responds `401` (`INVALID_SESSION_TOKEN`).
+      x-required-permission: public
+      x-public: true
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SelectClinicRequest'
+            examples:
+              select:
+                value:
+                  preAuthToken: pre-auth-example-token
+                  clinicId: 5b0c8f2e-3a51-4d6e-9f0a-1c2b3d4e5f60
+      responses:
+        '200':
+          $ref: '#/components/responses/LoginResult'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/InvalidSessionToken'
+        '429':
+          $ref: '#/components/responses/TooManyAttempts'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /auth/login/branch:
+    post:
+      tags: [Auth]
+      operationId: selectLoginBranch
+      summary: Choose the branch after login
+      description: |
+        Completes a `BRANCH_SELECTION_REQUIRED` login and issues tokens bound to the
+        chosen branch. A branch without an assignment for the account responds `403`
+        (`BRANCH_NOT_ASSIGNED`).
+      x-required-permission: public
+      x-public: true
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SelectBranchRequest'
+            examples:
+              select:
+                value:
+                  preAuthToken: pre-auth-example-token
+                  branchId: 2f6d1c0a-8b3e-4a7d-9c5f-6e1b2a3c4d5e
+      responses:
+        '200':
+          description: Authenticated in the chosen branch.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthenticatedResult'
+              examples:
+                authenticated:
+                  $ref: '#/components/examples/Authenticated'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/InvalidSessionToken'
+        '403':
+          $ref: '#/components/responses/BranchNotAssigned'
+        '429':
+          $ref: '#/components/responses/TooManyAttempts'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      operationId: refreshTokens
+      summary: Rotate the refresh token
+      description: |
+        Exchanges a refresh token for a new access token and a new refresh token
+        (rotation). The used refresh token is revoked. A revoked, expired or unknown
+        refresh token, or one of a disabled account, responds `401`
+        (`INVALID_SESSION_TOKEN`); reuse of a revoked token revokes the whole session.
+      x-required-permission: public
+      x-public: true
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+            examples:
+              refresh:
+                value:
+                  refreshToken: refresh-example-token
+      responses:
+        '200':
+          description: New tokens for the same clinic and branch.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthenticatedResult'
+              examples:
+                authenticated:
+                  $ref: '#/components/examples/Authenticated'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/InvalidSessionToken'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      summary: Log out
+      description: |
+        Revokes the given refresh token. Always responds `204`, even for unknown or
+        already revoked tokens. The access token stays valid until it expires (15
+        minutes by default).
+      x-required-permission: public
+      x-public: true
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+            examples:
+              logout:
+                value:
+                  refreshToken: refresh-example-token
+      responses:
+        '204':
+          description: Logged out.
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /auth/password-reset/request:
+    post:
+      tags: [Auth]
+      operationId: requestPasswordReset
+      summary: Request a password reset link
+      description: |
+        Always responds `202`, whether or not the email exists. For each active
+        account with that email, one email is sent per clinic; each link is valid
+        only for that clinic, once, for 30 minutes (configurable). The link opens the
+        app (App Links / Universal Links) or the web, with the token in the URL
+        fragment (ADR-014).
+      x-required-permission: public
+      x-public: true
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+            examples:
+              request:
+                value:
+                  email: jane.doe@example.com
+      responses:
+        '202':
+          description: Accepted. The response never reveals whether the email exists.
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyAttempts'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /auth/password-reset/confirm:
+    post:
+      tags: [Auth]
+      operationId: confirmPasswordReset
+      summary: Set a new password with a reset token
+      description: |
+        Sets the new password of the account the token belongs to (a single clinic)
+        and revokes its refresh tokens. Expired, used or unknown tokens respond `400`
+        (`ONE_TIME_TOKEN_INVALID`).
+      x-required-permission: public
+      x-public: true
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirmRequest'
+            examples:
+              confirm:
+                value:
+                  token: one-time-example-token
+                  newPassword: a-brand-new-passphrase
+      responses:
+        '204':
+          description: Password changed.
+        '400':
+          $ref: '#/components/responses/OneTimeTokenError'
+        '429':
+          $ref: '#/components/responses/TooManyAttempts'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /auth/invitations/preview:
+    post:
+      tags: [Auth]
+      operationId: previewInvitation
+      summary: Preview an invitation
+      description: |
+        Returns the clinic name and the masked email of a valid invitation, so the
+        person can confirm it before choosing a password. The token travels in the
+        body, not in the path (ADR-014). Expired, used or unknown tokens respond `400`
+        (`ONE_TIME_TOKEN_INVALID`); the administrator can resend the invitation.
+      x-required-permission: public
+      x-public: true
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OneTimeTokenRequest'
+            examples:
+              preview:
+                value:
+                  token: one-time-example-token
+      responses:
+        '200':
+          description: Valid invitation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitationPreview'
+              examples:
+                staff:
+                  value:
+                    clinicName: Example Clinic
+                    maskedEmail: j***@example.com
+                    kind: STAFF
+                    expiresAt: '2030-01-04T15:00:00Z'
+        '400':
+          $ref: '#/components/responses/OneTimeTokenError'
+        '429':
+          $ref: '#/components/responses/TooManyAttempts'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /auth/invitations/accept:
+    post:
+      tags: [Auth]
+      operationId: acceptInvitation
+      summary: Accept an invitation and set the password
+      description: |
+        Activates the invited account (staff, or an adult patient) with the chosen
+        password and logs it in. The token is consumed. Expired, used or unknown
+        tokens respond `400` (`ONE_TIME_TOKEN_INVALID`); a weak password responds
+        `400` (`WEAK_PASSWORD`) without consuming the token.
+      x-required-permission: public
+      x-public: true
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptInvitationRequest'
+            examples:
+              accept:
+                value:
+                  token: one-time-example-token
+                  password: a-long-example-passphrase
+      responses:
+        '200':
+          $ref: '#/components/responses/LoginResult'
+        '400':
+          $ref: '#/components/responses/OneTimeTokenError'
+        '429':
+          $ref: '#/components/responses/TooManyAttempts'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /auth/email-verification/confirm:
+    post:
+      tags: [Auth]
+      operationId: confirmEmailVerification
+      summary: Confirm the email of a self-registered patient
+      description: |
+        Activates the account created by patient self-registration. Expired, used or
+        unknown tokens respond `400` (`ONE_TIME_TOKEN_INVALID`).
+      x-required-permission: public
+      x-public: true
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OneTimeTokenRequest'
+            examples:
+              confirm:
+                value:
+                  token: one-time-example-token
+      responses:
+        '204':
+          description: Email verified; the account can log in.
+        '400':
+          $ref: '#/components/responses/OneTimeTokenError'
+        '429':
+          $ref: '#/components/responses/TooManyAttempts'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ---------------------------------------------------------------- Session
+  /auth/switch-branch:
+    post:
+      tags: [Session]
+      operationId: switchBranch
+      summary: Switch the active branch
+      description: |
+        Issues new tokens bound to another branch of the same clinic where the account
+        has an assignment (ADR-013). The previous refresh token is revoked. A branch
+        without an assignment responds `403` (`BRANCH_NOT_ASSIGNED`).
+      x-required-permission: authenticated
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SwitchBranchRequest'
+            examples:
+              switch:
+                value:
+                  branchId: 2f6d1c0a-8b3e-4a7d-9c5f-6e1b2a3c4d5e
+                  refreshToken: refresh-example-token
+      responses:
+        '200':
+          description: Tokens for the new branch.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthenticatedResult'
+              examples:
+                authenticated:
+                  $ref: '#/components/examples/Authenticated'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/BranchNotAssigned'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /me:
+    get:
+      tags: [Session]
+      operationId: getCurrentSession
+      summary: Get the current session
+      description: |
+        Returns the account, clinic, active branch, branches available to the
+        account, effective permissions of the active assignment and the modules
+        enabled by the clinic plan. Clients use it to show only the allowed modules;
+        the backend still checks every operation (Constitution VII).
+      x-required-permission: authenticated
+      responses:
+        '200':
+          description: Current session.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentSession'
+              examples:
+                staff:
+                  value:
+                    accountId: 0f1e2d3c-4b5a-4968-8776-655443322110
+                    kind: STAFF
+                    scope: TENANT
+                    displayName: Jane Doe
+                    clinic:
+                      id: 5b0c8f2e-3a51-4d6e-9f0a-1c2b3d4e5f60
+                      name: Example Clinic
+                    activeBranch:
+                      id: 2f6d1c0a-8b3e-4a7d-9c5f-6e1b2a3c4d5e
+                      name: Main branch
+                    availableBranches:
+                      - id: 2f6d1c0a-8b3e-4a7d-9c5f-6e1b2a3c4d5e
+                        name: Main branch
+                      - id: 8e7d6c5b-4a39-4281-9f0e-d1c2b3a49586
+                        name: North branch
+                    roles: [Reception]
+                    permissions: [patients.read, patients.register, patients.edit, patients.guardians.manage]
+                    enabledModules: [identity, patients]
+                    mustChangePassword: false
+                patient:
+                  value:
+                    accountId: 3c2b1a09-8f7e-4d6c-9b5a-4f3e2d1c0b9a
+                    kind: PATIENT
+                    scope: TENANT
+                    displayName: John Roe
+                    clinic:
+                      id: 5b0c8f2e-3a51-4d6e-9f0a-1c2b3d4e5f60
+                      name: Example Clinic
+                    activeBranch: null
+                    availableBranches: []
+                    patientId: 6a5b4c3d-2e1f-4a0b-9c8d-7e6f5a4b3c2d
+                    roles: []
+                    permissions: []
+                    enabledModules: [patients]
+                    mustChangePassword: false
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ---------------------------------------------------------------- Staff
+  /staff-users:
+    get:
+      tags: [Staff]
+      operationId: listStaffUsers
+      summary: List staff users of the current clinic
+      x-required-permission: identity.users.read
+      parameters:
+        - name: q
+          in: query
+          description: Case-insensitive search on names and email.
+          schema:
+            type: string
+            maxLength: 100
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/AccountStatus'
+        - name: branchId
+          in: query
+          description: Only users with an assignment in this branch.
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: A page of staff users.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffUserPage'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags: [Staff]
+      operationId: createStaffUser
+      summary: Register a staff user and send the invitation
+      description: |
+        Creates an `INVITED` account in the current clinic with its branch role
+        assignments and emails a one-time invitation valid for 72 hours
+        (configurable). Rules:
+
+        - The email is unique within the clinic (`409 EMAIL_TAKEN`); the same email in
+          another clinic is an independent account.
+        - A clinical role requires `professionalRegistration` (`400 VALIDATION`, field
+          code `REQUIRED`).
+        - The caller must hold, in every target branch, every permission of the
+          assigned role, and only an OWNER assigns OWNER (`403 PRIVILEGE_ESCALATION`).
+        - The plan user limit is checked (`409 PLAN_LIMIT_REACHED`).
+      x-required-permission: identity.users.manage
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateStaffUserRequest'
+            examples:
+              doctor:
+                value:
+                  id: 1d2c3b4a-5f6e-4789-8a9b-0c1d2e3f4a5b
+                  firstNames: Jane
+                  lastNames: Doe
+                  email: jane.doe@example.com
+                  jobTitle: General practitioner
+                  professionalRegistration: REG-0000-EXAMPLE
+                  roleAssignments:
+                    mode: ALL_BRANCHES
+                    roleId: 7c9e6679-7425-40de-944b-e07fc1f90ae7
+      responses:
+        '201':
+          description: Staff user created and invitation sent.
+          headers:
+            Location:
+              $ref: '#/components/headers/Location'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffUser'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ForbiddenOrEscalation'
+        '409':
+          description: |
+            Email already used in the clinic (`EMAIL_TAKEN`), plan user limit reached
+            (`PLAN_LIMIT_REACHED`), reused idempotency key (`IDEMPOTENCY_KEY_REUSED`)
+            or client id already taken (`RESOURCE_ID_TAKEN`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                emailTaken:
+                  value:
+                    type: about:blank
+                    title: Conflict
+                    status: 409
+                    code: EMAIL_TAKEN
+                planLimit:
+                  value:
+                    type: about:blank
+                    title: Conflict
+                    status: 409
+                    code: PLAN_LIMIT_REACHED
+                    detail: The plan allows up to 10 users.
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /staff-users/{id}:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+    get:
+      tags: [Staff]
+      operationId: getStaffUser
+      summary: Get a staff user
+      description: Users of other clinics respond `404`.
+      x-required-permission: identity.users.read
+      responses:
+        '200':
+          description: The staff user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffUser'
+              examples:
+                invited:
+                  $ref: '#/components/examples/StaffUser'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      tags: [Staff]
+      operationId: updateStaffUser
+      summary: Update personal data of a staff user
+      description: |
+        Partial update: only the given fields change. The email is not editable.
+        `version` must match the current version (`409 VERSION_CONFLICT`). Nobody
+        edits their own record through this operation (`409
+        SELF_MODIFICATION_FORBIDDEN`). Removing `professionalRegistration` while a
+        clinical role is assigned responds `400 VALIDATION`.
+      x-required-permission: identity.users.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateStaffUserRequest'
+            examples:
+              jobTitle:
+                value:
+                  jobTitle: Head of reception
+                  version: 3
+      responses:
+        '200':
+          description: Staff user updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffUser'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Stale `version` (`VERSION_CONFLICT`) or own record (`SELF_MODIFICATION_FORBIDDEN`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                versionConflict:
+                  value:
+                    type: about:blank
+                    title: Conflict
+                    status: 409
+                    code: VERSION_CONFLICT
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /staff-users/{id}/invitation:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+    post:
+      tags: [Staff]
+      operationId: resendStaffInvitation
+      summary: Resend the invitation
+      description: |
+        Invalidates previous invitations of the user and sends a new one. An active
+        account responds `409` (`ACCOUNT_ALREADY_ACTIVE`).
+      x-required-permission: identity.users.manage
+      responses:
+        '202':
+          description: New invitation sent.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: The account is already active (`ACCOUNT_ALREADY_ACTIVE`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                active:
+                  value:
+                    type: about:blank
+                    title: Conflict
+                    status: 409
+                    code: ACCOUNT_ALREADY_ACTIVE
+        '429':
+          $ref: '#/components/responses/TooManyAttempts'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /staff-users/{id}/disable:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+    post:
+      tags: [Staff]
+      operationId: disableStaffUser
+      summary: Disable a staff user
+      description: |
+        Denies access immediately (active sessions stop working on their next
+        request) and revokes refresh tokens. Data and history are kept. Disabling
+        oneself (`SELF_MODIFICATION_FORBIDDEN`) or the last OWNER (`LAST_OWNER`)
+        responds `409`; disabling an OWNER requires the caller to be an OWNER (`403
+        PRIVILEGE_ESCALATION`).
+      x-required-permission: identity.users.manage
+      responses:
+        '200':
+          description: Staff user disabled.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffUser'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ForbiddenOrEscalation'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/OwnerProtection'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /staff-users/{id}/enable:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+    post:
+      tags: [Staff]
+      operationId: enableStaffUser
+      summary: Enable a disabled staff user
+      description: |
+        Restores access with the existing assignments. The plan user limit is checked
+        again (`409 PLAN_LIMIT_REACHED`). Enabling oneself responds `409`
+        (`SELF_MODIFICATION_FORBIDDEN`).
+      x-required-permission: identity.users.manage
+      responses:
+        '200':
+          description: Staff user enabled.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffUser'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Plan user limit reached (`PLAN_LIMIT_REACHED`) or own account (`SELF_MODIFICATION_FORBIDDEN`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                planLimit:
+                  value:
+                    type: about:blank
+                    title: Conflict
+                    status: 409
+                    code: PLAN_LIMIT_REACHED
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /staff-users/{id}/role-assignments:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+    put:
+      tags: [Staff]
+      operationId: replaceRoleAssignments
+      summary: Replace the branch role assignments of a staff user
+      description: |
+        Replaces every assignment of the user (ADR-013):
+
+        - `ALL_BRANCHES`: one assignment per existing branch with the same role.
+          Branches created later are not assigned automatically.
+        - `PER_BRANCH`: an explicit list of branch + role (one role per branch).
+
+        The OWNER role is clinic-wide and is assigned with `ALL_BRANCHES` only.
+        Anti-escalation rules: the caller must hold, in each target branch, every
+        permission of the assigned role; only an OWNER assigns or removes OWNER;
+        nobody changes their own assignments; the last OWNER cannot lose the role.
+        A clinical role requires the user's `professionalRegistration`.
+      x-required-permission: identity.assignments.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleAssignmentsRequest'
+            examples:
+              sameRoleEverywhere:
+                value:
+                  mode: ALL_BRANCHES
+                  roleId: 7c9e6679-7425-40de-944b-e07fc1f90ae7
+              perBranch:
+                value:
+                  mode: PER_BRANCH
+                  assignments:
+                    - branchId: 2f6d1c0a-8b3e-4a7d-9c5f-6e1b2a3c4d5e
+                      roleId: 4b3a2c1d-0e9f-4a8b-8c7d-6e5f4a3b2c1d
+                    - branchId: 8e7d6c5b-4a39-4281-9f0e-d1c2b3a49586
+                      roleId: 9f8e7d6c-5b4a-4392-8a1b-0c9d8e7f6a5b
+      responses:
+        '200':
+          description: Current assignments of the user.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RoleAssignment'
+        '400':
+          description: |
+            Malformed request, unknown branch or role (field code `UNKNOWN_BRANCH` or
+            `UNKNOWN_ROLE`), duplicated branch (`DUPLICATE`) or missing professional
+            registration for a clinical role (`REQUIRED`), all as `VALIDATION`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                unknownBranch:
+                  value:
+                    type: about:blank
+                    title: Bad Request
+                    status: 400
+                    code: VALIDATION
+                    errors:
+                      - field: assignments[1].branchId
+                        code: UNKNOWN_BRANCH
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ForbiddenOrEscalation'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/OwnerProtection'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ---------------------------------------------------------------- Roles
+  /permissions:
+    get:
+      tags: [Roles]
+      operationId: listAssignablePermissions
+      summary: List permissions assignable to clinic roles
+      description: Returns the clinic-scoped permissions of the fixed catalog, grouped by module. Platform permissions are never listed.
+      x-required-permission: roles.read
+      responses:
+        '200':
+          description: Clinic-scoped permission catalog.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PermissionInfo'
+              examples:
+                catalog:
+                  value:
+                    - code: identity.users.read
+                      module: identity
+                      scope: TENANT
+                      description: Ver el personal de la clínica
+                    - code: patients.register
+                      module: patients
+                      scope: TENANT
+                      description: Registrar pacientes, su consentimiento e invitarlos a activar su cuenta
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /roles:
+    get:
+      tags: [Roles]
+      operationId: listRoles
+      summary: List the roles of the current clinic
+      description: Returns every role of the clinic, including the protected OWNER and ADMIN.
+      x-required-permission: roles.read
+      responses:
+        '200':
+          description: Roles of the current clinic.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Role'
+              examples:
+                roles:
+                  value:
+                    - id: 7c9e6679-7425-40de-944b-e07fc1f90ae7
+                      name: OWNER
+                      description: Dueño de la clínica
+                      systemKey: OWNER
+                      systemRole: true
+                      clinical: false
+                      permissions: [roles.read, roles.create, roles.update, roles.delete]
+                      version: 0
+                    - id: 4b3a2c1d-0e9f-4a8b-8c7d-6e5f4a3b2c1d
+                      name: Doctor
+                      description: null
+                      systemKey: null
+                      systemRole: false
+                      clinical: true
+                      permissions: [patients.read]
+                      version: 2
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags: [Roles]
+      operationId: createRole
+      summary: Create a role in the current clinic
+      description: |
+        Creates a non-system role from clinic-scoped permissions of the catalog.
+        Names are unique per clinic (case-insensitive). Unknown or platform
+        permissions respond `400` (`VALIDATION`, field code `UNKNOWN_PERMISSION`).
+        The caller can only include permissions they hold (`403
+        PRIVILEGE_ESCALATION`). Audited.
+      x-required-permission: roles.create
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRoleRequest'
+            examples:
+              reception:
+                value:
+                  name: Reception
+                  description: Front desk staff.
+                  clinical: false
+                  permissions: [patients.read, patients.register, patients.edit, patients.guardians.manage]
+      responses:
+        '201':
+          description: Role created.
+          headers:
+            Location:
+              $ref: '#/components/headers/Location'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ForbiddenOrEscalation'
+        '409':
+          description: |
+            Name already used in the clinic (`ROLE_NAME_TAKEN`), reused idempotency key
+            (`IDEMPOTENCY_KEY_REUSED`) or client id already taken (`RESOURCE_ID_TAKEN`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                nameTaken:
+                  value:
+                    type: about:blank
+                    title: Conflict
+                    status: 409
+                    code: ROLE_NAME_TAKEN
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /roles/{id}:
+    parameters:
+      - $ref: '#/components/parameters/RoleId'
+    get:
+      tags: [Roles]
+      operationId: getRole
+      summary: Get a role of the current clinic
+      description: Roles of other clinics respond `404`.
+      x-required-permission: roles.read
+      responses:
+        '200':
+          description: The role.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+              examples:
+                owner:
+                  $ref: '#/components/examples/OwnerRole'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      tags: [Roles]
+      operationId: updateRole
+      summary: Update a role of the current clinic
+      description: |
+        Replaces name, description, clinical flag and permissions. `version` must
+        match (`409 VERSION_CONFLICT`). OWNER is immutable (`409
+        SYSTEM_ROLE_IMMUTABLE`); ADMIN can only be edited by an OWNER (`403
+        PRIVILEGE_ESCALATION`). The caller can only grant permissions they hold and
+        cannot edit a role assigned to themselves (`409
+        SELF_MODIFICATION_FORBIDDEN`). Changes apply to every assigned user on their
+        next request. Audited.
+      x-required-permission: roles.update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRoleRequest'
+            examples:
+              update:
+                value:
+                  name: Reception
+                  description: Front desk and phone staff.
+                  clinical: false
+                  permissions: [patients.read, patients.register]
+                  version: 0
+      responses:
+        '200':
+          description: Role updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/ForbiddenOrEscalation'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: |
+            Name already used (`ROLE_NAME_TAKEN`), stale `version` (`VERSION_CONFLICT`),
+            protected role (`SYSTEM_ROLE_IMMUTABLE`) or own role
+            (`SELF_MODIFICATION_FORBIDDEN`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                systemRole:
+                  value:
+                    type: about:blank
+                    title: Conflict
+                    status: 409
+                    code: SYSTEM_ROLE_IMMUTABLE
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags: [Roles]
+      operationId: deleteRole
+      summary: Delete a role of the current clinic
+      description: |
+        Deletes a non-protected role without assignments. OWNER and ADMIN respond `409`
+        (`SYSTEM_ROLE_IMMUTABLE`); roles with assignments respond `409`
+        (`ROLE_IN_USE`). Audited.
+      x-required-permission: roles.delete
+      responses:
+        '204':
+          description: Role deleted.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Protected role (`SYSTEM_ROLE_IMMUTABLE`) or role with assignments (`ROLE_IN_USE`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                inUse:
+                  value:
+                    type: about:blank
+                    title: Conflict
+                    status: 409
+                    code: ROLE_IN_USE
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ---------------------------------------------------------------- Patients
+  /patients:
+    get:
+      tags: [Patients]
+      operationId: listPatients
+      summary: List patients of the current clinic
+      x-required-permission: patients.read
+      parameters:
+        - name: q
+          in: query
+          description: Case-insensitive search on names and document number.
+          schema:
+            type: string
+            maxLength: 100
+        - name: documentType
+          in: query
+          schema:
+            $ref: '#/components/schemas/DocumentType'
+        - name: documentNumber
+          in: query
+          description: Exact document number; combine with `documentType` to look for duplicates.
+          schema:
+            type: string
+            maxLength: 30
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: A page of patients.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientPage'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags: [Patients]
+      operationId: registerPatient
+      summary: Register a patient
+      description: |
+        Registers a patient with the mandatory data and the personal data consent
+        (LOPDP). The clinical record starts empty (another epic). Rules:
+
+        - Missing mandatory fields or consent respond `400` (`VALIDATION`) with one
+          field error each.
+        - A minor (under 18 in the clinic time zone) requires `guardian` (field code
+          `REQUIRED`) and never gets an account.
+        - Document type + number is unique per clinic (`409 PATIENT_DUPLICATE`).
+      x-required-permission: patients.register
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterPatientRequest'
+            examples:
+              minor:
+                value:
+                  id: 6a5b4c3d-2e1f-4a0b-9c8d-7e6f5a4b3c2d
+                  documentType: NATIONAL_ID
+                  documentNumber: '0000000000'
+                  firstNames: John
+                  lastNames: Roe
+                  birthDate: '2015-06-01'
+                  sex: MALE
+                  consent:
+                    textVersion: '2026-01'
+                    grantedBy: GUARDIAN
+                  guardian:
+                    relationship: Mother
+                    person:
+                      documentType: NATIONAL_ID
+                      documentNumber: '1111111111'
+                      firstNames: Mary
+                      lastNames: Roe
+                      email: mary.roe@example.com
+      responses:
+        '201':
+          description: Patient registered.
+          headers:
+            Location:
+              $ref: '#/components/headers/Location'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: |
+            Same document already registered in the clinic (`PATIENT_DUPLICATE`), reused
+            idempotency key (`IDEMPOTENCY_KEY_REUSED`) or client id already taken
+            (`RESOURCE_ID_TAKEN`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                duplicate:
+                  value:
+                    type: about:blank
+                    title: Conflict
+                    status: 409
+                    code: PATIENT_DUPLICATE
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /patients/{id}:
+    parameters:
+      - $ref: '#/components/parameters/PatientId'
+    get:
+      tags: [Patients]
+      operationId: getPatient
+      summary: Get a patient
+      description: Patients of other clinics respond `404`.
+      x-required-permission: patients.read
+      responses:
+        '200':
+          description: The patient.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+              examples:
+                minor:
+                  $ref: '#/components/examples/MinorPatient'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      tags: [Patients]
+      operationId: updatePatient
+      summary: Update patient data
+      description: |
+        Partial update of the administrative data. `version` must match (`409
+        VERSION_CONFLICT`). Changing document type or number to one already used
+        responds `409` (`PATIENT_DUPLICATE`). Changing the birth date so that an adult
+        becomes a minor requires a current legal guardian (`400 VALIDATION`).
+      x-required-permission: patients.edit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePatientRequest'
+            examples:
+              phone:
+                value:
+                  phone: '+10000000000'
+                  version: 2
+      responses:
+        '200':
+          description: Patient updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Stale `version` (`VERSION_CONFLICT`) or duplicated document (`PATIENT_DUPLICATE`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                versionConflict:
+                  value:
+                    type: about:blank
+                    title: Conflict
+                    status: 409
+                    code: VERSION_CONFLICT
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /patients/{id}/consents:
+    parameters:
+      - $ref: '#/components/parameters/PatientId'
+    post:
+      tags: [Patients]
+      operationId: recordPatientConsent
+      summary: Record a new consent
+      description: |
+        Records the acceptance of a (new) version of the personal data consent text.
+        Previous consents are kept as history. For a minor, `grantedBy` must be
+        `GUARDIAN`. Audited.
+      x-required-permission: patients.register
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordConsentRequest'
+            examples:
+              consent:
+                value:
+                  textVersion: '2026-01'
+                  grantedBy: PATIENT
+      responses:
+        '201':
+          description: Consent recorded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Consent'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/IdempotencyConflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /patients/{id}/guardian-links:
+    parameters:
+      - $ref: '#/components/parameters/PatientId'
+    get:
+      tags: [Patients]
+      operationId: listGuardianLinks
+      summary: List guardian links of a patient
+      description: Returns current and historical links (with `validFrom` and `validTo`).
+      x-required-permission: patients.read
+      responses:
+        '200':
+          description: Links of the patient, newest first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GuardianLink'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags: [Patients]
+      operationId: createGuardianLink
+      summary: Add a legal guardian to a minor
+      description: |
+        Adds a `LEGAL_GUARDIAN` link to a minor patient, with an existing guardian
+        (`guardianId`) or a new one (`person`). For an adult patient, links can only
+        be authorized by the patient (`POST /me/guardian-links`); this operation
+        responds `409` (`ADULT_AUTHORIZATION_REQUIRED`). Audited.
+      x-required-permission: patients.guardians.manage
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateGuardianLinkRequest'
+            examples:
+              existingGuardian:
+                value:
+                  guardianId: 5e4d3c2b-1a09-4f8e-8d7c-6b5a4f3e2d1c
+                  relationship: Father
+      responses:
+        '201':
+          description: Link created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GuardianLink'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: |
+            Adult patient (`ADULT_AUTHORIZATION_REQUIRED`), reused idempotency key
+            (`IDEMPOTENCY_KEY_REUSED`) or client id already taken (`RESOURCE_ID_TAKEN`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                adult:
+                  value:
+                    type: about:blank
+                    title: Conflict
+                    status: 409
+                    code: ADULT_AUTHORIZATION_REQUIRED
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /patients/{id}/guardian-links/{linkId}/end:
+    parameters:
+      - $ref: '#/components/parameters/PatientId'
+      - $ref: '#/components/parameters/LinkId'
+    post:
+      tags: [Patients]
+      operationId: endGuardianLink
+      summary: End a guardian link
+      description: |
+        Sets `validTo` with `endReason = MANUAL`; the link is kept as history without
+        access. Ending the last legal guardian of a minor responds `409`
+        (`LAST_LEGAL_GUARDIAN`). Ending an already ended link returns it unchanged.
+        Audited.
+      x-required-permission: patients.guardians.manage
+      responses:
+        '200':
+          description: The ended link.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GuardianLink'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Last legal guardian of a minor (`LAST_LEGAL_GUARDIAN`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                lastGuardian:
+                  value:
+                    type: about:blank
+                    title: Conflict
+                    status: 409
+                    code: LAST_LEGAL_GUARDIAN
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /patients/{id}/account-invitation:
+    parameters:
+      - $ref: '#/components/parameters/PatientId'
+    post:
+      tags: [Patients]
+      operationId: invitePatientAccount
+      summary: Invite an adult patient to activate their account
+      description: |
+        Sends a one-time invitation to the registered email or phone of an adult
+        patient. Minors respond `409` (`MINOR_CANNOT_HAVE_ACCOUNT`); active accounts
+        `409` (`ACCOUNT_ALREADY_ACTIVE`). A channel without registered contact data,
+        or SMS while no SMS provider is configured, responds `409`
+        (`CONTACT_CHANNEL_UNAVAILABLE`).
+      x-required-permission: patients.register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatientInvitationRequest'
+            examples:
+              email:
+                value:
+                  channel: EMAIL
+      responses:
+        '202':
+          description: Invitation sent.
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: |
+            Minor (`MINOR_CANNOT_HAVE_ACCOUNT`), active account (`ACCOUNT_ALREADY_ACTIVE`)
+            or unavailable channel (`CONTACT_CHANNEL_UNAVAILABLE`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                minor:
+                  value:
+                    type: about:blank
+                    title: Conflict
+                    status: 409
+                    code: MINOR_CANNOT_HAVE_ACCOUNT
+        '429':
+          $ref: '#/components/responses/TooManyAttempts'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ---------------------------------------------------------------- Adult patient
+  /me/guardian-links:
+    get:
+      tags: [Adult patient]
+      operationId: listMyGuardianLinks
+      summary: List my guardian links
+      description: |
+        For a `PATIENT` account: current and historical links of the patient,
+        including those ended at adulthood. Other account kinds respond `403`.
+      x-required-permission: authenticated
+      responses:
+        '200':
+          description: Links of the current patient.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GuardianLink'
+              examples:
+                endedAtAdulthood:
+                  value:
+                    - id: 3b2a1c0d-9e8f-4a7b-8c6d-5e4f3a2b1c0d
+                      guardian:
+                        id: 5e4d3c2b-1a09-4f8e-8d7c-6b5a4f3e2d1c
+                        firstNames: Mary
+                        lastNames: Roe
+                      linkType: LEGAL_GUARDIAN
+                      relationship: Mother
+                      validFrom: '2030-01-01T15:00:00Z'
+                      validTo: '2033-06-01T05:00:00Z'
+                      endReason: ADULTHOOD
+                      current: false
+                      authorizedBy: null
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags: [Adult patient]
+      operationId: authorizeMyGuardianLink
+      summary: Authorize an emergency contact or delegated access
+      description: |
+        For an adult `PATIENT` account: explicitly authorizes a person (for example the
+        former guardian, by `guardianId`) as `EMERGENCY_CONTACT` or `DELEGATED_ACCESS`.
+        The link is recorded with `authorizedBy` and audited. Other account kinds
+        respond `403`.
+      x-required-permission: authenticated
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthorizeLinkRequest'
+            examples:
+              emergencyContact:
+                value:
+                  guardianId: 5e4d3c2b-1a09-4f8e-8d7c-6b5a4f3e2d1c
+                  linkType: EMERGENCY_CONTACT
+                  relationship: Mother
+      responses:
+        '201':
+          description: Link authorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GuardianLink'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/IdempotencyConflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ---------------------------------------------------------------- Self-registration
+  /patient-registration-settings:
+    get:
+      tags: [Self-registration]
+      operationId: getPatientRegistrationSettings
+      summary: Get the self-registration settings of the clinic
+      x-required-permission: patients.read
+      responses:
+        '200':
+          description: Current settings.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationSettings'
+              examples:
+                disabled:
+                  value:
+                    selfRegistrationEnabled: false
+                    publicCode: example-clinic
+                    version: 0
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      tags: [Self-registration]
+      operationId: updatePatientRegistrationSettings
+      summary: Enable or disable patient self-registration
+      description: Self-registration is disabled by default. `version` must match (`409 VERSION_CONFLICT`). Audited.
+      x-required-permission: patients.selfRegistration.configure
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRegistrationSettingsRequest'
+            examples:
+              enable:
+                value:
+                  selfRegistrationEnabled: true
+                  version: 0
+      responses:
+        '200':
+          description: Settings updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationSettings'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Stale `version` (`VERSION_CONFLICT`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                versionConflict:
+                  value:
+                    type: about:blank
+                    title: Conflict
+                    status: 409
+                    code: VERSION_CONFLICT
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /public/clinics/{publicCode}/patient-registrations:
+    parameters:
+      - name: publicCode
+        in: path
+        required: true
+        description: Public code of the clinic, shared by the clinic in its self-registration link.
+        schema:
+          type: string
+          pattern: '^[a-z0-9-]{3,60}$'
+    post:
+      tags: [Self-registration]
+      operationId: selfRegisterPatient
+      summary: Self-register as an adult patient
+      description: |
+        Creates a patient with the same mandatory data and consent as staff
+        registration, plus an account `PENDING_EMAIL_VERIFICATION`, and emails a
+        verification link (ADR-014). Only adults self-register; a minor responds
+        `400` (`VALIDATION`, field `birthDate`, code `MINOR_NOT_ALLOWED`).
+
+        Responds `202` also when the document or email already exists in the clinic,
+        so the response never reveals registered patients; the email explains the
+        situation instead. An unknown clinic, or a clinic with self-registration
+        disabled, responds `404`.
+      x-required-permission: public
+      x-public: true
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SelfRegistrationRequest'
+            examples:
+              adult:
+                value:
+                  id: 0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d
+                  documentType: NATIONAL_ID
+                  documentNumber: '2222222222'
+                  firstNames: Alex
+                  lastNames: Poe
+                  birthDate: '1990-03-15'
+                  sex: FEMALE
+                  email: alex.poe@example.com
+                  password: a-long-example-passphrase
+                  consent:
+                    textVersion: '2026-01'
+      responses:
+        '202':
+          description: Registration received; a verification email is sent.
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/IdempotencyConflict'
+        '429':
+          $ref: '#/components/responses/TooManyAttempts'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Access token issued by the login, refresh and switch-branch operations. It
+        carries the clinic, the account and the active branch (ADR-013); 15 minutes
+        by default.
+
+  headers:
+    Location:
+      description: URL of the created resource.
+      schema:
+        type: string
+    RetryAfter:
+      description: Seconds until a new attempt is allowed.
+      schema:
+        type: integer
+        minimum: 1
+
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: |
+        Client-generated key (UUID recommended) that makes the creation safe to retry.
+        Kept for 24 hours per clinic and operation (configurable).
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 64
+        examples: [9b2d5f1e-7c3a-4e8b-a6d0-1f2e3d4c5b6a]
+    Page:
+      name: page
+      in: query
+      description: Zero-based page number.
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    Size:
+      name: size
+      in: query
+      description: Page size.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    UserId:
+      name: id
+      in: path
+      required: true
+      description: Staff user identifier.
+      schema:
+        type: string
+        format: uuid
+    RoleId:
+      name: id
+      in: path
+      required: true
+      description: Role identifier.
+      schema:
+        type: string
+        format: uuid
+    PatientId:
+      name: id
+      in: path
+      required: true
+      description: Patient identifier.
+      schema:
+        type: string
+        format: uuid
+    LinkId:
+      name: linkId
+      in: path
+      required: true
+      description: Guardian link identifier.
+      schema:
+        type: string
+        format: uuid
+
+  examples:
+    Authenticated:
+      value:
+        status: AUTHENTICATED
+        accessToken: eyJhbGciOiJFUzI1NiJ9.example.signature
+        tokenType: Bearer
+        expiresIn: 900
+        refreshToken: refresh-example-token
+        refreshExpiresIn: 604800
+        scope: TENANT
+        clinic:
+          id: 5b0c8f2e-3a51-4d6e-9f0a-1c2b3d4e5f60
+          name: Example Clinic
+        branch:
+          id: 2f6d1c0a-8b3e-4a7d-9c5f-6e1b2a3c4d5e
+          name: Main branch
+        mustChangePassword: false
+    OwnerRole:
+      value:
+        id: 7c9e6679-7425-40de-944b-e07fc1f90ae7
+        name: OWNER
+        description: Dueño de la clínica
+        systemKey: OWNER
+        systemRole: true
+        clinical: false
+        permissions: [roles.read, roles.create, roles.update, roles.delete, identity.users.read, identity.users.manage]
+        version: 0
+    StaffUser:
+      value:
+        id: 1d2c3b4a-5f6e-4789-8a9b-0c1d2e3f4a5b
+        firstNames: Jane
+        lastNames: Doe
+        email: jane.doe@example.com
+        jobTitle: General practitioner
+        professionalRegistration: REG-0000-EXAMPLE
+        status: INVITED
+        roleAssignments:
+          - branch:
+              id: 2f6d1c0a-8b3e-4a7d-9c5f-6e1b2a3c4d5e
+              name: Main branch
+            role:
+              id: 7c9e6679-7425-40de-944b-e07fc1f90ae7
+              name: Doctor
+        invitationExpiresAt: '2030-01-04T15:00:00Z'
+        createdAt: '2030-01-01T15:00:00Z'
+        version: 0
+    MinorPatient:
+      value:
+        id: 6a5b4c3d-2e1f-4a0b-9c8d-7e6f5a4b3c2d
+        documentType: NATIONAL_ID
+        documentNumber: '0000000000'
+        firstNames: John
+        lastNames: Roe
+        birthDate: '2015-06-01'
+        sex: MALE
+        email: null
+        phone: null
+        address: null
+        minor: true
+        adultSince: null
+        origin: STAFF
+        accountStatus: NONE
+        currentConsent:
+          id: 4d3c2b1a-0f9e-4d8c-9b7a-6f5e4d3c2b1a
+          textVersion: '2026-01'
+          grantedAt: '2030-01-01T15:00:00Z'
+          grantedBy: GUARDIAN
+          channel: WEB
+          revokedAt: null
+        createdAt: '2030-01-01T15:00:00Z'
+        version: 0
+
+  responses:
+    LoginResult:
+      description: Result of a login step.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/LoginResult'
+          examples:
+            authenticated:
+              $ref: '#/components/examples/Authenticated'
+            clinicSelection:
+              value:
+                status: CLINIC_SELECTION_REQUIRED
+                preAuthToken: pre-auth-example-token
+                preAuthExpiresIn: 300
+                clinics:
+                  - id: 5b0c8f2e-3a51-4d6e-9f0a-1c2b3d4e5f60
+                    name: Example Clinic
+                  - id: 9d8c7b6a-5f4e-4d3c-8b2a-1f0e9d8c7b6a
+                    name: Sample Dental
+            branchSelection:
+              value:
+                status: BRANCH_SELECTION_REQUIRED
+                preAuthToken: pre-auth-example-token
+                preAuthExpiresIn: 300
+                clinic:
+                  id: 5b0c8f2e-3a51-4d6e-9f0a-1c2b3d4e5f60
+                  name: Example Clinic
+                branches:
+                  - id: 2f6d1c0a-8b3e-4a7d-9c5f-6e1b2a3c4d5e
+                    name: Main branch
+                  - id: 8e7d6c5b-4a39-4281-9f0e-d1c2b3a49586
+                    name: North branch
+    ValidationError:
+      description: The request is malformed or breaks a validation rule (`VALIDATION`), with one error per field.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            validation:
+              value:
+                type: about:blank
+                title: Bad Request
+                status: 400
+                code: VALIDATION
+                errors:
+                  - field: birthDate
+                    code: REQUIRED
+                  - field: consent
+                    code: REQUIRED
+    OneTimeTokenError:
+      description: |
+        The one-time token is expired, used or unknown (`ONE_TIME_TOKEN_INVALID`), the
+        new password breaks the policy (`WEAK_PASSWORD`) or the request is malformed
+        (`VALIDATION`).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            invalidToken:
+              value:
+                type: about:blank
+                title: Bad Request
+                status: 400
+                code: ONE_TIME_TOKEN_INVALID
+            weakPassword:
+              value:
+                type: about:blank
+                title: Bad Request
+                status: 400
+                code: WEAK_PASSWORD
+    InvalidCredentials:
+      description: Wrong email or password, or the account cannot log in (`INVALID_CREDENTIALS`). The response never reveals which.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            invalidCredentials:
+              value:
+                type: about:blank
+                title: Unauthorized
+                status: 401
+                code: INVALID_CREDENTIALS
+    InvalidSessionToken:
+      description: The pre-auth or refresh token is expired, revoked, unknown or does not match the request (`INVALID_SESSION_TOKEN`).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            invalidSessionToken:
+              value:
+                type: about:blank
+                title: Unauthorized
+                status: 401
+                code: INVALID_SESSION_TOKEN
+    TooManyAttempts:
+      description: Too many attempts; temporarily blocked (`TOO_MANY_ATTEMPTS`).
+      headers:
+        Retry-After:
+          $ref: '#/components/headers/RetryAfter'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            tooManyAttempts:
+              value:
+                type: about:blank
+                title: Too Many Requests
+                status: 429
+                code: TOO_MANY_ATTEMPTS
+    Unauthenticated:
+      description: The access token is missing, invalid or expired, or the account was disabled (`UNAUTHENTICATED`).
+      headers:
+        WWW-Authenticate:
+          description: Bearer challenge.
+          schema:
+            type: string
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            unauthenticated:
+              value:
+                type: about:blank
+                title: Unauthorized
+                status: 401
+                code: UNAUTHENTICATED
+    Forbidden:
+      description: |
+        The active assignment lacks the required permission, the module is not
+        enabled by the plan or the account kind cannot use the operation
+        (`FORBIDDEN`), or the password must be changed first
+        (`PASSWORD_CHANGE_REQUIRED`).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            forbidden:
+              value:
+                type: about:blank
+                title: Forbidden
+                status: 403
+                code: FORBIDDEN
+    ForbiddenOrEscalation:
+      description: |
+        Missing permission (`FORBIDDEN`) or the operation would grant permissions the
+        caller does not hold, or touch OWNER without being OWNER
+        (`PRIVILEGE_ESCALATION`).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            escalation:
+              value:
+                type: about:blank
+                title: Forbidden
+                status: 403
+                code: PRIVILEGE_ESCALATION
+    BranchNotAssigned:
+      description: The account has no assignment in that branch (`BRANCH_NOT_ASSIGNED`).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            branchNotAssigned:
+              value:
+                type: about:blank
+                title: Forbidden
+                status: 403
+                code: BRANCH_NOT_ASSIGNED
+    OwnerProtection:
+      description: The change targets the caller themselves (`SELF_MODIFICATION_FORBIDDEN`) or would leave the clinic without an OWNER (`LAST_OWNER`).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            self:
+              value:
+                type: about:blank
+                title: Conflict
+                status: 409
+                code: SELF_MODIFICATION_FORBIDDEN
+            lastOwner:
+              value:
+                type: about:blank
+                title: Conflict
+                status: 409
+                code: LAST_OWNER
+    IdempotencyConflict:
+      description: Reused idempotency key with a different body (`IDEMPOTENCY_KEY_REUSED`) or client id already taken (`RESOURCE_ID_TAKEN`).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            keyReused:
+              value:
+                type: about:blank
+                title: Conflict
+                status: 409
+                code: IDEMPOTENCY_KEY_REUSED
+    NotFound:
+      description: The resource does not exist in the current clinic (`NOT_FOUND`).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            notFound:
+              value:
+                type: about:blank
+                title: Not Found
+                status: 404
+                code: NOT_FOUND
+    InternalError:
+      description: Unexpected error (`INTERNAL_ERROR`). No internal details are exposed.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            internal:
+              value:
+                type: about:blank
+                title: Internal Server Error
+                status: 500
+                code: INTERNAL_ERROR
+
+  schemas:
+    # ------------------------------------------------------------ Errors
+    ErrorCode:
+      type: string
+      description: Stable, machine-readable error code. Clients map it to a user-facing message.
+      enum:
+        - VALIDATION
+        - EMAIL_TAKEN
+        - INVALID_CREDENTIALS
+        - WEAK_PASSWORD
+        - UNAUTHENTICATED
+        - FORBIDDEN
+        - PASSWORD_CHANGE_REQUIRED
+        - NOT_FOUND
+        - ROLE_NAME_TAKEN
+        - VERSION_CONFLICT
+        - SYSTEM_ROLE_IMMUTABLE
+        - ROLE_IN_USE
+        - INTERNAL_ERROR
+        - TOO_MANY_ATTEMPTS
+        - INVALID_SESSION_TOKEN
+        - ONE_TIME_TOKEN_INVALID
+        - BRANCH_NOT_ASSIGNED
+        - PRIVILEGE_ESCALATION
+        - SELF_MODIFICATION_FORBIDDEN
+        - LAST_OWNER
+        - PLAN_LIMIT_REACHED
+        - IDEMPOTENCY_KEY_REUSED
+        - RESOURCE_ID_TAKEN
+        - ACCOUNT_ALREADY_ACTIVE
+        - PATIENT_DUPLICATE
+        - MINOR_CANNOT_HAVE_ACCOUNT
+        - ADULT_AUTHORIZATION_REQUIRED
+        - LAST_LEGAL_GUARDIAN
+        - CONTACT_CHANNEL_UNAVAILABLE
+
+    Problem:
+      type: object
+      description: Problem Details (RFC 9457) extended with a stable `code`.
+      required: [type, title, status, code]
+      properties:
+        type:
+          type: string
+          format: uri-reference
+          description: Problem type URI; `about:blank` when no specific type applies.
+          default: about:blank
+        title:
+          type: string
+          description: Short summary of the problem type.
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+          description: HTTP status code.
+        detail:
+          type: string
+          description: Explanation for developers. Never contains secrets, tokens or personal data.
+        instance:
+          type: string
+          format: uri-reference
+          description: URI of the specific occurrence.
+        code:
+          $ref: '#/components/schemas/ErrorCode'
+        errors:
+          type: array
+          description: Field-level validation errors (only for `VALIDATION`).
+          items:
+            $ref: '#/components/schemas/FieldError'
+
+    FieldError:
+      type: object
+      required: [field, code]
+      properties:
+        field:
+          type: string
+          description: JSON path of the invalid field, for example `guardian.person.documentNumber`.
+        code:
+          type: string
+          description: |
+            Stable validation code, for example `REQUIRED`, `TOO_LONG`, `INVALID_FORMAT`,
+            `UNKNOWN_PERMISSION`, `UNKNOWN_BRANCH`, `UNKNOWN_ROLE`, `DUPLICATE` or
+            `MINOR_NOT_ALLOWED`.
+          examples: [REQUIRED, UNKNOWN_BRANCH]
+
+    # ------------------------------------------------------------ Shared
+    Email:
+      type: string
+      format: email
+      maxLength: 254
+      description: Email address; compared case-insensitively. Unique per clinic, not across clinics.
+
+    Password:
+      type: string
+      format: password
+      maxLength: 128
+      writeOnly: true
+      description: New password; the policy (minimum length, difference from the current one) is enforced as `WEAK_PASSWORD`.
+
+    ClientId:
+      type: string
+      format: uuid
+      description: Optional client-generated identifier of the new resource (offline-ready creation).
+
+    Version:
+      type: integer
+      format: int64
+      minimum: 0
+      description: Optimistic locking version; send back the value read.
+
+    PersonName:
+      type: string
+      minLength: 1
+      maxLength: 120
+
+    ClinicSummary:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+
+    BranchSummary:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+
+    PageMetadata:
+      type: object
+      required: [page, size, totalItems]
+      properties:
+        page:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        totalItems:
+          type: integer
+          format: int64
+          minimum: 0
+
+    # ------------------------------------------------------------ Auth
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          $ref: '#/components/schemas/Email'
+        password:
+          type: string
+          format: password
+          minLength: 1
+          maxLength: 128
+          writeOnly: true
+
+    SelectClinicRequest:
+      type: object
+      additionalProperties: false
+      required: [preAuthToken, clinicId]
+      properties:
+        preAuthToken:
+          type: string
+          minLength: 1
+          maxLength: 512
+        clinicId:
+          type: string
+          format: uuid
+
+    SelectBranchRequest:
+      type: object
+      additionalProperties: false
+      required: [preAuthToken, branchId]
+      properties:
+        preAuthToken:
+          type: string
+          minLength: 1
+          maxLength: 512
+        branchId:
+          type: string
+          format: uuid
+
+    RefreshRequest:
+      type: object
+      additionalProperties: false
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+          minLength: 1
+          maxLength: 512
+          writeOnly: true
+
+    SwitchBranchRequest:
+      type: object
+      additionalProperties: false
+      required: [branchId]
+      properties:
+        branchId:
+          type: string
+          format: uuid
+        refreshToken:
+          type: string
+          maxLength: 512
+          writeOnly: true
+          description: Current refresh token, revoked when the new tokens are issued.
+
+    PasswordResetRequest:
+      type: object
+      additionalProperties: false
+      required: [email]
+      properties:
+        email:
+          $ref: '#/components/schemas/Email'
+
+    OneTimeToken:
+      type: string
+      minLength: 16
+      maxLength: 512
+      writeOnly: true
+      description: One-time token taken from the URL fragment of the link (ADR-014).
+
+    OneTimeTokenRequest:
+      type: object
+      additionalProperties: false
+      required: [token]
+      properties:
+        token:
+          $ref: '#/components/schemas/OneTimeToken'
+
+    PasswordResetConfirmRequest:
+      type: object
+      additionalProperties: false
+      required: [token, newPassword]
+      properties:
+        token:
+          $ref: '#/components/schemas/OneTimeToken'
+        newPassword:
+          $ref: '#/components/schemas/Password'
+
+    AcceptInvitationRequest:
+      type: object
+      additionalProperties: false
+      required: [token, password]
+      properties:
+        token:
+          $ref: '#/components/schemas/OneTimeToken'
+        password:
+          $ref: '#/components/schemas/Password'
+
+    InvitationPreview:
+      type: object
+      required: [clinicName, maskedEmail, kind, expiresAt]
+      properties:
+        clinicName:
+          type: string
+        maskedEmail:
+          type: string
+          description: Email with most of the local part hidden, for example `j***@example.com`.
+        kind:
+          $ref: '#/components/schemas/AccountKind'
+        expiresAt:
+          type: string
+          format: date-time
+
+    AccountScope:
+      type: string
+      description: '`TENANT` for clinic accounts (staff, patients), `PLATFORM` for the SUPER_ADMIN.'
+      enum: [TENANT, PLATFORM]
+
+    AccountKind:
+      type: string
+      description: Kind of account inside a clinic.
+      enum: [STAFF, PATIENT, GUARDIAN]
+
+    LoginResult:
+      description: One step of the login flow, discriminated by `status`.
+      oneOf:
+        - $ref: '#/components/schemas/AuthenticatedResult'
+        - $ref: '#/components/schemas/ClinicSelectionResult'
+        - $ref: '#/components/schemas/BranchSelectionResult'
+      discriminator:
+        propertyName: status
+        mapping:
+          AUTHENTICATED: '#/components/schemas/AuthenticatedResult'
+          CLINIC_SELECTION_REQUIRED: '#/components/schemas/ClinicSelectionResult'
+          BRANCH_SELECTION_REQUIRED: '#/components/schemas/BranchSelectionResult'
+
+    AuthenticatedResult:
+      type: object
+      required: [status, accessToken, tokenType, expiresIn, refreshToken, refreshExpiresIn, scope, mustChangePassword]
+      properties:
+        status:
+          type: string
+          const: AUTHENTICATED
+        accessToken:
+          type: string
+          description: Signed JWT access token with clinic, account and active branch.
+        tokenType:
+          type: string
+          const: Bearer
+        expiresIn:
+          type: integer
+          minimum: 1
+          description: Lifetime of the access token in seconds (900 by default).
+        refreshToken:
+          type: string
+          description: Opaque rotating refresh token (7 days by default). Stored only as a hash.
+        refreshExpiresIn:
+          type: integer
+          minimum: 1
+          description: Lifetime of the refresh token in seconds.
+        scope:
+          $ref: '#/components/schemas/AccountScope'
+        clinic:
+          $ref: '#/components/schemas/ClinicSummary'
+          description: Absent for the `PLATFORM` account.
+        branch:
+          oneOf:
+            - $ref: '#/components/schemas/BranchSummary'
+            - type: 'null'
+          description: Active branch; null for accounts that do not operate by branch (patients, guardians, platform).
+        mustChangePassword:
+          type: boolean
+          description: When true, only password change and `GET /me` are allowed.
+
+    ClinicSelectionResult:
+      type: object
+      required: [status, preAuthToken, preAuthExpiresIn, clinics]
+      properties:
+        status:
+          type: string
+          const: CLINIC_SELECTION_REQUIRED
+        preAuthToken:
+          type: string
+          description: Short-lived token that proves the password was verified for the listed clinics only.
+        preAuthExpiresIn:
+          type: integer
+          minimum: 1
+          description: Lifetime of the pre-auth token in seconds.
+        clinics:
+          type: array
+          minItems: 2
+          description: Only the clinics where the password matched.
+          items:
+            $ref: '#/components/schemas/ClinicSummary'
+
+    BranchSelectionResult:
+      type: object
+      required: [status, preAuthToken, preAuthExpiresIn, clinic, branches]
+      properties:
+        status:
+          type: string
+          const: BRANCH_SELECTION_REQUIRED
+        preAuthToken:
+          type: string
+        preAuthExpiresIn:
+          type: integer
+          minimum: 1
+        clinic:
+          $ref: '#/components/schemas/ClinicSummary'
+        branches:
+          type: array
+          minItems: 2
+          description: Branches where the account has an assignment.
+          items:
+            $ref: '#/components/schemas/BranchSummary'
+
+    CurrentSession:
+      type: object
+      required: [accountId, kind, scope, displayName, availableBranches, roles, permissions, enabledModules, mustChangePassword]
+      properties:
+        accountId:
+          type: string
+          format: uuid
+        kind:
+          $ref: '#/components/schemas/AccountKind'
+        scope:
+          $ref: '#/components/schemas/AccountScope'
+        displayName:
+          type: string
+        clinic:
+          $ref: '#/components/schemas/ClinicSummary'
+          description: Absent for the `PLATFORM` account.
+        activeBranch:
+          oneOf:
+            - $ref: '#/components/schemas/BranchSummary'
+            - type: 'null'
+        availableBranches:
+          type: array
+          description: Branches where the account has an assignment (for switching).
+          items:
+            $ref: '#/components/schemas/BranchSummary'
+        patientId:
+          type: string
+          format: uuid
+          description: Present only for `PATIENT` accounts.
+        roles:
+          type: array
+          description: Names of the roles of the active assignment.
+          items:
+            type: string
+        permissions:
+          type: array
+          description: Effective permissions of the active assignment, resolved on every request.
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/PermissionCode'
+        enabledModules:
+          type: array
+          description: Modules enabled by the clinic plan, for example `identity` or `patients`.
+          uniqueItems: true
+          items:
+            type: string
+        mustChangePassword:
+          type: boolean
+
+    # ------------------------------------------------------------ Staff
+    AccountStatus:
+      type: string
+      enum: [INVITED, PENDING_EMAIL_VERIFICATION, ACTIVE, DISABLED]
+
+    StaffUser:
+      type: object
+      required: [id, firstNames, lastNames, email, jobTitle, status, roleAssignments, createdAt, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        firstNames:
+          $ref: '#/components/schemas/PersonName'
+        lastNames:
+          $ref: '#/components/schemas/PersonName'
+        email:
+          $ref: '#/components/schemas/Email'
+        jobTitle:
+          type: string
+          description: Description of the job position.
+        professionalRegistration:
+          type: [string, 'null']
+          description: Professional registration number; required while a clinical role is assigned.
+        status:
+          $ref: '#/components/schemas/AccountStatus'
+        roleAssignments:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoleAssignment'
+        invitationExpiresAt:
+          type: [string, 'null']
+          format: date-time
+          description: Expiry of the pending invitation; null when there is none.
+        createdAt:
+          type: string
+          format: date-time
+        version:
+          $ref: '#/components/schemas/Version'
+
+    StaffUserPage:
+      allOf:
+        - $ref: '#/components/schemas/PageMetadata'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/StaffUser'
+
+    CreateStaffUserRequest:
+      type: object
+      additionalProperties: false
+      required: [firstNames, lastNames, email, jobTitle, roleAssignments]
+      properties:
+        id:
+          $ref: '#/components/schemas/ClientId'
+        firstNames:
+          $ref: '#/components/schemas/PersonName'
+        lastNames:
+          $ref: '#/components/schemas/PersonName'
+        email:
+          $ref: '#/components/schemas/Email'
+        jobTitle:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: Description of the job position.
+        professionalRegistration:
+          type: string
+          minLength: 1
+          maxLength: 60
+          description: Required when any assigned role is clinical.
+        roleAssignments:
+          $ref: '#/components/schemas/RoleAssignmentsRequest'
+
+    UpdateStaffUserRequest:
+      type: object
+      additionalProperties: false
+      required: [version]
+      minProperties: 2
+      properties:
+        firstNames:
+          $ref: '#/components/schemas/PersonName'
+        lastNames:
+          $ref: '#/components/schemas/PersonName'
+        jobTitle:
+          type: string
+          minLength: 1
+          maxLength: 120
+        professionalRegistration:
+          type: [string, 'null']
+          maxLength: 60
+        version:
+          $ref: '#/components/schemas/Version'
+
+    RoleAssignmentsRequest:
+      description: Assignments of a staff user, discriminated by `mode`.
+      oneOf:
+        - $ref: '#/components/schemas/AllBranchesAssignment'
+        - $ref: '#/components/schemas/PerBranchAssignments'
+      discriminator:
+        propertyName: mode
+        mapping:
+          ALL_BRANCHES: '#/components/schemas/AllBranchesAssignment'
+          PER_BRANCH: '#/components/schemas/PerBranchAssignments'
+
+    AllBranchesAssignment:
+      type: object
+      additionalProperties: false
+      required: [mode, roleId]
+      properties:
+        mode:
+          type: string
+          const: ALL_BRANCHES
+        roleId:
+          type: string
+          format: uuid
+
+    PerBranchAssignments:
+      type: object
+      additionalProperties: false
+      required: [mode, assignments]
+      properties:
+        mode:
+          type: string
+          const: PER_BRANCH
+        assignments:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required: [branchId, roleId]
+            properties:
+              branchId:
+                type: string
+                format: uuid
+              roleId:
+                type: string
+                format: uuid
+
+    RoleAssignment:
+      type: object
+      required: [branch, role]
+      properties:
+        branch:
+          oneOf:
+            - $ref: '#/components/schemas/BranchSummary'
+            - type: 'null'
+          description: Null only for the clinic-wide OWNER assignment.
+        role:
+          $ref: '#/components/schemas/RoleSummary'
+
+    # ------------------------------------------------------------ Roles
+    PermissionCode:
+      type: string
+      description: |
+        Code of a permission of the fixed catalog (ADR-003). The list is the whole
+        catalog; clinic roles accept only `TENANT` codes.
+      enum:
+        - roles.read
+        - roles.create
+        - roles.update
+        - roles.delete
+        - identity.users.read
+        - identity.users.manage
+        - identity.assignments.manage
+        - patients.read
+        - patients.register
+        - patients.edit
+        - patients.guardians.manage
+        - patients.selfRegistration.configure
+        - platform.permissions.read
+
+    PermissionScope:
+      type: string
+      description: '`TENANT` permissions are assignable to clinic roles; `PLATFORM` permissions never are.'
+      enum: [TENANT, PLATFORM]
+
+    PermissionInfo:
+      type: object
+      required: [code, module, scope, description]
+      properties:
+        code:
+          $ref: '#/components/schemas/PermissionCode'
+        module:
+          type: string
+          description: Module that owns the permission (first segment of the code, `identity` for `roles.*`).
+        scope:
+          $ref: '#/components/schemas/PermissionScope'
+        description:
+          type: string
+          description: Description of the permission, in Spanish, shown to people.
+
+    RoleSummary:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+
+    RoleName:
+      type: string
+      minLength: 1
+      maxLength: 80
+      description: Role name, unique per clinic (case-insensitive).
+
+    RoleDescription:
+      type: [string, 'null']
+      maxLength: 500
+      description: Optional description of the role.
+
+    RolePermissions:
+      type: array
+      description: Clinic-scoped permission codes of the catalog.
+      uniqueItems: true
+      items:
+        $ref: '#/components/schemas/PermissionCode'
+
+    Role:
+      type: object
+      required: [id, name, systemRole, clinical, permissions, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          $ref: '#/components/schemas/RoleName'
+        description:
+          $ref: '#/components/schemas/RoleDescription'
+        systemKey:
+          type: [string, 'null']
+          enum: [OWNER, ADMIN, null]
+          description: '`OWNER` or `ADMIN` for the protected roles; null otherwise.'
+        systemRole:
+          type: boolean
+          description: True for OWNER and ADMIN; they cannot be deleted (OWNER cannot be edited either).
+        clinical:
+          type: boolean
+          description: When true, users with this role need a professional registration.
+        permissions:
+          $ref: '#/components/schemas/RolePermissions'
+        version:
+          $ref: '#/components/schemas/Version'
+
+    CreateRoleRequest:
+      type: object
+      additionalProperties: false
+      required: [name, permissions]
+      properties:
+        id:
+          $ref: '#/components/schemas/ClientId'
+        name:
+          $ref: '#/components/schemas/RoleName'
+        description:
+          $ref: '#/components/schemas/RoleDescription'
+        clinical:
+          type: boolean
+          default: false
+        permissions:
+          $ref: '#/components/schemas/RolePermissions'
+
+    UpdateRoleRequest:
+      type: object
+      additionalProperties: false
+      required: [name, permissions, version]
+      properties:
+        name:
+          $ref: '#/components/schemas/RoleName'
+        description:
+          $ref: '#/components/schemas/RoleDescription'
+        clinical:
+          type: boolean
+          default: false
+        permissions:
+          $ref: '#/components/schemas/RolePermissions'
+        version:
+          $ref: '#/components/schemas/Version'
+
+    # ------------------------------------------------------------ Patients
+    DocumentType:
+      type: string
+      pattern: '^[A-Z][A-Z_]{1,29}$'
+      description: |
+        Code of the identity document type. The catalog of types and their validation
+        rules (for example check digits) are [POR DEFINIR] in the glossary; until then
+        the backend accepts the codes of a versioned, editable catalog.
+      examples: [NATIONAL_ID]
+
+    DocumentNumber:
+      type: string
+      minLength: 1
+      maxLength: 30
+      description: Document number; unique per clinic together with the document type.
+
+    Sex:
+      type: string
+      pattern: '^[A-Z][A-Z_]{0,29}$'
+      description: |
+        Code of the sex recorded for the patient. The list of values is [POR DEFINIR]
+        in the glossary; until then the backend accepts the codes of a versioned,
+        editable catalog.
+      examples: [FEMALE]
+
+    Phone:
+      type: string
+      maxLength: 20
+      pattern: '^\+[1-9][0-9]{6,14}$'
+      description: Phone number in E.164 format.
+
+    ConsentGrantor:
+      type: string
+      description: Who accepted the consent; `GUARDIAN` is required for minors.
+      enum: [PATIENT, GUARDIAN]
+
+    ConsentChannel:
+      type: string
+      enum: [WEB, MOBILE, SELF]
+
+    ConsentInput:
+      type: object
+      additionalProperties: false
+      required: [textVersion, grantedBy]
+      properties:
+        textVersion:
+          type: string
+          minLength: 1
+          maxLength: 20
+          description: Version of the consent text shown to the person (text [POR DEFINIR]).
+        grantedBy:
+          $ref: '#/components/schemas/ConsentGrantor'
+
+    RecordConsentRequest:
+      type: object
+      additionalProperties: false
+      required: [textVersion, grantedBy]
+      properties:
+        id:
+          $ref: '#/components/schemas/ClientId'
+        textVersion:
+          type: string
+          minLength: 1
+          maxLength: 20
+        grantedBy:
+          $ref: '#/components/schemas/ConsentGrantor'
+
+    Consent:
+      type: object
+      required: [id, textVersion, grantedAt, grantedBy, channel]
+      properties:
+        id:
+          type: string
+          format: uuid
+        textVersion:
+          type: string
+        grantedAt:
+          type: string
+          format: date-time
+        grantedBy:
+          $ref: '#/components/schemas/ConsentGrantor'
+        channel:
+          $ref: '#/components/schemas/ConsentChannel'
+        revokedAt:
+          type: [string, 'null']
+          format: date-time
+
+    GuardianPersonInput:
+      type: object
+      additionalProperties: false
+      required: [documentType, documentNumber, firstNames, lastNames]
+      properties:
+        documentType:
+          $ref: '#/components/schemas/DocumentType'
+        documentNumber:
+          $ref: '#/components/schemas/DocumentNumber'
+        firstNames:
+          $ref: '#/components/schemas/PersonName'
+        lastNames:
+          $ref: '#/components/schemas/PersonName'
+        email:
+          $ref: '#/components/schemas/Email'
+        phone:
+          $ref: '#/components/schemas/Phone'
+
+    GuardianInput:
+      type: object
+      additionalProperties: false
+      required: [relationship]
+      description: Exactly one of `guardianId` (an existing guardian of the clinic) or `person` (a new one).
+      properties:
+        guardianId:
+          type: string
+          format: uuid
+        person:
+          $ref: '#/components/schemas/GuardianPersonInput'
+        relationship:
+          type: string
+          minLength: 1
+          maxLength: 60
+          description: Relationship with the patient, for example mother or legal tutor.
+
+    PatientFields:
+      type: object
+      properties:
+        documentType:
+          $ref: '#/components/schemas/DocumentType'
+        documentNumber:
+          $ref: '#/components/schemas/DocumentNumber'
+        firstNames:
+          $ref: '#/components/schemas/PersonName'
+        lastNames:
+          $ref: '#/components/schemas/PersonName'
+        birthDate:
+          type: string
+          format: date
+          description: Not in the future. Minority is computed in the clinic time zone (under 18).
+        sex:
+          $ref: '#/components/schemas/Sex'
+        email:
+          $ref: '#/components/schemas/Email'
+        phone:
+          $ref: '#/components/schemas/Phone'
+        address:
+          type: string
+          maxLength: 250
+
+    RegisterPatientRequest:
+      type: object
+      additionalProperties: false
+      required: [documentType, documentNumber, firstNames, lastNames, birthDate, sex, consent]
+      properties:
+        id:
+          $ref: '#/components/schemas/ClientId'
+        documentType:
+          $ref: '#/components/schemas/DocumentType'
+        documentNumber:
+          $ref: '#/components/schemas/DocumentNumber'
+        firstNames:
+          $ref: '#/components/schemas/PersonName'
+        lastNames:
+          $ref: '#/components/schemas/PersonName'
+        birthDate:
+          type: string
+          format: date
+          description: Not in the future. Minority is computed in the clinic time zone (under 18).
+        sex:
+          $ref: '#/components/schemas/Sex'
+        email:
+          $ref: '#/components/schemas/Email'
+        phone:
+          $ref: '#/components/schemas/Phone'
+        address:
+          type: string
+          maxLength: 250
+        consent:
+          $ref: '#/components/schemas/ConsentInput'
+        guardian:
+          $ref: '#/components/schemas/GuardianInput'
+          description: Required for minors; ignored for adults (use `POST /me/guardian-links`).
+
+    UpdatePatientRequest:
+      allOf:
+        - $ref: '#/components/schemas/PatientFields'
+        - type: object
+          required: [version]
+          minProperties: 2
+          properties:
+            version:
+              $ref: '#/components/schemas/Version'
+      unevaluatedProperties: false
+
+    PatientAccountStatus:
+      type: string
+      description: '`NONE` while the patient has no account (always for minors).'
+      enum: [NONE, INVITED, PENDING_EMAIL_VERIFICATION, ACTIVE, DISABLED]
+
+    Patient:
+      type: object
+      required: [id, documentType, documentNumber, firstNames, lastNames, birthDate, sex, minor, origin, accountStatus, createdAt, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        documentType:
+          $ref: '#/components/schemas/DocumentType'
+        documentNumber:
+          $ref: '#/components/schemas/DocumentNumber'
+        firstNames:
+          $ref: '#/components/schemas/PersonName'
+        lastNames:
+          $ref: '#/components/schemas/PersonName'
+        birthDate:
+          type: string
+          format: date
+        sex:
+          $ref: '#/components/schemas/Sex'
+        email:
+          type: [string, 'null']
+          format: email
+        phone:
+          type: [string, 'null']
+        address:
+          type: [string, 'null']
+        minor:
+          type: boolean
+          description: True while the patient is under 18.
+        adultSince:
+          type: [string, 'null']
+          format: date
+          description: Date the patient was marked as adult by the system; null if registered as adult or still a minor.
+        origin:
+          type: string
+          enum: [STAFF, SELF]
+        accountStatus:
+          $ref: '#/components/schemas/PatientAccountStatus'
+        currentConsent:
+          oneOf:
+            - $ref: '#/components/schemas/Consent'
+            - type: 'null'
+        createdAt:
+          type: string
+          format: date-time
+        version:
+          $ref: '#/components/schemas/Version'
+
+    PatientPage:
+      allOf:
+        - $ref: '#/components/schemas/PageMetadata'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/Patient'
+
+    LinkType:
+      type: string
+      description: |
+        `LEGAL_GUARDIAN` gives access while the patient is a minor. After adulthood
+        only `EMERGENCY_CONTACT` or `DELEGATED_ACCESS` explicitly authorized by the
+        patient are current.
+      enum: [LEGAL_GUARDIAN, EMERGENCY_CONTACT, DELEGATED_ACCESS]
+
+    GuardianSummary:
+      type: object
+      required: [id, firstNames, lastNames]
+      properties:
+        id:
+          type: string
+          format: uuid
+        firstNames:
+          type: string
+        lastNames:
+          type: string
+
+    GuardianLink:
+      type: object
+      required: [id, guardian, linkType, relationship, validFrom, current]
+      properties:
+        id:
+          type: string
+          format: uuid
+        guardian:
+          $ref: '#/components/schemas/GuardianSummary'
+        linkType:
+          $ref: '#/components/schemas/LinkType'
+        relationship:
+          type: string
+        validFrom:
+          type: string
+          format: date-time
+        validTo:
+          type: [string, 'null']
+          format: date-time
+        endReason:
+          type: [string, 'null']
+          enum: [ADULTHOOD, MANUAL, null]
+        current:
+          type: boolean
+          description: True when the link is in force (no `validTo`).
+        authorizedBy:
+          type: [string, 'null']
+          format: uuid
+          description: Account of the adult patient who authorized the link, when applicable.
+
+    CreateGuardianLinkRequest:
+      type: object
+      additionalProperties: false
+      required: [relationship]
+      description: Exactly one of `guardianId` or `person`.
+      properties:
+        id:
+          $ref: '#/components/schemas/ClientId'
+        guardianId:
+          type: string
+          format: uuid
+        person:
+          $ref: '#/components/schemas/GuardianPersonInput'
+        relationship:
+          type: string
+          minLength: 1
+          maxLength: 60
+
+    AuthorizeLinkRequest:
+      type: object
+      additionalProperties: false
+      required: [linkType, relationship]
+      description: Exactly one of `guardianId` (for example the former guardian) or `person`.
+      properties:
+        id:
+          $ref: '#/components/schemas/ClientId'
+        guardianId:
+          type: string
+          format: uuid
+        person:
+          $ref: '#/components/schemas/GuardianPersonInput'
+        linkType:
+          type: string
+          enum: [EMERGENCY_CONTACT, DELEGATED_ACCESS]
+        relationship:
+          type: string
+          minLength: 1
+          maxLength: 60
+
+    PatientInvitationRequest:
+      type: object
+      additionalProperties: false
+      required: [channel]
+      properties:
+        channel:
+          type: string
+          enum: [EMAIL, SMS]
+          description: SMS stays unavailable until an SMS provider is defined ([POR DEFINIR]).
+
+    # ------------------------------------------------------------ Self-registration
+    RegistrationSettings:
+      type: object
+      required: [selfRegistrationEnabled, publicCode, version]
+      properties:
+        selfRegistrationEnabled:
+          type: boolean
+        publicCode:
+          type: string
+          description: Public code used in the self-registration link of the clinic.
+        version:
+          $ref: '#/components/schemas/Version'
+
+    UpdateRegistrationSettingsRequest:
+      type: object
+      additionalProperties: false
+      required: [selfRegistrationEnabled, version]
+      properties:
+        selfRegistrationEnabled:
+          type: boolean
+        version:
+          $ref: '#/components/schemas/Version'
+
+    SelfRegistrationRequest:
+      type: object
+      additionalProperties: false
+      required: [documentType, documentNumber, firstNames, lastNames, birthDate, sex, email, password, consent]
+      properties:
+        id:
+          $ref: '#/components/schemas/ClientId'
+        documentType:
+          $ref: '#/components/schemas/DocumentType'
+        documentNumber:
+          $ref: '#/components/schemas/DocumentNumber'
+        firstNames:
+          $ref: '#/components/schemas/PersonName'
+        lastNames:
+          $ref: '#/components/schemas/PersonName'
+        birthDate:
+          type: string
+          format: date
+        sex:
+          $ref: '#/components/schemas/Sex'
+        email:
+          $ref: '#/components/schemas/Email'
+        phone:
+          $ref: '#/components/schemas/Phone'
+        address:
+          type: string
+          maxLength: 250
+        password:
+          $ref: '#/components/schemas/Password'
+        consent:
+          type: object
+          additionalProperties: false
+          required: [textVersion]
+          properties:
+            textVersion:
+              type: string
+              minLength: 1
+              maxLength: 20

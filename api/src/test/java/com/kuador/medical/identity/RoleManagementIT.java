@@ -85,7 +85,7 @@ class RoleManagementIT {
         assertThat(roles).allSatisfy(role -> {
             assertThat(role).containsEntry("systemRole", true);
             assertThat(role.get("permissions"))
-                    .isEqualTo(List.of("roles.read", "roles.create", "roles.update", "roles.delete"));
+                    .isEqualTo(Permission.ofScope(PermissionScope.TENANT).stream().map(Permission::code).toList());
         });
     }
 
@@ -152,7 +152,7 @@ class RoleManagementIT {
 
     @Test
     void permissionOutsideTheClinicCatalogIsRejected() {
-        for (String code : List.of("patients.read", "platform.permissions.read")) {
+        for (String code : List.of("billing.unknown", "platform.permissions.read")) {
             MvcTestResult result = create(Map.of("name", "Invalid " + code, "permissions", List.of("roles.read", code)));
 
             assertThat(result)
@@ -205,7 +205,9 @@ class RoleManagementIT {
             contract.assertResponse("/roles/{id}", "DELETE", 409, "application/problem+json", api.body(deleted));
         }
         assertThat(systemRoles()).extracting(role -> role.get("name")).containsExactly("OWNER", "ADMIN");
-        assertThat(systemRoles()).allSatisfy(role -> assertThat(((List<?>) role.get("permissions"))).hasSize(4));
+        int clinicPermissions = Permission.ofScope(PermissionScope.TENANT).size();
+        assertThat(systemRoles())
+                .allSatisfy(role -> assertThat(((List<?>) role.get("permissions"))).hasSize(clinicPermissions));
     }
 
     @Test

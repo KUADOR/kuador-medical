@@ -6,6 +6,7 @@ import com.kuador.medical.ContractSchema;
 import com.kuador.medical.IdentityApi;
 import com.kuador.medical.IdentityApi.Clinic;
 import com.kuador.medical.TestcontainersConfiguration;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -131,10 +132,10 @@ class RolePermissionIT {
 
         assertThat(result).hasStatus(HttpStatus.OK);
         List<Map<String, Object>> catalog = api.bodyList(result);
-        assertThat(catalog).extracting(permission -> permission.get("code")).containsExactly(
-                "roles.read", "roles.create", "roles.update", "roles.delete", "platform.permissions.read");
+        assertThat(catalog).extracting(permission -> permission.get("code")).containsExactlyElementsOf(
+                Arrays.stream(Permission.values()).map(Permission::code).toList());
         assertThat(catalog).extracting(permission -> permission.get("scope"))
-                .containsExactly("TENANT", "TENANT", "TENANT", "TENANT", "PLATFORM");
+                .containsExactlyElementsOf(Arrays.stream(Permission.values()).map(p -> p.scope().name()).toList());
         ContractSchema.identity().assertArrayResponse("/platform/permissions", "GET", 200, "application/json", catalog);
     }
 
@@ -145,7 +146,7 @@ class RolePermissionIT {
         assertThat(result).hasStatus(HttpStatus.OK);
         List<Map<String, Object>> catalog = api.bodyList(result);
         assertThat(catalog).extracting(permission -> permission.get("code"))
-                .containsExactly("roles.read", "roles.create", "roles.update", "roles.delete");
+                .containsExactlyElementsOf(Permission.ofScope(PermissionScope.TENANT).stream().map(Permission::code).toList());
         assertThat(catalog).allSatisfy(permission -> {
             assertThat(permission).containsEntry("scope", "TENANT");
             assertThat(permission.get("description")).asString().isNotBlank();
