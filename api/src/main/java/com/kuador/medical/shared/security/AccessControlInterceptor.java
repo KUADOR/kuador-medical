@@ -16,7 +16,9 @@ import org.springframework.web.servlet.HandlerInterceptor;
 /**
  * Deny by default (ADR-008): a request only reaches a handler that declares exactly one access
  * level ({@link PublicEndpoint}, {@link AuthenticatedEndpoint} or {@link RequiresPermission}),
- * whose capability is enabled (ADR-004) and whose requirement the caller meets.
+ * whose capability is enabled (ADR-004) and whose requirement the caller meets. An authenticated
+ * caller that must change its password only reaches handlers marked
+ * {@link AllowedWhilePasswordChangeRequired}; public handlers ignore the caller.
  */
 public class AccessControlInterceptor implements HandlerInterceptor {
 
@@ -51,9 +53,9 @@ public class AccessControlInterceptor implements HandlerInterceptor {
         }
         switch (rule) {
             case AccessRule.Public p -> {}
-            case AccessRule.Authenticated a -> requireAuthentication();
+            case AccessRule.Authenticated a -> requireAuthentication(method);
             case AccessRule.Permission(String permission) -> {
-                requireAuthentication();
+                requireAuthentication(method);
                 if (!accessChecker.hasPermission(permission)) {
                     throw ApiException.forbidden("Access denied.");
                 }
@@ -63,10 +65,18 @@ public class AccessControlInterceptor implements HandlerInterceptor {
         return true;
     }
 
-    private void requireAuthentication() {
+    private void requireAuthentication(HandlerMethod method) {
         if (!accessChecker.isAuthenticated()) {
             throw ApiException.unauthenticated();
         }
+        if (accessChecker.isPasswordChangeRequired() && !allowedWhilePasswordChangeRequired(method)) {
+            throw ApiException.passwordChangeRequired();
+        }
+    }
+
+    private static boolean allowedWhilePasswordChangeRequired(HandlerMethod method) {
+        return method.hasMethodAnnotation(AllowedWhilePasswordChangeRequired.class)
+                || method.getBeanType().isAnnotationPresent(AllowedWhilePasswordChangeRequired.class);
     }
 
     private static AccessRule accessRuleOf(HandlerMethod method) {

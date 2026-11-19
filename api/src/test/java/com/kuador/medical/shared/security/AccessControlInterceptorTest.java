@@ -123,6 +123,41 @@ class AccessControlInterceptorTest {
         assertDenied(interceptor, handler("open"), HttpStatus.FORBIDDEN, ErrorCode.FORBIDDEN);
     }
 
+    @Test
+    void pendingPasswordChangeBlocksPermissionEndpoints() {
+        var interceptor = interceptor(mustChangePassword("roles.read"), ALL_ENABLED);
+
+        assertDenied(interceptor, handler("readRoles"), HttpStatus.FORBIDDEN, ErrorCode.PASSWORD_CHANGE_REQUIRED);
+    }
+
+    @Test
+    void pendingPasswordChangeBlocksAuthenticatedEndpoints() {
+        var interceptor = interceptor(mustChangePassword(), ALL_ENABLED);
+
+        assertDenied(interceptor, handler("signedIn"), HttpStatus.FORBIDDEN, ErrorCode.PASSWORD_CHANGE_REQUIRED);
+    }
+
+    @Test
+    void pendingPasswordChangeIsReportedBeforeAMissingPermission() {
+        var interceptor = interceptor(mustChangePassword(), ALL_ENABLED);
+
+        assertDenied(interceptor, handler("readRoles"), HttpStatus.FORBIDDEN, ErrorCode.PASSWORD_CHANGE_REQUIRED);
+    }
+
+    @Test
+    void pendingPasswordChangeAllowsEndpointsMarkedAsAllowed() throws Exception {
+        var interceptor = interceptor(mustChangePassword(), ALL_ENABLED);
+
+        assertThat(interceptor.preHandle(request(), response(), handler("changePassword"))).isTrue();
+    }
+
+    @Test
+    void pendingPasswordChangeDoesNotAffectPublicEndpoints() throws Exception {
+        var interceptor = interceptor(mustChangePassword(), ALL_ENABLED);
+
+        assertThat(interceptor.preHandle(request(), response(), handler("open"))).isTrue();
+    }
+
     private static AccessControlInterceptor interceptor(AccessChecker accessChecker, CapabilityChecker capabilities) {
         return new AccessControlInterceptor(accessChecker, capabilities, type -> Optional.of(Capability.PLATFORM));
     }
@@ -157,14 +192,24 @@ class AccessControlInterceptorTest {
     }
 
     private static AccessChecker anonymous() {
-        return new FixedAccessChecker(false, Set.of());
+        return new FixedAccessChecker(false, Set.of(), false);
     }
 
     private static AccessChecker authenticated(String... permissions) {
-        return new FixedAccessChecker(true, Set.of(permissions));
+        return new FixedAccessChecker(true, Set.of(permissions), false);
     }
 
-    private record FixedAccessChecker(boolean authenticated, Set<String> permissions) implements AccessChecker {
+    private static AccessChecker mustChangePassword(String... permissions) {
+        return new FixedAccessChecker(true, Set.of(permissions), true);
+    }
+
+    private record FixedAccessChecker(boolean authenticated, Set<String> permissions, boolean passwordChangeRequired)
+            implements AccessChecker {
+
+        @Override
+        public boolean isPasswordChangeRequired() {
+            return passwordChangeRequired;
+        }
 
         @Override
         public boolean isAuthenticated() {
@@ -193,6 +238,10 @@ class AccessControlInterceptorTest {
         @PublicEndpoint
         @RequiresPermission("roles.read")
         public void ambiguous() {}
+
+        @AuthenticatedEndpoint
+        @AllowedWhilePasswordChangeRequired
+        public void changePassword() {}
     }
 
     @RequiresPermission("roles.read")

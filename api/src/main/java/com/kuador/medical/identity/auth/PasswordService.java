@@ -1,0 +1,41 @@
+package com.kuador.medical.identity.auth;
+
+import com.kuador.medical.audit.AuditAction;
+import com.kuador.medical.audit.AuditRecorder;
+import com.kuador.medical.audit.AuditTarget;
+import com.kuador.medical.identity.AuthenticatedAccount;
+import com.kuador.medical.identity.account.PasswordPolicy;
+import com.kuador.medical.identity.account.UserAccount;
+import com.kuador.medical.identity.account.UserAccountRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/** Password change of the caller; clears {@code mustChangePassword} (FR-013) and is audited (FR-011). */
+@Service
+class PasswordService {
+
+    private final UserAccountRepository accounts;
+    private final PasswordEncoder passwordEncoder;
+    private final PasswordPolicy policy;
+    private final AuditRecorder audit;
+
+    PasswordService(
+            UserAccountRepository accounts, PasswordEncoder passwordEncoder, PasswordPolicy policy, AuditRecorder audit) {
+        this.accounts = accounts;
+        this.passwordEncoder = passwordEncoder;
+        this.policy = policy;
+        this.audit = audit;
+    }
+
+    @Transactional
+    public void change(AuthenticatedAccount caller, String currentPassword, String newPassword) {
+        UserAccount account = accounts.findById(caller.accountId()).orElseThrow(LoginService::invalidCredentials);
+        if (!passwordEncoder.matches(currentPassword, account.getPasswordHash())) {
+            throw LoginService.invalidCredentials();
+        }
+        policy.checkNewPassword(newPassword, account.getPasswordHash());
+        account.changePassword(passwordEncoder.encode(newPassword));
+        audit.record(AuditAction.PASSWORD_CHANGED, caller.tenantId(), account.getId(), AuditTarget.account(account.getId()));
+    }
+}

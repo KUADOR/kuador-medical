@@ -1,6 +1,6 @@
 /**
  * Audit: minimal record of security events, without personal data.
- * Implemented by the following tasks of MEDK-1.
+ * Public API: {@link com.kuador.medical.audit.AuditRecorder}.
  */
 @ApplicationModule(displayName = "Audit")
 package com.kuador.medical.audit;

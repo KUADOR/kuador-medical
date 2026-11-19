@@ -8,3 +8,9 @@ spring:
 kuador:
   cors:
     allowed-origins: http://localhost:4200
+  jwt:
+    # Random per test context: no signing key is ever stored in the repository.
+    secret: ${random.uuid}${random.uuid}
+  bootstrap-admin:
+    email: bootstrap-admin@example.test
+    password: ${random.uuid}
