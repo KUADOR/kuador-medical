@@ -1,0 +1,117 @@
+<section class="page" aria-labelledby="patients-title">
+  <div class="page__header">
+    <h1 id="patients-title">Pacientes</h1>
+    <div class="actions">
+      <a class="button button--secondary" [routerLink]="settingsLink" data-testid="settings-link"
+        >Autorregistro</a
+      >
+      @if (canRegister()) {
+        <a class="button" [routerLink]="newPatientLink" data-testid="new-patient"
+          >Registrar paciente</a
+        >
+      }
+    </div>
+  </div>
+
+  <div aria-live="polite">
+    @if (notice(); as message) {
+      <p class="alert alert--success" role="status" data-testid="notice">{{ message }}</p>
+    }
+  </div>
+
+  <form class="search" role="search" (ngSubmit)="search()">
+    <label for="patients-q">Buscar por nombre o número de documento</label>
+    <div class="search__row">
+      <input
+        id="patients-q"
+        type="search"
+        name="q"
+        maxlength="100"
+        autocomplete="off"
+        [ngModel]="query()"
+        (ngModelChange)="query.set($event)"
+      />
+      <button type="submit" class="button">Buscar</button>
+    </div>
+  </form>
+
+  <div [attr.aria-busy]="state().kind === 'loading'">
+    @switch (state().kind) {
+      @case ('loading') {
+        <p class="hint">Cargando pacientes…</p>
+      }
+      @case ('failed') {
+        <p class="alert" role="alert" data-testid="load-error">{{ loadFailure() }}</p>
+        <div class="actions">
+          <button type="button" class="button" (click)="load()">Volver a intentar</button>
+        </div>
+      }
+      @default {
+        @if (result(); as page) {
+          @if (page.items.length === 0) {
+            <p class="hint" data-testid="empty">{{ emptyMessage() }}</p>
+          } @else {
+            <p class="hint" aria-live="polite" data-testid="total">
+              {{ page.totalItems }} {{ page.totalItems === 1 ? 'paciente' : 'pacientes' }}
+            </p>
+            <div class="table-wrapper">
+              <table class="table">
+                <caption class="visually-hidden">
+                  Pacientes de la clínica
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Paciente</th>
+                    <th scope="col">Documento</th>
+                    <th scope="col">Fecha de nacimiento</th>
+                    <th scope="col">Cuenta</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (patient of page.items; track patient.id) {
+                    <tr data-testid="patient">
+                      <th scope="row">
+                        <a [routerLink]="patientUrl(patient.id)">{{ fullName(patient) }}</a>
+                        @if (patient.minor) {
+                          <span class="badge" data-testid="minor-badge">Menor de edad</span>
+                        }
+                      </th>
+                      <td>
+                        {{ documentTypeLabel(patient.documentType) }} {{ patient.documentNumber }}
+                      </td>
+                      <td>{{ formatDate(patient.birthDate) }}</td>
+                      <td>{{ accountStatusLabels[patient.accountStatus] }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            @if (totalPages() > 1) {
+              <nav class="actions" aria-label="Páginas de pacientes">
+                <button
+                  type="button"
+                  class="button button--secondary"
+                  [disabled]="pageIndex() === 0"
+                  (click)="goTo(pageIndex() - 1)"
+                >
+                  Anterior
+                </button>
+                <span data-testid="page-label"
+                  >Página {{ pageIndex() + 1 }} de {{ totalPages() }}</span
+                >
+                <button
+                  type="button"
+                  class="button button--secondary"
+                  [disabled]="pageIndex() + 1 >= totalPages()"
+                  (click)="goTo(pageIndex() + 1)"
+                >
+                  Siguiente
+                </button>
+              </nav>
+            }
+          }
+        }
+      }
+    }
+  </div>
+</section>
