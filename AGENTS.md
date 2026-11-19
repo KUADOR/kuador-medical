@@ -38,9 +38,31 @@ cd web && npm test -- --watch=false   # probar
 # movil (Flutter)
 cd movil && flutter pub get      # instalar dependencias
 cd movil && flutter test         # probar
-
-# Levantar en local: [POR DEFINIR: comando o compose para entorno local]
 ```
+
+## Levantar en local
+
+Requisitos: Docker con Compose v2, JDK 25, Node.js LTS y Flutter estable. Detalle de variables, secretos y puertos en `docs/deployment.md`.
+
+```bash
+cp .env.example .env                 # completar DB_PASSWORD, KUADOR_JWT_SECRET y la cuenta inicial (nunca commitear .env)
+docker compose up -d db              # PostgreSQL 18 en 127.0.0.1:${DB_PORT:-5432}
+docker compose ps                    # db debe quedar «healthy»
+
+# api en el host (perfil local)
+set -a; . ./.env; set +a
+cd api && ./mvnw spring-boot:run     # http://localhost:8080
+
+# web en el host
+cd web && npm install && npm start   # http://localhost:4200
+
+# o todo en contenedores (db + api + web)
+docker compose --profile full up -d --build
+
+docker compose down                  # detener (agregar -v borra los datos locales)
+```
+
+Si el puerto 5432 está ocupado, cambiar `DB_PORT` y el puerto de `DB_URL` en `.env`.
 
 ## Tablero de Kuador
 
