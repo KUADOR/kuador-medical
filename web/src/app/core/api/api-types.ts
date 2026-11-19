@@ -11,6 +11,7 @@ export type FieldError = Schemas['FieldError'];
 export type ErrorCode = Schemas['ErrorCode'];
 export type AccountScope = Schemas['AccountScope'];
 export type PermissionCode = Schemas['PermissionCode'];
+export type PermissionScope = Schemas['PermissionScope'];
 export type PermissionInfo = Schemas['PermissionInfo'];
 export type LoginRequest = Schemas['LoginRequest'];
 export type LoginResponse = Schemas['LoginResponse'];
@@ -28,4 +29,13 @@ export const ApiPaths = {
   me: '/me',
   login: '/auth/login',
   changePassword: '/auth/password',
+  signup: '/tenants/signup',
+  permissions: '/permissions',
+  roles: '/roles',
+  platformPermissions: '/platform/permissions',
 } as const satisfies Record<string, keyof paths>;
+
+/** Path of a single role (GET, PUT, DELETE /roles/{id}). */
+export function rolePath(id: string): `/roles/${string}` {
+  return `/roles/${encodeURIComponent(id)}`;
+}

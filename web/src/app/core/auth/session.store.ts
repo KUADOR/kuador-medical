@@ -23,6 +23,10 @@ export class SessionStore {
 
   private readonly session = signal<StoredSession | null>(readStoredSession());
   private readonly currentAccount = signal<CurrentAccount | null>(null);
+  /** In-flight GET /me, shared by concurrent callers. */
+  private loading: Promise<CurrentAccount | null> | null = null;
+  /** Bumped whenever the session changes, so a stale GET /me never fills a newer session. */
+  private generation = 0;
 
   readonly account = this.currentAccount.asReadonly();
   readonly isAuthenticated = computed(() => this.session() !== null);
@@ -52,23 +56,35 @@ export class SessionStore {
       mustChangePassword: login.mustChangePassword,
     };
     this.session.set(next);
-    this.currentAccount.set(null);
+    this.resetAccount();
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   }
 
-  /** Loads GET /me once per session; returns null when not authenticated or the call fails. */
-  async ensureAccount(): Promise<CurrentAccount | null> {
+  /**
+   * Loads GET /me once per session; returns null when not authenticated or the call fails.
+   * Concurrent callers (the shell and a guard after a reload) share the same request.
+   */
+  ensureAccount(): Promise<CurrentAccount | null> {
     if (!this.accessToken()) {
-      return null;
+      return Promise.resolve(null);
     }
     const cached = this.currentAccount();
     if (cached) {
-      return cached;
+      return Promise.resolve(cached);
     }
+    this.loading ??= this.fetchAccount().finally(() => (this.loading = null));
+    return this.loading;
+  }
+
+  private async fetchAccount(): Promise<CurrentAccount | null> {
+    const generation = this.generation;
     try {
       const account = await firstValueFrom(
         this.http.get<CurrentAccount>(this.config.apiUrl(ApiPaths.me)),
       );
+      if (generation !== this.generation) {
+        return null;
+      }
       this.currentAccount.set(account);
       return account;
     } catch {
@@ -78,19 +94,32 @@ export class SessionStore {
 
   /** Forces the next guard to reload GET /me (e.g. after a password change). */
   invalidateAccount(): void {
-    this.currentAccount.set(null);
+    this.resetAccount();
   }
 
   /** Marks the session as blocked until the password is changed (403 PASSWORD_CHANGE_REQUIRED). */
   markPasswordChangeRequired(): void {
     const current = this.session();
     if (current) {
-      this.session.set({ ...current, mustChangePassword: true });
+      const next = { ...current, mustChangePassword: true };
+      this.session.set(next);
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     }
     const account = this.currentAccount();
     if (account) {
       this.currentAccount.set({ ...account, mustChangePassword: true });
     }
+  }
+
+  /** Clears the pending password change after POST /auth/password and reloads GET /me next time. */
+  markPasswordChanged(): void {
+    const current = this.session();
+    if (current) {
+      const next = { ...current, mustChangePassword: false };
+      this.session.set(next);
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    }
+    this.resetAccount();
   }
 
   hasPermission(code: PermissionCode): boolean {
@@ -99,8 +128,14 @@ export class SessionStore {
 
   clear(): void {
     this.session.set(null);
-    this.currentAccount.set(null);
+    this.resetAccount();
     sessionStorage.removeItem(STORAGE_KEY);
+  }
+
+  private resetAccount(): void {
+    this.generation++;
+    this.loading = null;
+    this.currentAccount.set(null);
   }
 }
 

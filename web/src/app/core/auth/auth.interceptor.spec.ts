@@ -85,6 +85,21 @@ describe('authInterceptor', () => {
     expect(router.navigate).not.toHaveBeenCalled();
   });
 
+  it('keeps the session when the current password is wrong on a password change', async () => {
+    session.start(LOGIN);
+    const call = firstValueFrom(http.post('/api/v1/auth/password', {}));
+    backend
+      .expectOne('/api/v1/auth/password')
+      .flush(
+        { type: 'about:blank', title: 'Unauthorized', status: 401, code: 'INVALID_CREDENTIALS' },
+        { status: 401, statusText: 'Unauthorized' },
+      );
+
+    await expect(call).rejects.toMatchObject({ status: 401 });
+    expect(session.isAuthenticated()).toBe(true);
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+
   it('sends to the password change on 403 PASSWORD_CHANGE_REQUIRED', async () => {
     session.start(LOGIN);
     const call = firstValueFrom(http.get('/api/v1/roles'));

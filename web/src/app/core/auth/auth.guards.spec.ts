@@ -9,9 +9,14 @@ import {
   UrlTree,
   provideRouter,
 } from '@angular/router';
-import { ACCOUNT, LOGIN } from '../../../testing/fixtures';
+import { ACCOUNT, LOGIN, SUPER_ADMIN } from '../../../testing/fixtures';
 import type { CurrentAccount } from '../api/api-types';
-import { pendingPasswordChangeGuard, requirePermissions } from './auth.guards';
+import {
+  guestGuard,
+  homeGuard,
+  pendingPasswordChangeGuard,
+  requirePermissions,
+} from './auth.guards';
 import { SessionStore } from './session.store';
 
 describe('auth guards', () => {
@@ -101,5 +106,23 @@ describe('auth guards', () => {
 
     session.clear();
     expect(serialize(await runWithAccount(pendingPasswordChangeGuard, ACCOUNT))).toBe('/');
+  });
+
+  it('sends visitors of the root to the system status and accounts to their landing page', async () => {
+    expect(serialize(await run(homeGuard, '/'))).toBe('/status');
+    expect(serialize(await runWithAccount(homeGuard, ACCOUNT))).toBe('/roles');
+
+    session.clear();
+    expect(serialize(await runWithAccount(homeGuard, SUPER_ADMIN))).toBe('/platform/permissions');
+
+    session.clear();
+    expect(
+      serialize(await runWithAccount(homeGuard, { ...SUPER_ADMIN, mustChangePassword: true })),
+    ).toBe('/change-password');
+  });
+
+  it('opens login and signup only without a session', async () => {
+    expect(await run(guestGuard, '/login')).toBe(true);
+    expect(serialize(await runWithAccount(guestGuard, ACCOUNT))).toBe('/roles');
   });
 });
