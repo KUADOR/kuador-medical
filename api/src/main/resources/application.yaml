@@ -1,0 +1,35 @@
+# Common configuration. Profile files: application-local.yaml, application-prod.yaml
+# (and application-test.yaml under src/test). Secrets only come from the environment.
+spring:
+  application:
+    name: medical-kuador-api
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      connection-timeout: 5000
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    locations: classpath:db/migration
+  mvc:
+    problemdetails:
+      enabled: true
+  web:
+    resources:
+      add-mappings: false
+
+server:
+  error:
+    include-message: never
+    include-stacktrace: never
+
+kuador:
+  cors:
+    allowed-origins: ${KUADOR_CORS_ALLOWED_ORIGINS:}

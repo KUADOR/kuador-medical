@@ -114,7 +114,8 @@ Al fusionar en `develop` se construye y despliega a pruebas; al fusionar en `mai
 ## Verificación
 
 - Local: `docker compose ps` muestra `db` como `healthy` y la base responde a `select version();`.
-- [POR DEFINIR: comprobación de salud de la api, revisión de logs, y una prueba de punta a punta por entorno, incluyendo que un usuario de un tenant no accede a datos de otro.]
+- api: `GET /api/v1/system/info` (público) responde 200 con `status` y `database` en `UP`; si la base no responde, devuelve `DOWN` en ambos (sigue respondiendo 200). Las migraciones Flyway (`api/src/main/resources/db/migration`) se aplican al arrancar.
+- [POR DEFINIR: revisión de logs y una prueba de punta a punta por entorno, incluyendo que un usuario de un tenant no accede a datos de otro.]
 
 ## Cambios
 
