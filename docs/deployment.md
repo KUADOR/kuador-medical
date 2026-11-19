@@ -31,7 +31,7 @@ Perfiles de Compose:
 | Pieza | Cómo se construye | Puerto | Dominio por entorno |
 |---|---|---|---|
 | api | `./mvnw -B package` en `api/`; imagen con `api/Dockerfile` (JRE 25, usuario sin privilegios) | 8080 en el contenedor; `API_PORT` en local (por defecto 8080) | [POR DEFINIR: pruebas / producción] |
-| web | `npm run build` en `web/`; imagen con `web/Dockerfile` (nginx sin privilegios, sirve el build y hace proxy de `/api/` a la api) | 8080 en el contenedor; `WEB_PORT` en local (por defecto 4200) | [POR DEFINIR: pruebas / producción] |
+| web | `npm run build` en `web/` (Node.js `^22.22.3` o `^24.15.0`); imagen con `web/Dockerfile` (nginx sin privilegios, sirve el build y hace proxy de `/api/` a la api; al arrancar reescribe `config.json` si recibe `API_BASE_URL`) | 8080 en el contenedor; `WEB_PORT` en local (por defecto 4200) | [POR DEFINIR: pruebas / producción] |
 | movil | Build de Flutter en `movil/` con `--dart-define=API_BASE_URL=…` [POR DEFINIR: distribución a tiendas o canal interno] | No aplica | No aplica |
 
 En local los puertos se publican solo en `127.0.0.1`.
@@ -62,7 +62,7 @@ Solo nombres: los valores nunca van en este documento ni en el repo. En local vi
 | KUADOR_CORS_ALLOWED_ORIGINS | api | local, pruebas, producción | `.env` / variables del entorno | no | Origen permitido de la web |
 | API_PORT | api | local | `.env` | no | Puerto del host para la api en el perfil `full` |
 | WEB_PORT | web | local | `.env` | no | Puerto del host para la web en el perfil `full` |
-| API_BASE_URL | web (`config.json`), movil (`--dart-define`) | todos | Configuración de cada pieza | no | URL de la api (`…/api/v1`) |
+| API_BASE_URL | web (`config.json`), movil (`--dart-define`) | todos | web: `public/config.json` (por defecto `/api/v1`, mismo origen) o variable del contenedor web, que reescribe `config.json` al arrancar; movil: `--dart-define` | no | URL de la api (`…/api/v1`). En la web, una URL de otro origen exige incluir el origen de la web en `KUADOR_CORS_ALLOWED_ORIGINS` |
 | [POR DEFINIR: credenciales de proveedores de notificaciones, pagos y facturación] | api | pruebas, producción | [POR DEFINIR] | sí | — |
 
 Generar valores aleatorios para secretos locales: `openssl rand -base64 24` (clave de base) y `openssl rand -base64 48` (firma JWT). Cada entorno tiene sus propios valores; nunca se reutilizan los de local.
@@ -85,7 +85,8 @@ La api crea la cuenta al arrancar solo si no existe ningún SUPER_ADMIN, con `KU
 3. `docker compose up -d db` y esperar a que `docker compose ps` muestre `db` como `healthy`.
 4. Comprobar la base: `docker compose exec db psql -U "$DB_USERNAME" -d "$DB_NAME" -c 'select version();'` (con las variables de `.env` cargadas) o con cualquier cliente en `127.0.0.1:${DB_PORT}`.
 5. api en el host: `set -a; . ./.env; set +a` y luego `cd api && ./mvnw spring-boot:run`.
-6. web en el host: `cd web && npm install && npm start` (`http://localhost:4200`).
+6. web en el host: `cd web && npm install && npm start` (`http://localhost:4200`; el servidor de desarrollo hace proxy de `/api` a `http://localhost:8080`).
+   - Sin api: `cd web && npm run dev:mock` levanta el mock Prism del contrato en `http://localhost:4010` y la web en `http://localhost:4200` con proxy de `/api/v1` al mock.
 7. Alternativa con todo en contenedores: `docker compose --profile full up -d --build`.
 8. Detener: `docker compose down` (con `-v` se borran los datos locales).
 
@@ -122,4 +123,4 @@ Al fusionar en `develop` se construye y despliega a pruebas; al fusionar en `mai
 |---|---|---|
 | {date} | Primera versión | — |
 | 2026-11-19 | Entorno local con Docker Compose (PostgreSQL 18 y perfil `full` con api y web), `.env.example`, perfiles `local`/`test`/`prod`, variables y secretos de la api (renombra `SPRING_DATASOURCE_*` a `DB_*` según el plan), carga de la clave inicial del SUPER_ADMIN como secreto | MEDK-3 |
-| 2026-11-19 | Esqueleto de la api: migración base Flyway `V1__baseline.sql` aplicada al arrancar, comprobación de salud `GET /api/v1/system/info`, `./mvnw -B verify` necesita Docker (Testcontainers). Sin variables ni secretos nuevos | MEDK-4 |
+| 2026-11-19 | Web Angular: `config.json` en tiempo de ejecución con `API_BASE_URL` (por defecto `/api/v1`, mismo origen), reescritura de `config.json` al arrancar el contenedor web si recibe `API_BASE_URL`, proxy local a la api (`npm start`) y mock Prism del contrato en el puerto 4010 (`npm run dev:mock`) | MEDK-7 |
