@@ -105,7 +105,11 @@ export function applyServerErrors(form: FormGroup, error: unknown): FieldError[]
   const fieldErrors = toProblem(error)?.errors ?? [];
   const unmatched: FieldError[] = [];
   for (const fieldError of fieldErrors) {
-    const control = form.get(fieldName(fieldError.field));
+    // Nested paths (`guardian.person.documentNumber`) land on the nested control when the form
+    // has it; otherwise on the top-level field.
+    const control =
+      form.get(fieldError.field.replace(/\[(\d+)\]/g, '.$1')) ??
+      form.get(fieldName(fieldError.field));
     if (control) {
       control.setErrors({ ...control.errors, server: fieldErrorMessage(fieldError) });
       control.markAsTouched();
