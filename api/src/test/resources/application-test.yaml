@@ -1,0 +1,10 @@
+# Automated tests: PostgreSQL comes from Testcontainers (TestcontainersConfiguration), no .env needed.
+spring:
+  datasource:
+    url: jdbc:postgresql://overridden-by-testcontainers/medical
+    username: test
+    password: test
+
+kuador:
+  cors:
+    allowed-origins: http://localhost:4200

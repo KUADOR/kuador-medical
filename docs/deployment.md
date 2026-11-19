@@ -113,7 +113,8 @@ Al fusionar en `develop` se construye y despliega a pruebas; al fusionar en `mai
 ## Verificación
 
 - Local: `docker compose ps` muestra `db` como `healthy` y la base responde a `select version();`.
-- [POR DEFINIR: comprobación de salud de la api, revisión de logs, y una prueba de punta a punta por entorno, incluyendo que un usuario de un tenant no accede a datos de otro.]
+- api: `GET /api/v1/system/info` (público) responde 200 con `status` y `database` en `UP`; si la base no responde, devuelve `DOWN` en ambos (sigue respondiendo 200). Las migraciones Flyway (`api/src/main/resources/db/migration`) se aplican al arrancar.
+- [POR DEFINIR: revisión de logs y una prueba de punta a punta por entorno, incluyendo que un usuario de un tenant no accede a datos de otro.]
 
 ## Cambios
 
@@ -121,4 +122,4 @@ Al fusionar en `develop` se construye y despliega a pruebas; al fusionar en `mai
 |---|---|---|
 | {date} | Primera versión | — |
 | 2026-11-19 | Entorno local con Docker Compose (PostgreSQL 18 y perfil `full` con api y web), `.env.example`, perfiles `local`/`test`/`prod`, variables y secretos de la api (renombra `SPRING_DATASOURCE_*` a `DB_*` según el plan), carga de la clave inicial del SUPER_ADMIN como secreto | MEDK-3 |
-| 2026-11-19 | App móvil Flutter en `movil/`: `API_BASE_URL` por `--dart-define` (por defecto `http://localhost:8080/api/v1`, incluye `/api/v1`); HTTP sin cifrar solo en builds debug de Android y red local en iOS; permiso INTERNET en Android | MEDK-9 |
+| 2026-11-19 | Esqueleto de la api: migración base Flyway `V1__baseline.sql` aplicada al arrancar, comprobación de salud `GET /api/v1/system/info`, `./mvnw -B verify` necesita Docker (Testcontainers). Sin variables ni secretos nuevos | MEDK-4 |
