@@ -18,4 +18,8 @@ public record AuditTarget(String type, UUID id) {
     public static AuditTarget account(UUID id) {
         return new AuditTarget("ACCOUNT", id);
     }
+
+    public static AuditTarget role(UUID id) {
+        return new AuditTarget("ROLE", id);
+    }
 }

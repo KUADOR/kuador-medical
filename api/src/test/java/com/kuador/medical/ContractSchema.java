@@ -41,6 +41,17 @@ public final class ContractSchema {
         assertObject(schema, body, path);
     }
 
+    /** Asserts that {@code body} matches an array response schema, item by item. */
+    public void assertArrayResponse(
+            String path, String method, int status, String mediaType, List<Map<String, Object>> body) {
+        Map<String, Object> response = map(map(map(map(document, "paths"), path), method.toLowerCase()), "responses");
+        Map<String, Object> declared = resolve(map(response, String.valueOf(status)));
+        Map<String, Object> schema = resolve(map(map(map(declared, "content"), mediaType), "schema"));
+        assertThat(schema.get("type")).as("type of %s", path).isEqualTo("array");
+        Map<String, Object> items = resolve(map(schema, "items"));
+        body.forEach(item -> assertObject(items, item, path + "[]"));
+    }
+
     @SuppressWarnings("unchecked")
     private void assertObject(Map<String, Object> schema, Map<String, Object> body, String where) {
         Map<String, Object> properties = map(schema, "properties");

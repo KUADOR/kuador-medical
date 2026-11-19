@@ -38,6 +38,11 @@ class ProblemDetailsHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(ApiException.class)
     ResponseEntity<Object> handleApiException(ApiException ex) {
         ProblemDetail problem = problem(ex.status(), ex.getMessage(), ex.code());
+        if (!ex.errors().isEmpty()) {
+            problem.setProperty("errors", ex.errors().stream()
+                    .map(error -> Map.of("field", error.field(), "code", error.code()))
+                    .toList());
+        }
         HttpHeaders headers = new HttpHeaders();
         if (ex.status() == HttpStatus.UNAUTHORIZED) {
             headers.set(HttpHeaders.WWW_AUTHENTICATE, "Bearer");

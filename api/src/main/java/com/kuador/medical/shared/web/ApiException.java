@@ -1,5 +1,6 @@
 package com.kuador.medical.shared.web;
 
+import java.util.List;
 import org.springframework.http.HttpStatus;
 
 /**
@@ -10,11 +11,17 @@ public class ApiException extends RuntimeException {
 
     private final HttpStatus status;
     private final ErrorCode code;
+    private final List<FieldViolation> errors;
 
     public ApiException(HttpStatus status, ErrorCode code, String detail) {
+        this(status, code, detail, List.of());
+    }
+
+    private ApiException(HttpStatus status, ErrorCode code, String detail, List<FieldViolation> errors) {
         super(detail);
         this.status = status;
         this.code = code;
+        this.errors = List.copyOf(errors);
     }
 
     public HttpStatus status() {
@@ -23,6 +30,20 @@ public class ApiException extends RuntimeException {
 
     public ErrorCode code() {
         return code;
+    }
+
+    /** Field-level errors; only {@link ErrorCode#VALIDATION} carries them. */
+    public List<FieldViolation> errors() {
+        return errors;
+    }
+
+    /** 400 {@code VALIDATION} for a rule that Bean Validation cannot express, with its fields. */
+    public static ApiException validation(List<FieldViolation> errors) {
+        return new ApiException(HttpStatus.BAD_REQUEST, ErrorCode.VALIDATION, "The request is not valid.", errors);
+    }
+
+    public static ApiException conflict(ErrorCode code, String detail) {
+        return new ApiException(HttpStatus.CONFLICT, code, detail);
     }
 
     public static ApiException forbidden(String detail) {
