@@ -1,17 +1,14 @@
 package com.kuador.medical.identity.provisioning;
 
 import com.kuador.medical.identity.NewTenantOwner;
-import com.kuador.medical.identity.Permission;
-import com.kuador.medical.identity.PermissionScope;
 import com.kuador.medical.identity.TenantOwnerProvisioning;
 import com.kuador.medical.identity.account.EmailAddresses;
 import com.kuador.medical.identity.account.UserAccount;
 import com.kuador.medical.identity.account.UserAccountRepository;
-import com.kuador.medical.identity.membership.MembershipRole;
 import com.kuador.medical.identity.membership.TenantMembership;
 import com.kuador.medical.identity.role.Role;
-import com.kuador.medical.identity.role.RolePermission;
-import com.kuador.medical.identity.role.SystemRole;
+import com.kuador.medical.identity.role.RoleAssignment;
+import com.kuador.medical.identity.role.RoleRepository;
 import com.kuador.medical.shared.tenancy.TenantContext;
 import com.kuador.medical.shared.web.ApiException;
 import com.kuador.medical.shared.web.ErrorCode;
@@ -34,12 +31,17 @@ class DefaultTenantOwnerProvisioning implements TenantOwnerProvisioning {
     private final EntityManager entityManager;
     private final UserAccountRepository accounts;
     private final PasswordEncoder passwordEncoder;
+    private final RoleRepository roles;
 
     DefaultTenantOwnerProvisioning(
-            EntityManager entityManager, UserAccountRepository accounts, PasswordEncoder passwordEncoder) {
+            EntityManager entityManager,
+            UserAccountRepository accounts,
+            PasswordEncoder passwordEncoder,
+            RoleRepository roles) {
         this.entityManager = entityManager;
         this.accounts = accounts;
         this.passwordEncoder = passwordEncoder;
+        this.roles = roles;
     }
 
     @Override
@@ -52,19 +54,19 @@ class DefaultTenantOwnerProvisioning implements TenantOwnerProvisioning {
         if (accounts.existsByEmail(email)) {
             throw emailTaken();
         }
+        // The roles were seeded on TenantCreated; OWNER is clinic-wide (no branch). Looked up before
+        // persisting the account, so the query does not auto-flush it outside the translation below.
+        Role ownerRole = roles.findAllInCurrentTenant().stream()
+                .filter(Role::isOwner)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("The roles of the tenant must be seeded first"));
         UserAccount account = UserAccount.clinicStaff(email, passwordEncoder.encode(owner.password()), owner.displayName());
         entityManager.persist(account);
         TenantMembership membership = new TenantMembership(account.getId());
         entityManager.persist(membership);
-        for (SystemRole systemRole : SystemRole.values()) {
-            Role role = Role.system(systemRole);
-            entityManager.persist(role);
-            for (Permission permission : Permission.ofScope(PermissionScope.TENANT)) {
-                entityManager.persist(new RolePermission(role.getId(), permission.code()));
-            }
-            entityManager.persist(new MembershipRole(membership.getId(), role.getId()));
-        }
         flushTranslatingDuplicateEmail();
+        entityManager.persist(new RoleAssignment(account.getId(), null, ownerRole.getId()));
+        entityManager.flush();
         return account.getId();
     }
 

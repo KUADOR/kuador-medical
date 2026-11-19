@@ -34,8 +34,9 @@ import tools.jackson.databind.json.JsonMapper;
 @Import(TestcontainersConfiguration.class)
 class RolePermissionIT {
 
+    /** Grants nothing: granting a permission the caller lacks is PRIVILEGE_ESCALATION, not what is tested here. */
     private static final Map<String, Object> ROLE_BODY =
-            Map.of("name", "Reception", "permissions", List.of("roles.read"), "version", 0);
+            Map.of("name", "Reception", "permissions", List.of(), "version", 0);
 
     @Autowired
     private MockMvcTester mvc;
@@ -77,7 +78,7 @@ class RolePermissionIT {
         for (var operation : clinicOperations(roleId)) {
             assertForbidden(operation.getValue().apply(clinic.token()), "FORBIDDEN");
         }
-        assertThat(jdbc.queryForObject("select count(*) from role where id = ?::uuid", Integer.class, roleId)).isOne();
+        assertThat(jdbc.queryForObject("select count(*) from identity_role where id = ?::uuid", Integer.class, roleId)).isOne();
     }
 
     @Test
@@ -116,7 +117,7 @@ class RolePermissionIT {
         for (var operation : clinicOperations(roleId)) {
             assertForbidden(operation.getValue().apply(platformToken), "FORBIDDEN");
         }
-        assertThat(jdbc.queryForObject("select count(*) from role where id = ?::uuid", Integer.class, roleId)).isOne();
+        assertThat(jdbc.queryForObject("select count(*) from identity_role where id = ?::uuid", Integer.class, roleId)).isOne();
     }
 
     @Test
@@ -150,8 +151,11 @@ class RolePermissionIT {
         assertThat(catalog).allSatisfy(permission -> {
             assertThat(permission).containsEntry("scope", "TENANT");
             assertThat(permission.get("description")).asString().isNotBlank();
+            assertThat(permission.get("module")).isIn("identity", "patients");
         });
-        ContractSchema.identity().assertArrayResponse("/permissions", "GET", 200, "application/json", catalog);
+        assertThat(catalog).filteredOn(permission -> permission.get("code").toString().startsWith("roles."))
+                .allSatisfy(permission -> assertThat(permission).containsEntry("module", "identity"));
+        ContractSchema.userRegistration().assertArrayResponse("/permissions", "GET", 200, "application/json", catalog);
     }
 
     @Test
@@ -172,7 +176,7 @@ class RolePermissionIT {
 
     private void revoke(Clinic clinic, String... codes) {
         for (String code : codes) {
-            jdbc.update("delete from role_permission where tenant_id = ? and permission_code = ?", clinic.tenantId(), code);
+            jdbc.update("delete from identity_role_permission where tenant_id = ? and permission_code = ?", clinic.tenantId(), code);
         }
     }
 

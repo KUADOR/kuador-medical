@@ -32,10 +32,9 @@ class RoleRulesTest {
         assertThat(Role.custom("Reception", null).getDescription()).isNull();
     }
 
-    @ParameterizedTest
-    @EnumSource(SystemRole.class)
-    void systemRolesCannotBeUpdated(SystemRole systemRole) {
-        Role role = Role.system(systemRole);
+    @Test
+    void ownerCannotBeUpdated() {
+        Role role = Role.system(SystemRole.OWNER, "OWNER", null);
 
         assertThatThrownBy(() -> role.update("Renamed", null, role.getVersion()))
                 .asInstanceOf(type(ApiException.class))
@@ -43,13 +42,24 @@ class RoleRulesTest {
                     assertThat(e.status()).isEqualTo(HttpStatus.CONFLICT);
                     assertThat(e.code()).isEqualTo(ErrorCode.SYSTEM_ROLE_IMMUTABLE);
                 });
-        assertThat(role.getName()).isEqualTo(systemRole.name());
+        assertThat(role.getName()).isEqualTo("OWNER");
+    }
+
+    @Test
+    void adminCanBeUpdatedButKeepsItsSystemKey() {
+        Role role = Role.system(SystemRole.ADMIN, "ADMIN", null);
+
+        role.update("Administración", "Gestión de la clínica", role.getVersion());
+
+        assertThat(role.getName()).isEqualTo("Administración");
+        assertThat(role.getSystemCode()).isEqualTo(SystemRole.ADMIN);
+        assertThat(role.isSystemRole()).isTrue();
     }
 
     @ParameterizedTest
     @EnumSource(SystemRole.class)
     void systemRolesCannotBeDeleted(SystemRole systemRole) {
-        assertThatThrownBy(() -> Role.system(systemRole).ensureDeletable())
+        assertThatThrownBy(() -> Role.system(systemRole, systemRole.name(), null).ensureDeletable())
                 .asInstanceOf(type(ApiException.class))
                 .extracting(ApiException::code)
                 .isEqualTo(ErrorCode.SYSTEM_ROLE_IMMUTABLE);

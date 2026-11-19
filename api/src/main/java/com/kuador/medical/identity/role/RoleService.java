@@ -6,13 +6,13 @@ import com.kuador.medical.audit.AuditTarget;
 import com.kuador.medical.identity.AuthenticatedAccount;
 import com.kuador.medical.identity.Permission;
 import com.kuador.medical.identity.PermissionScope;
-import com.kuador.medical.identity.membership.MembershipRoleRepository;
 import com.kuador.medical.shared.web.ApiException;
 import com.kuador.medical.shared.web.ErrorCode;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.persistence.PersistenceException;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -26,13 +26,15 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * CRUD of the roles of the caller's clinic (FR-006). The clinic is never a parameter: every
  * query runs in the tenant bound from the token (ADR-007), so a role of another clinic is simply
- * not found (404). Changes are audited in the same transaction (FR-011).
+ * not found (404). The anti-escalation rules of {@link EscalationGuard} apply to creation and
+ * edition. Changes are audited in the same transaction (FR-011).
  */
 @Service
 public class RoleService {
 
-    private static final String NAME_UNIQUE_INDEX = "role_tenant_name_unique";
-    private static final String ROLE_IN_USE_FK = "membership_role_role_fk";
+    private static final String NAME_UNIQUE_INDEX = "identity_role_tenant_name_unique";
+    private static final String ID_PRIMARY_KEY = "identity_role_pkey";
+    private static final String ROLE_IN_USE_FK = "identity_role_assignment_role_fk";
 
     /** OWNER, ADMIN, then the clinic roles by name. */
     private static final Comparator<Role> LISTING_ORDER = Comparator
@@ -43,19 +45,22 @@ public class RoleService {
     private final EntityManager entityManager;
     private final RoleRepository roles;
     private final RolePermissionRepository rolePermissions;
-    private final MembershipRoleRepository membershipRoles;
+    private final RoleAssignmentRepository assignments;
+    private final EffectivePermissions effectivePermissions;
     private final AuditRecorder audit;
 
     RoleService(
             EntityManager entityManager,
             RoleRepository roles,
             RolePermissionRepository rolePermissions,
-            MembershipRoleRepository membershipRoles,
+            RoleAssignmentRepository assignments,
+            EffectivePermissions effectivePermissions,
             AuditRecorder audit) {
         this.entityManager = entityManager;
         this.roles = roles;
         this.rolePermissions = rolePermissions;
-        this.membershipRoles = membershipRoles;
+        this.assignments = assignments;
+        this.effectivePermissions = effectivePermissions;
         this.audit = audit;
     }
 
@@ -74,18 +79,26 @@ public class RoleService {
         return view(find(id));
     }
 
+    /**
+     * @param clientId id chosen by the client (offline-ready creation), or {@code null}
+     */
     @Transactional
-    public RoleView create(RoleCommand command, AuthenticatedAccount actor) {
+    public RoleView create(@Nullable UUID clientId, RoleCommand command, AuthenticatedAccount actor) {
         List<Permission> permissions = AssignablePermissions.parse(command.permissionCodes());
+        EscalationGuard.checkRoleCreation(effectivePermissions.actor(actor), Set.copyOf(permissions));
         if (roles.existsByName(command.name().strip())) {
             throw nameTaken();
         }
-        Role role = Role.custom(command.name(), command.description());
+        if (clientId != null && roles.existsById(clientId)) {
+            throw idTaken();
+        }
+        Role role = Role.custom(clientId != null ? clientId : UUID.randomUUID(),
+                command.name(), command.description(), command.clinical());
         entityManager.persist(role);
         permissions.forEach(permission -> entityManager.persist(new RolePermission(role.getId(), permission.code())));
         flush();
         audit.record(AuditAction.ROLE_CREATED, actor.tenantId(), actor.accountId(), AuditTarget.role(role.getId()));
-        return new RoleView(role.getId(), role.getName(), role.getDescription(), false, permissions, role.getVersion());
+        return view(role, permissions);
     }
 
     @Transactional
@@ -93,22 +106,31 @@ public class RoleService {
         Role role = find(id);
         role.ensureUpdatable(expectedVersion);
         List<Permission> permissions = AssignablePermissions.parse(command.permissionCodes());
+        List<RoleAssignment> assigned = assignments.findByRole(role.getId());
+        Set<UUID> branches = new HashSet<>();
+        assigned.forEach(assignment -> branches.add(assignment.getBranchId()));
+        EscalationGuard.checkRoleUpdate(
+                effectivePermissions.actor(actor),
+                new EscalationGuard.GuardedRole(role.getId(), role.getSystemCode(), Set.copyOf(view(role).permissions())),
+                Set.copyOf(permissions),
+                assigned.stream().anyMatch(assignment -> assignment.getUserId().equals(actor.accountId())),
+                branches);
         // Checked before changing the entity: the query would otherwise auto-flush the new name.
         if (roles.existsByNameExcluding(command.name().strip(), role.getId())) {
             throw nameTaken();
         }
-        role.update(command.name(), command.description(), expectedVersion);
+        role.update(command.name(), command.description(), command.clinical(), expectedVersion);
         replacePermissions(role, permissions);
         flush();
         audit.record(AuditAction.ROLE_UPDATED, actor.tenantId(), actor.accountId(), AuditTarget.role(role.getId()));
-        return new RoleView(role.getId(), role.getName(), role.getDescription(), false, permissions, role.getVersion());
+        return view(role, permissions);
     }
 
     @Transactional
     public void delete(UUID id, AuthenticatedAccount actor) {
         Role role = find(id);
         role.ensureDeletable();
-        if (membershipRoles.existsByRoleId(role.getId())) {
+        if (assignments.existsByRole(role.getId())) {
             throw roleInUse();
         }
         rolePermissions.deleteAll(rolePermissions.findByRoleIdIn(List.of(role.getId())));
@@ -143,8 +165,13 @@ public class RoleService {
         List<Permission> permissions = Permission.ofScope(PermissionScope.TENANT).stream()
                 .filter(permission -> grantedCodes.contains(permission.code()))
                 .toList();
+        return view(role, permissions);
+    }
+
+    private static RoleView view(Role role, List<Permission> permissions) {
         return new RoleView(
-                role.getId(), role.getName(), role.getDescription(), role.isSystemRole(), permissions, role.getVersion());
+                role.getId(), role.getName(), role.getDescription(), role.getSystemCode(), role.isClinical(),
+                permissions, role.getVersion());
     }
 
     /**
@@ -164,6 +191,9 @@ public class RoleService {
             if (ROLE_IN_USE_FK.equals(constraint)) {
                 throw roleInUse();
             }
+            if (ID_PRIMARY_KEY.equals(constraint)) {
+                throw idTaken();
+            }
             throw e;
         }
     }
@@ -179,6 +209,10 @@ public class RoleService {
 
     private static ApiException nameTaken() {
         return ApiException.conflict(ErrorCode.ROLE_NAME_TAKEN, "Another role of the clinic has this name.");
+    }
+
+    private static ApiException idTaken() {
+        return ApiException.conflict(ErrorCode.RESOURCE_ID_TAKEN, "The id is already used.");
     }
 
     private static ApiException roleInUse() {

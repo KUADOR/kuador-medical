@@ -45,7 +45,7 @@ class RoleController {
     @RequiresPermission("roles.create")
     @PostMapping
     ResponseEntity<RoleResponse> create(@Valid @RequestBody CreateRoleRequest request) {
-        RoleView created = roles.create(request.toCommand(), caller());
+        RoleView created = roles.create(request.id(), request.toCommand(), caller());
         var location = ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand(created.id()).toUri();
         return ResponseEntity.created(location).body(RoleResponse.of(created));
     }

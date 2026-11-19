@@ -1,21 +1,11 @@
 package com.kuador.medical.identity.role;
 
 /**
- * Protected roles every clinic receives at signup (FR-008, FR-009). They cannot be edited or
- * deleted; their scope difference is still [POR DEFINIR] in the glossary, so both hold every
- * clinic permission.
+ * Protected roles every clinic receives when it is created (plan of MEDK-12): OWNER can do
+ * everything in its clinic and is immutable; ADMIN cannot be deleted and only an OWNER may edit
+ * its permissions. Names and permissions come from {@code identity/role-seed.yaml}.
  */
 public enum SystemRole {
-    OWNER("Dueño de la clínica"),
-    ADMIN("Administrador de la clínica");
-
-    private final String description;
-
-    SystemRole(String description) {
-        this.description = description;
-    }
-
-    public String description() {
-        return description;
-    }
+    OWNER,
+    ADMIN
 }

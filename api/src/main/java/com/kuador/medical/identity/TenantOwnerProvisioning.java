@@ -3,8 +3,9 @@ package com.kuador.medical.identity;
 import java.util.UUID;
 
 /**
- * Creates the owner of a clinic that is being signed up: the account, its membership and the
- * system roles OWNER and ADMIN with every clinic permission, both assigned to the owner (FR-009).
+ * Creates the owner of a clinic that is being signed up: the account, its membership and its
+ * clinic-wide OWNER assignment (FR-009). The roles must already be seeded, which identity does
+ * when the platform publishes {@link com.kuador.medical.shared.tenancy.TenantCreated}.
  */
 public interface TenantOwnerProvisioning {
 
