@@ -3,7 +3,7 @@ import { RouterLink } from '@angular/router';
 
 /**
  * Simple informative page driven by route data (title, message).
- * Used for forbidden / not found and as a placeholder for the access pages of MEDK-8.
+ * Used for forbidden and not found.
  */
 @Component({
   selector: 'mk-message-page',

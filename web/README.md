@@ -45,12 +45,23 @@ src/app/
     api/        identity.schema.d.ts (generated, do not edit) and api-types.ts (aliases, contract paths)
     config/     AppConfigService: loads config.json, builds API URLs
     auth/       SessionStore (token in sessionStorage + GET /me), authInterceptor, guards, auth routes
+    auth/       … plus AuthService (login, signup, password change, logout) and navigation
+                (menu by permission, landing page per account, safe return URLs)
     errors/     ERROR_MESSAGES: every contract error `code` → Spanish message
+    forms/      Spanish validation messages, server field errors on controls, focus helpers
+    notice/     One-shot confirmation message carried across a navigation
+    roles/      RolesService (/roles, /permissions) and Spanish permission labels
+    platform/   PlatformService (/platform/permissions)
     system/     SystemInfoService (GET /system/info)
   features/
-    status/     System status page: example web → API → database flow
-    message/    Informative page (forbidden, not found, placeholders for MEDK-8)
-src/testing/    Test-only fixtures
+    status/           System status page: example web → API → database flow
+    signup/           Clinic self-signup (creator becomes OWNER and ADMIN), then automatic login
+    login/            Login; follows ?returnUrl= only for in-app paths
+    change-password/  Mandatory password change; the only usable page while it is pending
+    roles/            Role list (delete with confirmation) and role form (create, edit, read-only view)
+    platform/         Full permission catalog for the SUPER_ADMIN
+    message/          Informative page (forbidden, not found)
+src/testing/    Test-only fixtures and app harness (real routes, guards and interceptor)
 ```
 
 ## Auth building blocks
@@ -61,7 +72,27 @@ src/testing/    Test-only fixtures
   `/change-password`, missing permission → `/forbidden`. `authenticatedGuard` only needs a session.
 - `pendingPasswordChangeGuard` opens `/change-password` only while the change is pending.
 - The API enforces every permission (ADR-008); guards only shape navigation.
-- `/login` and `/change-password` are placeholders until MEDK-8 adds the real pages.
+
+## Pages and permissions
+
+| Route | Guard | Notes |
+|---|---|---|
+| `/` | `homeGuard` | Visitors → `/status`; accounts → their landing page (pending change → `/change-password`, then first menu entry). |
+| `/signup`, `/login` | `guestGuard` | Only without a session. |
+| `/change-password` | `pendingPasswordChangeGuard` | Only while `mustChangePassword` is true. |
+| `/roles` | `roles.read` | Create / edit / delete buttons follow `roles.create`, `roles.update`, `roles.delete`. |
+| `/roles/new` | `roles.read` + `roles.create` | |
+| `/roles/:id` | `roles.read` | Read-only for system roles (OWNER, ADMIN) or without `roles.update`. |
+| `/platform/permissions` | `platform.permissions.read` | SUPER_ADMIN only; clinic accounts get `/forbidden`. |
+
+The header menu is built from the permissions of `GET /me` and is empty while a password change is pending.
+
+## Trying the flow against the mock
+
+`npm run dev:mock` and open `http://localhost:4200/signup`. Prism answers with the contract examples, so the
+signup logs in as the example owner, `POST /roles` returns the example role and `/roles/{id}` shows OWNER
+(read-only). Other branches can be forced with the `Prefer` header (e.g. `Prefer: code=409` on
+`/tenants/signup` for `EMAIL_TAKEN`, `Prefer: example=superAdmin` on `/me` for the SUPER_ADMIN flow).
 
 ## Errors
 

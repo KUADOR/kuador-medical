@@ -5,6 +5,8 @@ import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { App } from './app';
 import { routes } from './app.routes';
+import { SessionStore } from './core/auth/session.store';
+import { FULL_ACCOUNT, LOGIN, SUPER_ADMIN } from '../testing/fixtures';
 
 describe('App', () => {
   beforeEach(async () => {
@@ -43,5 +45,58 @@ describe('App', () => {
   it('keeps the password change page closed without a session', async () => {
     const harness = await RouterTestingHarness.create('/change-password');
     expect(harness.routeNativeElement?.textContent).toContain('Ingresar');
+  });
+
+  async function shellWith(account: typeof FULL_ACCOUNT) {
+    TestBed.inject(SessionStore).start({
+      ...LOGIN,
+      mustChangePassword: account.mustChangePassword,
+    });
+    const fixture = TestBed.createComponent(App);
+    TestBed.inject(HttpTestingController).expectOne('/api/v1/me').flush(account);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  function navLabels(root: HTMLElement): string[] {
+    return Array.from(root.querySelectorAll('nav a')).map((a) => a.textContent?.trim() ?? '');
+  }
+
+  it('offers login and signup to visitors', async () => {
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+
+    expect(navLabels(root)).toEqual(['Estado del sistema']);
+    expect(root.querySelector('.app-header__account')?.textContent).toContain('Ingresar');
+    expect(root.querySelector('.app-header__account')?.textContent).toContain('Registrar clínica');
+  });
+
+  it('builds the clinic menu from the permissions of GET /me', async () => {
+    const root = await shellWith(FULL_ACCOUNT);
+
+    expect(navLabels(root)).toEqual(['Roles', 'Estado del sistema']);
+    expect(root.querySelector('[data-testid="account-name"]')?.textContent).toContain(
+      'Test Owner · Test Clinic',
+    );
+  });
+
+  it('shows the SUPER_ADMIN only the platform catalog', async () => {
+    const root = await shellWith(SUPER_ADMIN);
+    expect(navLabels(root)).toEqual(['Catálogo de permisos', 'Estado del sistema']);
+  });
+
+  it('hides the menu while the password change is pending', async () => {
+    const root = await shellWith({ ...SUPER_ADMIN, mustChangePassword: true });
+    expect(navLabels(root)).toEqual(['Estado del sistema']);
+  });
+
+  it('logs out from the header', async () => {
+    const root = await shellWith(FULL_ACCOUNT);
+    (root.querySelector('.app-header__logout') as HTMLButtonElement).click();
+    await Promise.resolve();
+
+    expect(TestBed.inject(SessionStore).isAuthenticated()).toBe(false);
   });
 });

@@ -1,30 +1,65 @@
 import { Routes } from '@angular/router';
-import { pendingPasswordChangeGuard } from './core/auth/auth.guards';
+import {
+  guestGuard,
+  homeGuard,
+  pendingPasswordChangeGuard,
+  requirePermissions,
+} from './core/auth/auth.guards';
+import { ChangePasswordPage } from './features/change-password/change-password.page';
+import { LoginPage } from './features/login/login.page';
 import { MessagePage } from './features/message/message.page';
+import { PlatformPermissionsPage } from './features/platform/platform-permissions.page';
+import { RoleFormPage } from './features/roles/role-form.page';
+import { RolesPage } from './features/roles/roles.page';
+import { SignupPage } from './features/signup/signup.page';
 import { StatusPage } from './features/status/status.page';
 
 const APP_TITLE = 'Medical Kuador';
 
 export const routes: Routes = [
-  { path: '', pathMatch: 'full', redirectTo: 'status' },
+  { path: '', pathMatch: 'full', canActivate: [homeGuard], children: [] },
   { path: 'status', component: StatusPage, title: `Estado del sistema · ${APP_TITLE}` },
   {
-    // Placeholder: the login page arrives in MEDK-8.
     path: 'login',
-    component: MessagePage,
+    component: LoginPage,
+    canActivate: [guestGuard],
     title: `Ingresar · ${APP_TITLE}`,
-    data: { heading: 'Ingresar', message: 'El ingreso estará disponible próximamente.' },
   },
   {
-    // Placeholder: the password change page arrives in MEDK-8.
+    path: 'signup',
+    component: SignupPage,
+    canActivate: [guestGuard],
+    title: `Registrar clínica · ${APP_TITLE}`,
+  },
+  {
     path: 'change-password',
-    component: MessagePage,
+    component: ChangePasswordPage,
     canActivate: [pendingPasswordChangeGuard],
     title: `Cambiar contraseña · ${APP_TITLE}`,
-    data: {
-      heading: 'Cambiar contraseña',
-      message: 'Debes cambiar tu contraseña antes de continuar.',
-    },
+  },
+  {
+    path: 'roles',
+    component: RolesPage,
+    canActivate: [requirePermissions('roles.read')],
+    title: `Roles · ${APP_TITLE}`,
+  },
+  {
+    path: 'roles/new',
+    component: RoleFormPage,
+    canActivate: [requirePermissions('roles.read', 'roles.create')],
+    title: `Nuevo rol · ${APP_TITLE}`,
+  },
+  {
+    path: 'roles/:id',
+    component: RoleFormPage,
+    canActivate: [requirePermissions('roles.read')],
+    title: `Rol · ${APP_TITLE}`,
+  },
+  {
+    path: 'platform/permissions',
+    component: PlatformPermissionsPage,
+    canActivate: [requirePermissions('platform.permissions.read')],
+    title: `Catálogo de permisos · ${APP_TITLE}`,
   },
   {
     path: 'forbidden',

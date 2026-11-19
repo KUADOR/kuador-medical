@@ -55,6 +55,26 @@ describe('SessionStore', () => {
     expect(store.hasPermission('roles.delete')).toBe(false);
   });
 
+  it('shares one GET /me between concurrent callers', async () => {
+    store.start(LOGIN);
+    const first = store.ensureAccount();
+    const second = store.ensureAccount();
+    http.expectOne('/api/v1/me').flush(ACCOUNT);
+
+    expect(await first).toEqual(ACCOUNT);
+    expect(await second).toEqual(ACCOUNT);
+  });
+
+  it('drops a GET /me that answers after the session ended', async () => {
+    store.start(LOGIN);
+    const loading = store.ensureAccount();
+    store.clear();
+    http.expectOne('/api/v1/me').flush(ACCOUNT);
+
+    expect(await loading).toBeNull();
+    expect(store.account()).toBeNull();
+  });
+
   it('reports a pending password change from the login and from /me', async () => {
     store.start({ ...LOGIN, mustChangePassword: true });
     expect(store.mustChangePassword()).toBe(true);

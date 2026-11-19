@@ -1,0 +1,116 @@
+<section class="page" aria-labelledby="roles-title">
+  <div class="page__header">
+    <div>
+      <h1 id="roles-title">Roles</h1>
+      @if (clinicName(); as clinic) {
+        <p class="hint">Roles y permisos de {{ clinic }}.</p>
+      }
+    </div>
+    @if (canCreate()) {
+      <a class="button" [routerLink]="newRoleLink" data-testid="new-role">Nuevo rol</a>
+    }
+  </div>
+
+  <div aria-live="polite">
+    @if (notice(); as message) {
+      <p class="alert alert--success" role="status" data-testid="notice">{{ message }}</p>
+    }
+  </div>
+
+  @if (actionFailure(); as message) {
+    <p class="alert" role="alert" data-testid="action-error">{{ message }}</p>
+  }
+
+  @if (confirming(); as role) {
+    <div
+      class="alert alert--info"
+      role="alertdialog"
+      aria-labelledby="confirm-title"
+      aria-describedby="confirm-text"
+    >
+      <h2 id="confirm-title">¿Eliminar el rol «{{ role.name }}»?</h2>
+      <p id="confirm-text">Esta acción no se puede deshacer.</p>
+      <div class="actions">
+        <button
+          type="button"
+          class="button button--danger"
+          data-testid="confirm-delete"
+          [disabled]="deleting()"
+          (click)="confirmDelete()"
+        >
+          {{ deleting() ? 'Eliminando…' : 'Sí, eliminar' }}
+        </button>
+        <button type="button" class="button button--secondary" (click)="cancelDelete()">
+          Cancelar
+        </button>
+      </div>
+    </div>
+  }
+
+  <div [attr.aria-busy]="state().kind === 'loading'">
+    @switch (state().kind) {
+      @case ('loading') {
+        <p class="hint">Cargando roles…</p>
+      }
+      @case ('failed') {
+        <p class="alert" role="alert" data-testid="load-error">{{ loadFailure() }}</p>
+        <div class="actions">
+          <button type="button" class="button" (click)="load()">Volver a intentar</button>
+        </div>
+      }
+      @default {
+        @if (roles().length === 0) {
+          <p class="hint" data-testid="empty">Tu clínica todavía no tiene roles.</p>
+        } @else {
+          <ul class="card-list" aria-label="Roles de la clínica">
+            @for (role of roles(); track role.id) {
+              <li class="card" data-testid="role">
+                <div class="card__title">
+                  <h2>{{ role.name }}</h2>
+                  @if (role.systemRole) {
+                    <span class="badge" data-testid="system-badge"
+                      >Rol del sistema · solo lectura</span
+                    >
+                  }
+                </div>
+                @if (role.description) {
+                  <p class="hint">{{ role.description }}</p>
+                }
+                @if (role.permissions.length) {
+                  <ul class="tag-list" [attr.aria-label]="'Permisos de ' + role.name">
+                    @for (code of role.permissions; track code) {
+                      <li class="badge">{{ permissionLabel({ code }) }}</li>
+                    }
+                  </ul>
+                } @else {
+                  <p class="hint">Sin permisos asignados.</p>
+                }
+                <div class="actions">
+                  @if (!role.systemRole && canUpdate()) {
+                    <a class="button button--secondary" [routerLink]="[rolesLink, role.id]">
+                      Editar<span class="visually-hidden"> {{ role.name }}</span>
+                    </a>
+                  } @else {
+                    <a class="button button--secondary" [routerLink]="[rolesLink, role.id]">
+                      Ver<span class="visually-hidden"> {{ role.name }}</span>
+                    </a>
+                  }
+                  @if (!role.systemRole && canDelete()) {
+                    <button
+                      type="button"
+                      class="button button--danger"
+                      [attr.data-delete-role]="role.id"
+                      (click)="askDelete(role)"
+                    >
+                      Eliminar<span class="visually-hidden"> {{ role.name }}</span>
+                    </button>
+                  }
+                </div>
+              </li>
+            }
+          </ul>
+        }
+      }
+    }
+  </div>
+</section>

@@ -29,12 +29,14 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
     catchError((error: unknown) => {
       if (error instanceof HttpErrorResponse) {
         const isLogin = request.url === config.apiUrl(ApiPaths.login);
-        if (error.status === 401 && token && !isLogin) {
+        const code = toProblem(error)?.code;
+        // INVALID_CREDENTIALS on POST /auth/password means a wrong current password, not a dead session.
+        if (error.status === 401 && token && !isLogin && code !== 'INVALID_CREDENTIALS') {
           session.clear();
           void router.navigate([AuthRoutes.login], {
             queryParams: { [RETURN_URL_PARAM]: router.url },
           });
-        } else if (error.status === 403 && toProblem(error)?.code === 'PASSWORD_CHANGE_REQUIRED') {
+        } else if (error.status === 403 && code === 'PASSWORD_CHANGE_REQUIRED') {
           session.markPasswordChangeRequired();
           void router.navigate([AuthRoutes.changePassword]);
         }
