@@ -37,9 +37,6 @@ class EndpointPermissionContractTest {
             Path.of("..", "contracts", "user-registration.openapi.yaml"),
             Path.of("..", "contracts", "identity.openapi.yaml"));
 
-    /** Operations whose served version still follows identity.openapi.yaml (contracts/README.md). */
-    private static final List<String> SERVED_FROM_IDENTITY_CONTRACT = List.of("POST /auth/login", "GET /me");
-
     @Test
     void everyRequiredPermissionBelongsToTheCatalog() {
         handlers().forEach((operation, handler) -> {
@@ -58,28 +55,19 @@ class EndpointPermissionContractTest {
         for (Path contract : CONTRACTS.reversed()) {
             required.putAll(requiredPermissions(contract));
         }
-        required.putAll(identityOnly(SERVED_FROM_IDENTITY_CONTRACT));
         Map<String, Method> handlers = handlers();
 
         assertThat(handlers).containsKeys(
                 "GET /permissions", "GET /roles", "POST /roles", "GET /roles/{id}", "PUT /roles/{id}",
-                "DELETE /roles/{id}", "PUT /staff-users/{id}/role-assignments");
+                "DELETE /roles/{id}", "PUT /staff-users/{id}/role-assignments",
+                "POST /auth/login", "POST /auth/login/clinic", "POST /auth/login/branch", "POST /auth/refresh",
+                "POST /auth/logout", "POST /auth/password-reset/request", "POST /auth/password-reset/confirm",
+                "POST /auth/switch-branch", "GET /me");
         handlers.forEach((operation, handler) -> {
             if (required.containsKey(operation)) {
                 assertThat(accessOf(handler)).as("access of %s", operation).isEqualTo(required.get(operation));
             }
         });
-    }
-
-    private static Map<String, String> identityOnly(List<String> operations) throws IOException {
-        Map<String, String> identity = requiredPermissions(CONTRACTS.getLast());
-        Map<String, String> result = new HashMap<>();
-        operations.forEach(operation -> {
-            if (identity.containsKey(operation)) {
-                result.put(operation, identity.get(operation));
-            }
-        });
-        return result;
     }
 
     @SuppressWarnings("unchecked")

@@ -37,6 +37,19 @@ public final class StaffFixture {
         return accountId;
     }
 
+    /**
+     * Adds an active membership of an existing account in another clinic. Until accounts are per
+     * clinic (MEDK-16) this is how the same email exists in two clinics.
+     */
+    public void membership(UUID tenantId, UUID accountId) {
+        jdbc.update("insert into tenant_membership (id, tenant_id, user_account_id) values (?, ?, ?)",
+                UUID.randomUUID(), tenantId, accountId);
+    }
+
+    public UUID accountId(String email) {
+        return jdbc.queryForObject("select id from user_account where email = ?", UUID.class, email);
+    }
+
     public UUID staffUser(UUID tenantId) {
         return staffUser(tenantId, "staff-" + UUID.randomUUID() + "@example.test", "pw-" + UUID.randomUUID());
     }

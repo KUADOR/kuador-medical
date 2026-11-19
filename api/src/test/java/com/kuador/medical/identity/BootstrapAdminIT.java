@@ -88,17 +88,23 @@ class BootstrapAdminIT {
         MvcTestResult login = api.login(bootstrap.email(), bootstrap.password());
         assertThat(login).hasStatus(HttpStatus.OK);
         Map<String, Object> loginBody = api.body(login);
-        assertThat(loginBody).containsEntry("scope", "PLATFORM").containsEntry("mustChangePassword", true);
+        assertThat(loginBody).containsEntry("status", "AUTHENTICATED").containsEntry("scope", "PLATFORM")
+                .containsEntry("mustChangePassword", true).containsEntry("branch", null).doesNotContainKey("clinic");
+        ContractSchema.userRegistration().assertResponse("/auth/login", "POST", 200, "application/json", loginBody);
         String token = loginBody.get("accessToken").toString();
+        assertThat(api.refresh(loginBody.get("refreshToken").toString()))
+                .as("the platform account also rotates refresh tokens")
+                .hasStatus(HttpStatus.OK);
 
         // Blocked: every operation other than /me and /auth/password.
         assertThat(api.get("/api/v1/test/platform-operation", token))
                 .hasStatus(HttpStatus.FORBIDDEN)
                 .bodyJson()
                 .hasPathSatisfying("$.code", code -> assertThat(code).asString().isEqualTo("PASSWORD_CHANGE_REQUIRED"));
-        ContractSchema.identity().assertResponse("/me", "GET", 200, "application/json", api.body(api.me(token)));
+        ContractSchema.userRegistration().assertResponse("/me", "GET", 200, "application/json", api.body(api.me(token)));
         Map<String, Object> me = api.body(api.me(token));
-        assertThat(me).containsEntry("scope", "PLATFORM").containsEntry("mustChangePassword", true).doesNotContainKey("tenant");
+        assertThat(me).containsEntry("scope", "PLATFORM").containsEntry("mustChangePassword", true)
+                .containsEntry("kind", "STAFF").containsEntry("enabledModules", List.of()).doesNotContainKey("clinic");
         assertThat((List<Object>) me.get("roles")).containsExactly("SUPER_ADMIN");
         assertThat((List<Object>) me.get("permissions")).containsExactly("platform.permissions.read");
 

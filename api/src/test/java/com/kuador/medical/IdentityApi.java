@@ -65,11 +65,74 @@ public final class IdentityApi {
                 .exchange();
     }
 
-    /** Logs in and returns the access token. */
+    /**
+     * Logs in and returns the access token. A branch selection picks the first listed branch; a
+     * clinic selection is a test error (use {@link #login} and {@link #selectClinic} instead).
+     */
     public String token(String email, String password) {
+        return session(email, password).get("accessToken").toString();
+    }
+
+    /** Logs in (choosing the first branch when asked) and returns the AUTHENTICATED body. */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> session(String email, String password) {
         MvcTestResult result = login(email, password);
         assertThat(result).hasStatus(HttpStatus.OK);
-        return body(result).get("accessToken").toString();
+        Map<String, Object> body = body(result);
+        if ("BRANCH_SELECTION_REQUIRED".equals(body.get("status"))) {
+            List<Map<String, Object>> branches = (List<Map<String, Object>>) body.get("branches");
+            MvcTestResult selected = selectBranch(body.get("preAuthToken").toString(), branches.getFirst().get("id").toString());
+            assertThat(selected).hasStatus(HttpStatus.OK);
+            body = body(selected);
+        }
+        assertThat(body).containsEntry("status", "AUTHENTICATED");
+        return body;
+    }
+
+    public MvcTestResult selectClinic(String preAuthToken, Object clinicId) {
+        return publicPost("/api/v1/auth/login/clinic", Map.of("preAuthToken", preAuthToken, "clinicId", clinicId.toString()));
+    }
+
+    public MvcTestResult selectBranch(String preAuthToken, Object branchId) {
+        return publicPost("/api/v1/auth/login/branch", Map.of("preAuthToken", preAuthToken, "branchId", branchId.toString()));
+    }
+
+    public MvcTestResult refresh(String refreshToken) {
+        return publicPost("/api/v1/auth/refresh", Map.of("refreshToken", refreshToken));
+    }
+
+    public MvcTestResult logout(String refreshToken) {
+        return publicPost("/api/v1/auth/logout", Map.of("refreshToken", refreshToken));
+    }
+
+    public MvcTestResult requestPasswordReset(String email) {
+        return publicPost("/api/v1/auth/password-reset/request", Map.of("email", email));
+    }
+
+    public MvcTestResult confirmPasswordReset(String token, String newPassword) {
+        return publicPost("/api/v1/auth/password-reset/confirm", Map.of("token", token, "newPassword", newPassword));
+    }
+
+    public MvcTestResult switchBranch(String accessToken, Object branchId, String refreshToken) {
+        Map<String, Object> request = new LinkedHashMap<>();
+        request.put("branchId", branchId.toString());
+        if (refreshToken != null) {
+            request.put("refreshToken", refreshToken);
+        }
+        return post("/api/v1/auth/switch-branch", accessToken, request);
+    }
+
+    public MvcTestResult publicPost(String uri, Object body) {
+        return mvc.post().uri(uri)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(body))
+                .exchange();
+    }
+
+    /** Claims of a JWT, decoded without verifying it (the api verifies; tests only read). */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> claims(String jwt) {
+        return json.readValue(java.util.Base64.getUrlDecoder().decode(jwt.split("\\.")[1]), Map.class);
     }
 
     public MvcTestResult changePassword(String token, String currentPassword, String newPassword) {

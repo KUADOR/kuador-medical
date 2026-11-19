@@ -21,8 +21,8 @@ import org.springframework.test.web.servlet.assertj.MvcTestResult;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * POST /api/v1/auth/login and GET /api/v1/me (ADR-006): JWT access token with the scope of the
- * account; wrong credentials never reveal which part was wrong.
+ * POST /api/v1/auth/login and GET /api/v1/me (ADR-006, ADR-012): JWT access token with the scope
+ * of the account; wrong credentials never reveal which part was wrong.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -59,7 +59,8 @@ class LoginIT {
         Map<String, Object> body = api.body(result);
         assertThat(body)
                 .containsEntry("tokenType", "Bearer")
-                .containsEntry("expiresIn", 1800)
+                .containsEntry("expiresIn", 900)
+                .containsEntry("status", "AUTHENTICATED")
                 .containsEntry("scope", "TENANT")
                 .containsEntry("mustChangePassword", false);
         assertThat(body.get("accessToken").toString().split("\\.")).hasSize(3);
@@ -135,7 +136,7 @@ class LoginIT {
 
     @Test
     void responsesMatchTheContract() {
-        ContractSchema contract = ContractSchema.identity();
+        ContractSchema contract = ContractSchema.userRegistration();
         MvcTestResult login = api.login(email, password);
 
         contract.assertResponse("/auth/login", "POST", 200, "application/json", api.body(login));

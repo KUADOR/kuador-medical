@@ -4,14 +4,15 @@ HTTP contracts of Medical Kuador, written contract-first (ADR-011) in OpenAPI 3.
 
 | File | Scope | State |
 |---|---|---|
-| `identity.openapi.yaml` | System status, clinic self-signup, login, password change, current account, permission catalog, clinic roles and platform permissions. | Implemented by the api. |
+| `identity.openapi.yaml` | System status, clinic self-signup, password change, permission catalog, clinic roles and platform permissions. | Implemented by the api. |
 | `user-registration.openapi.yaml` | User registration epic (MEDK-12): multi-clinic login, branch selection and switching, refresh tokens, password reset, invitations, email verification, `/me`, staff users and branch role assignments, roles, patients, consent, guardians, adult patient links and patient self-registration. | Target contract; implemented by MEDK-14 to MEDK-18. |
 
 ## Overlapping operations
 
-`POST /auth/login`, `GET /me`, `GET /permissions` and `/roles` appear in both files. The
-version in `identity.openapi.yaml` is the one the api serves today; the version in
-`user-registration.openapi.yaml` is the target. The task that implements an operation of
+`GET /permissions` and `/roles` appear in both files. The version in `identity.openapi.yaml`
+is the one the api serves today; the version in `user-registration.openapi.yaml` is the
+target. `POST /auth/login` and `GET /me` are served from `user-registration.openapi.yaml`
+since MEDK-15. The task that implements an operation of
 `user-registration.openapi.yaml` removes its old version from `identity.openapi.yaml` in the
 same pull request, together with the web and mobile clients that use it, so each operation
 has a single source of truth once implemented.
