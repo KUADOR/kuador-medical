@@ -121,3 +121,4 @@ Al fusionar en `develop` se construye y despliega a pruebas; al fusionar en `mai
 |---|---|---|
 | {date} | Primera versión | — |
 | 2026-11-19 | Entorno local con Docker Compose (PostgreSQL 18 y perfil `full` con api y web), `.env.example`, perfiles `local`/`test`/`prod`, variables y secretos de la api (renombra `SPRING_DATASOURCE_*` a `DB_*` según el plan), carga de la clave inicial del SUPER_ADMIN como secreto | MEDK-3 |
+| 2026-11-19 | App móvil Flutter en `movil/`: `API_BASE_URL` por `--dart-define` (por defecto `http://localhost:8080/api/v1`, incluye `/api/v1`); HTTP sin cifrar solo en builds debug de Android y red local en iOS; permiso INTERNET en Android | MEDK-9 |
