@@ -66,7 +66,7 @@ class AuthenticationLogsIT {
         api.refresh(refreshToken);
         api.logout(newRefreshToken);
         api.requestPasswordReset(otherEmail);
-        Matcher link = LINK_TOKEN.matcher(mail.sentTo(otherEmail).getLast().text());
+        Matcher link = LINK_TOKEN.matcher(mail.awaitSentTo(otherEmail, 1).getLast().body());
         assertThat(link.find()).isTrue();
         String newPassword = IdentityApi.randomPassword();
         assertThat(api.confirmPasswordReset(link.group(1), newPassword)).hasStatus(HttpStatus.NO_CONTENT);

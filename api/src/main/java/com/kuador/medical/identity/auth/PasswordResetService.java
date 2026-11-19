@@ -5,35 +5,45 @@ import com.kuador.medical.audit.AuditRecorder;
 import com.kuador.medical.audit.AuditTarget;
 import com.kuador.medical.identity.TenantDirectory;
 import com.kuador.medical.identity.TenantDirectory.TenantInfo;
+import com.kuador.medical.identity.account.ClinicAccount;
+import com.kuador.medical.identity.account.ClinicAccountRepository;
+import com.kuador.medical.identity.account.LinkProperties;
+import com.kuador.medical.identity.account.OneTimeTokenProperties;
+import com.kuador.medical.identity.account.OneTimeTokenPurpose;
+import com.kuador.medical.identity.account.OneTimeTokens;
 import com.kuador.medical.identity.account.PasswordPolicy;
-import com.kuador.medical.identity.account.UserAccount;
-import com.kuador.medical.identity.account.UserAccountRepository;
-import com.kuador.medical.identity.membership.MembershipStatus;
-import com.kuador.medical.identity.membership.TenantMembershipRepository;
 import com.kuador.medical.notifications.EmailMessage;
 import com.kuador.medical.notifications.NotificationSender;
 import com.kuador.medical.shared.tenancy.TenantContext;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Password reset per clinic (ADR-014, spec story 3). Each link is valid only for the clinic it
- * was sent for, once, until it expires; using it sets the new password and ends every session
- * of the account. Requests are started by {@link AuthenticationService}, the only one that knows
- * which clinics an email belongs to.
+ * Password reset per clinic (ADR-014, spec story 3). Each link is valid only for the clinic
+ * account it was sent for, once, until it expires; using it sets the new password and ends every
+ * session of the account. Requests are started by {@link AuthenticationService}, the only one
+ * that knows which clinics an email belongs to.
+ *
+ * <p>The email is sent in the background after the token is stored, so the response time does
+ * not reveal whether the email has accounts, and a provider failure never changes the answer.
  */
 @Service
 class PasswordResetService {
 
+    private static final Logger log = LoggerFactory.getLogger(PasswordResetService.class);
+
     private final OneTimeTokens oneTimeTokens;
     private final OneTimeTokenProperties ttl;
     private final LinkProperties links;
-    private final UserAccountRepository accounts;
-    private final TenantMembershipRepository memberships;
+    private final ClinicAccountRepository accounts;
     private final TenantDirectory tenants;
     private final NotificationSender notifications;
     private final PasswordPolicy policy;
@@ -41,13 +51,13 @@ class PasswordResetService {
     private final RefreshTokens refreshTokens;
     private final AuditRecorder audit;
     private final TransactionTemplate transaction;
+    private final Executor background = Executors.newVirtualThreadPerTaskExecutor();
 
     PasswordResetService(
             OneTimeTokens oneTimeTokens,
             OneTimeTokenProperties ttl,
             LinkProperties links,
-            UserAccountRepository accounts,
-            TenantMembershipRepository memberships,
+            ClinicAccountRepository accounts,
             TenantDirectory tenants,
             NotificationSender notifications,
             PasswordPolicy policy,
@@ -59,7 +69,6 @@ class PasswordResetService {
         this.ttl = ttl;
         this.links = links;
         this.accounts = accounts;
-        this.memberships = memberships;
         this.tenants = tenants;
         this.notifications = notifications;
         this.policy = policy;
@@ -69,19 +78,21 @@ class PasswordResetService {
         this.transaction = transaction;
     }
 
-    /** Creates a reset link of the account for that clinic and emails it; does nothing if the account cannot log in there. */
+    /** Creates a reset link of the account for its clinic and emails it; does nothing if the account cannot log in. */
     void issue(UUID tenantId, UUID accountId) {
         Optional<EmailMessage> message = TenantContext.callAs(tenantId, () -> transaction.execute(status -> {
             Optional<TenantInfo> clinic = tenants.find(tenantId).filter(TenantInfo::active);
-            Optional<UserAccount> account = activeMember(accountId);
+            Optional<ClinicAccount> account = accounts.findInCurrentTenant(accountId).filter(ClinicAccount::isActive);
             if (clinic.isEmpty() || account.isEmpty()) {
                 return Optional.<EmailMessage>empty();
             }
-            String token = oneTimeTokens.issue(tenantId, accountId, OneTimeTokens.Purpose.PASSWORD_RESET, ttl.passwordResetTtl());
+            oneTimeTokens.invalidatePending(accountId, OneTimeTokenPurpose.PASSWORD_RESET);
+            String token = oneTimeTokens.issue(accountId, OneTimeTokenPurpose.PASSWORD_RESET, ttl.passwordResetTtl()).value();
             audit.record(AuditAction.PASSWORD_RESET_REQUESTED, tenantId, null, AuditTarget.account(accountId));
-            return Optional.of(email(account.get().getEmail(), clinic.get().name(), links.passwordResetLink(token)));
+            return Optional.of(email(account.get().getEmail(), clinic.get().name(),
+                    links.withToken(links.passwordResetPath(), token)));
         }));
-        message.ifPresent(notifications::sendEmail);
+        message.ifPresent(email -> background.execute(() -> send(email)));
     }
 
     /**
@@ -91,15 +102,17 @@ class PasswordResetService {
      * @throws com.kuador.medical.shared.web.ApiException {@code ONE_TIME_TOKEN_INVALID} or {@code WEAK_PASSWORD}
      */
     void confirm(String token, String newPassword) {
-        OneTimeTokens.Valid valid = oneTimeTokens.findValid(token, OneTimeTokens.Purpose.PASSWORD_RESET)
+        OneTimeTokens.ValidToken valid = oneTimeTokens.findValid(token, OneTimeTokenPurpose.PASSWORD_RESET)
                 .orElseThrow(SessionErrors::oneTimeTokenInvalid);
         TenantContext.runAs(valid.tenantId(), () -> transaction.executeWithoutResult(status -> {
             if (tenants.find(valid.tenantId()).filter(TenantInfo::active).isEmpty()) {
                 throw SessionErrors.oneTimeTokenInvalid();
             }
-            UserAccount account = activeMember(valid.userId()).orElseThrow(SessionErrors::oneTimeTokenInvalid);
+            ClinicAccount account = accounts.findInCurrentTenant(valid.userId())
+                    .filter(ClinicAccount::isActive)
+                    .orElseThrow(SessionErrors::oneTimeTokenInvalid);
             policy.checkNewPassword(newPassword, account.getPasswordHash());
-            if (!oneTimeTokens.markUsed(valid.id())) {
+            if (!oneTimeTokens.consume(valid.id())) {
                 throw SessionErrors.oneTimeTokenInvalid();
             }
             account.changePassword(passwordEncoder.encode(newPassword));
@@ -109,12 +122,13 @@ class PasswordResetService {
         }));
     }
 
-    /** The account, if active and an active member of the bound clinic. */
-    private Optional<UserAccount> activeMember(UUID accountId) {
-        return accounts.findById(accountId)
-                .filter(UserAccount::isActive)
-                .filter(account -> !account.isPlatformAdmin())
-                .filter(account -> memberships.findByUserAccountIdAndStatus(accountId, MembershipStatus.ACTIVE).isPresent());
+    private void send(EmailMessage email) {
+        try {
+            notifications.sendEmail(email);
+        } catch (RuntimeException e) {
+            // Only the type: the message could carry the address.
+            log.warn("Password reset email could not be sent ({})", e.getClass().getName());
+        }
     }
 
     private EmailMessage email(String to, String clinicName, String link) {

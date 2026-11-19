@@ -87,7 +87,7 @@ class LoginIT {
 
     @Test
     void successfulLoginIsAudited() {
-        UUID accountId = jdbc.queryForObject("select id from user_account where email = ?", UUID.class, email);
+        UUID accountId = jdbc.queryForObject("select id from identity_user_account where email_normalized = ?", UUID.class, email);
 
         api.token(email, password);
 
@@ -116,7 +116,7 @@ class LoginIT {
     void disabledAccountCannotLogInNorUseItsToken() {
         String token = api.token(email, password);
 
-        jdbc.update("update user_account set status = 'DISABLED' where email = ?", email);
+        jdbc.update("update identity_user_account set status = 'DISABLED' where email_normalized = ?", email);
 
         assertThat(api.login(email, password)).hasStatus(HttpStatus.UNAUTHORIZED);
         assertThat(api.me(token)).hasStatus(HttpStatus.UNAUTHORIZED);

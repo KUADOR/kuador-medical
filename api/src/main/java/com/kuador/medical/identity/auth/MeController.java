@@ -1,11 +1,14 @@
 package com.kuador.medical.identity.auth;
 
 import com.kuador.medical.clinics.BranchDirectory.Branch;
+import com.kuador.medical.identity.AccountKind;
 import com.kuador.medical.identity.AccountScope;
 import com.kuador.medical.identity.AuthenticatedAccount;
 import com.kuador.medical.identity.CurrentUser;
 import com.kuador.medical.identity.PlanModules;
 import com.kuador.medical.identity.TenantDirectory;
+import com.kuador.medical.identity.account.ClinicAccount;
+import com.kuador.medical.identity.account.ClinicAccountRepository;
 import com.kuador.medical.shared.security.AllowedWhilePasswordChangeRequired;
 import com.kuador.medical.shared.security.AuthenticatedEndpoint;
 import com.kuador.medical.shared.web.ApiException;
@@ -26,12 +29,19 @@ class MeController {
     private final TenantDirectory tenants;
     private final BranchAccess branchAccess;
     private final PlanModules planModules;
+    private final ClinicAccountRepository clinicAccounts;
 
-    MeController(CurrentUser currentUser, TenantDirectory tenants, BranchAccess branchAccess, PlanModules planModules) {
+    MeController(
+            CurrentUser currentUser,
+            TenantDirectory tenants,
+            BranchAccess branchAccess,
+            PlanModules planModules,
+            ClinicAccountRepository clinicAccounts) {
         this.currentUser = currentUser;
         this.tenants = tenants;
         this.branchAccess = branchAccess;
         this.planModules = planModules;
+        this.clinicAccounts = clinicAccounts;
     }
 
     @AuthenticatedEndpoint
@@ -47,6 +57,8 @@ class MeController {
         LoginResult.Summary clinic = tenants.find(Objects.requireNonNull(account.tenantId()))
                 .map(found -> new LoginResult.Summary(found.id(), found.name()))
                 .orElseThrow(ApiException::unauthenticated);
+        ClinicAccount clinicAccount = clinicAccounts.findInCurrentTenant(account.accountId())
+                .orElseThrow(ApiException::unauthenticated);
         List<LoginResult.Summary> available = branchAccess.available(account.accountId()).stream()
                 .map(MeController::summary)
                 .toList();
@@ -55,8 +67,9 @@ class MeController {
                 .findFirst()
                 .orElse(null);
         return new CurrentSessionResponse(
-                account.accountId(), AccountKind.STAFF, account.scope(), account.displayName(), clinic, activeBranch,
-                available, null, account.roles(), account.permissions(), planModules.enabledModules(clinic.id()),
+                account.accountId(), clinicAccount.getKind(), account.scope(), account.displayName(), clinic, activeBranch,
+                available, clinicAccount.getKind() == AccountKind.PATIENT ? clinicAccount.getPatientRef() : null,
+                account.roles(), account.permissions(), planModules.enabledModules(clinic.id()),
                 account.mustChangePassword());
     }
 

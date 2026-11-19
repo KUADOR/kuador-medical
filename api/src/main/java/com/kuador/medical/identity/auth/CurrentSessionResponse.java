@@ -1,6 +1,7 @@
 package com.kuador.medical.identity.auth;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.kuador.medical.identity.AccountKind;
 import com.kuador.medical.identity.AccountScope;
 import java.util.List;
 import java.util.UUID;

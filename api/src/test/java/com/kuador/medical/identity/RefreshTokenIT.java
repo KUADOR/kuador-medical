@@ -67,7 +67,7 @@ class RefreshTokenIT {
                 Integer.class, refreshToken, refreshToken.toLowerCase())).isZero();
         assertThat(jdbc.queryForObject(
                 "select count(*) from identity_refresh_token where tenant_id = ? and user_id = ?",
-                Integer.class, tenantId, staff.accountId(email))).isOne();
+                Integer.class, tenantId, staff.accountId(tenantId, email))).isOne();
     }
 
     @Test
@@ -112,7 +112,7 @@ class RefreshTokenIT {
         String expired = api.session(email, password).get("refreshToken").toString();
         jdbc.update("update identity_refresh_token set expires_at = now() - interval '1 minute' where tenant_id = ?", tenantId);
         String disabled = api.session(email, password).get("refreshToken").toString();
-        jdbc.update("update user_account set status = 'DISABLED' where email = ?", email);
+        staff.disable(tenantId, email);
 
         assertInvalidSessionToken(api.refresh("unknown-token"));
         assertInvalidSessionToken(api.refresh(expired));

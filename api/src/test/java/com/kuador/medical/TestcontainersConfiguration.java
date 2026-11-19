@@ -9,7 +9,8 @@ import org.testcontainers.utility.DockerImageName;
 
 /**
  * PostgreSQL for integration tests. One container per test JVM, reused by every cached context.
- * Emails are captured in memory ({@link CapturingNotificationSender}), never sent.
+ * Emails are captured in memory ({@link CapturingNotificationSender}), never sent, and plan limits
+ * are set per test clinic ({@link AdjustablePlanLimits}).
  */
 @TestConfiguration(proxyBeanMethods = false)
 public class TestcontainersConfiguration {
@@ -24,5 +25,11 @@ public class TestcontainersConfiguration {
     @Primary
     CapturingNotificationSender capturingNotificationSender() {
         return new CapturingNotificationSender();
+    }
+
+    @Bean
+    @Primary
+    AdjustablePlanLimits adjustablePlanLimits() {
+        return new AdjustablePlanLimits();
     }
 }

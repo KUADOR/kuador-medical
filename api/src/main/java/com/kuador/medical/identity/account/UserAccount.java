@@ -14,8 +14,8 @@ import java.util.UUID;
 import org.springframework.data.domain.Persistable;
 
 /**
- * Global account (ADR-010): credentials and an email unique on the platform. Clinic staff belong
- * to a clinic through a membership; the SUPER_ADMIN is a platform account without membership.
+ * Platform (SUPER_ADMIN) account: credentials and an email unique on the platform, without
+ * clinic. Clinic accounts are {@link ClinicAccount}, one per clinic (ADR-012).
  */
 @Entity
 @Table(name = "user_account")
@@ -65,11 +65,6 @@ public class UserAccount implements Persistable<UUID> {
         this.status = AccountStatus.ACTIVE;
         this.createdAt = Instant.now();
         this.updatedAt = this.createdAt;
-    }
-
-    /** Clinic staff account; its owner chose the password, so no change is required. */
-    public static UserAccount clinicStaff(String email, String passwordHash, String displayName) {
-        return new UserAccount(email, passwordHash, displayName, false, false);
     }
 
     /** Platform (SUPER_ADMIN) account created with an initial password that must be changed. */

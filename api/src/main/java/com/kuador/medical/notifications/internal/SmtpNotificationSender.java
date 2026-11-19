@@ -1,49 +1,48 @@
 package com.kuador.medical.notifications.internal;
 
 import com.kuador.medical.notifications.EmailMessage;
+import com.kuador.medical.notifications.NotificationException;
 import com.kuador.medical.notifications.NotificationSender;
-import java.util.concurrent.Executor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.nio.charset.StandardCharsets;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.mail.MailException;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.stereotype.Component;
 
 /**
- * SMTP adapter of {@link NotificationSender} (Mailpit locally, provider [POR DEFINIR] elsewhere).
- * Sends on a virtual thread so the response time of the caller does not reveal whether an email
- * was sent (no account enumeration by timing). Logs never contain the address or the text.
+ * SMTP adapter (spring.mail.*, {@code KUADOR_SMTP_*}): Mailpit in local, the provider of each
+ * environment elsewhere [POR DEFINIR: provider]. Without SMTP configuration it refuses to send.
  */
+@Component
+@EnableConfigurationProperties(MailProperties.class)
 class SmtpNotificationSender implements NotificationSender {
 
-    private static final Logger log = LoggerFactory.getLogger(SmtpNotificationSender.class);
+    private final ObjectProvider<JavaMailSender> mailSender;
+    private final MailProperties properties;
 
-    private final JavaMailSender mailSender;
-    private final String from;
-    private final Executor executor;
-
-    SmtpNotificationSender(JavaMailSender mailSender, String from, Executor executor) {
+    SmtpNotificationSender(ObjectProvider<JavaMailSender> mailSender, MailProperties properties) {
         this.mailSender = mailSender;
-        this.from = from;
-        this.executor = executor;
+        this.properties = properties;
     }
 
     @Override
     public void sendEmail(EmailMessage message) {
-        executor.execute(() -> send(message));
-    }
-
-    private void send(EmailMessage message) {
-        SimpleMailMessage mail = new SimpleMailMessage();
-        mail.setFrom(from);
-        mail.setTo(message.to());
-        mail.setSubject(message.subject());
-        mail.setText(message.text());
+        JavaMailSender sender = mailSender.getIfAvailable();
+        if (sender == null || properties.from().isBlank()) {
+            throw new NotificationException("SMTP is not configured (KUADOR_SMTP_HOST, KUADOR_MAIL_FROM)", null);
+        }
         try {
-            mailSender.send(mail);
-        } catch (MailException | IllegalStateException e) {
-            // Only the exception type: its message may carry the address.
-            log.warn("Email could not be sent ({})", e.getClass().getName());
+            var mime = sender.createMimeMessage();
+            var helper = new MimeMessageHelper(mime, StandardCharsets.UTF_8.name());
+            helper.setFrom(properties.from());
+            helper.setTo(message.to());
+            helper.setSubject(message.subject());
+            helper.setText(message.body(), false);
+            sender.send(mime);
+        } catch (MailException | jakarta.mail.MessagingException e) {
+            throw new NotificationException("The SMTP server did not accept the email", e);
         }
     }
 }

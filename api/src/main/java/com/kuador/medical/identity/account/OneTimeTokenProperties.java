@@ -1,12 +1,15 @@
-package com.kuador.medical.identity.auth;
+package com.kuador.medical.identity.account;
 
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
-/** Lifetimes of the single-use tokens (ADR-014). */
+/**
+ * {@code kuador.one-time-tokens}: lifetimes of the single-use links (ADR-014): invitation 72 hours,
+ * password reset 30 minutes and email verification 24 hours by default.
+ */
 @ConfigurationProperties("kuador.one-time-tokens")
-record OneTimeTokenProperties(
+public record OneTimeTokenProperties(
         @DefaultValue("PT72H") Duration invitationTtl,
         @DefaultValue("PT30M") Duration passwordResetTtl,
         @DefaultValue("PT24H") Duration emailVerificationTtl) {}

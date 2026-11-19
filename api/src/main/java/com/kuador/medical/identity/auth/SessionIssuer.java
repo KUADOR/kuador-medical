@@ -10,10 +10,10 @@ import com.kuador.medical.identity.Permission;
 import com.kuador.medical.identity.PermissionScope;
 import com.kuador.medical.identity.TenantDirectory;
 import com.kuador.medical.identity.TenantDirectory.TenantInfo;
+import com.kuador.medical.identity.account.ClinicAccount;
+import com.kuador.medical.identity.account.ClinicAccountRepository;
 import com.kuador.medical.identity.account.UserAccount;
 import com.kuador.medical.identity.account.UserAccountRepository;
-import com.kuador.medical.identity.membership.MembershipStatus;
-import com.kuador.medical.identity.membership.TenantMembershipRepository;
 import com.kuador.medical.identity.role.EffectivePermissions;
 import com.kuador.medical.shared.tenancy.TenantContext;
 import com.kuador.medical.shared.web.ApiException;
@@ -37,7 +37,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 class SessionIssuer {
 
     private final UserAccountRepository accounts;
-    private final TenantMembershipRepository memberships;
+    private final ClinicAccountRepository clinicAccounts;
     private final TenantDirectory tenants;
     private final BranchAccess branchAccess;
     private final EffectivePermissions permissions;
@@ -49,7 +49,7 @@ class SessionIssuer {
 
     SessionIssuer(
             UserAccountRepository accounts,
-            TenantMembershipRepository memberships,
+            ClinicAccountRepository clinicAccounts,
             TenantDirectory tenants,
             BranchAccess branchAccess,
             EffectivePermissions permissions,
@@ -59,7 +59,7 @@ class SessionIssuer {
             AuditRecorder audit,
             TransactionTemplate transaction) {
         this.accounts = accounts;
-        this.memberships = memberships;
+        this.clinicAccounts = clinicAccounts;
         this.tenants = tenants;
         this.branchAccess = branchAccess;
         this.permissions = permissions;
@@ -171,7 +171,7 @@ class SessionIssuer {
                 accountId, AccountScope.TENANT, member.clinic().id(), branchId, grant.permissionCodes()));
         IssuedToken refresh = refreshTokens.issue(member.clinic().id(), accountId, branchId, family);
         return new LoginResult.Authenticated(access, refresh, AccountScope.TENANT, member.clinic(),
-                branch == null ? null : summary(branch), member.account().isMustChangePassword());
+                branch == null ? null : summary(branch), false);
     }
 
     private LoginResult.Authenticated platformSession(UserAccount account, UUID family) {
@@ -191,14 +191,11 @@ class SessionIssuer {
                 .orElseThrow(SessionErrors::branchNotAssigned);
     }
 
-    /** The account as an active member of an active clinic; the clinic must be bound. */
+    /** The active account of an active clinic; the clinic must be bound (the query is filtered by it). */
     private Optional<ClinicMember> member(UUID tenantId, UUID accountId) {
         Optional<TenantInfo> clinic = tenants.find(tenantId).filter(TenantInfo::active);
-        Optional<UserAccount> account = accounts.findById(accountId)
-                .filter(UserAccount::isActive)
-                .filter(found -> !found.isPlatformAdmin());
-        if (clinic.isEmpty() || account.isEmpty()
-                || memberships.findByUserAccountIdAndStatus(accountId, MembershipStatus.ACTIVE).isEmpty()) {
+        Optional<ClinicAccount> account = clinicAccounts.findInCurrentTenant(accountId).filter(ClinicAccount::isActive);
+        if (clinic.isEmpty() || account.isEmpty()) {
             return Optional.empty();
         }
         return Optional.of(new ClinicMember(account.get(), new LoginResult.Summary(clinic.get().id(), clinic.get().name())));
@@ -216,5 +213,5 @@ class SessionIssuer {
         return new LoginResult.Summary(branch.id(), branch.name());
     }
 
-    private record ClinicMember(UserAccount account, LoginResult.Summary clinic) {}
+    private record ClinicMember(ClinicAccount account, LoginResult.Summary clinic) {}
 }

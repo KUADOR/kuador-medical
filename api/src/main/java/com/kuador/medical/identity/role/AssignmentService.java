@@ -6,7 +6,9 @@ import com.kuador.medical.audit.AuditTarget;
 import com.kuador.medical.clinics.BranchDirectory;
 import com.kuador.medical.identity.AuthenticatedAccount;
 import com.kuador.medical.identity.Permission;
-import com.kuador.medical.identity.membership.TenantMembershipRepository;
+import com.kuador.medical.identity.AccountKind;
+import com.kuador.medical.identity.account.ClinicAccount;
+import com.kuador.medical.identity.account.ClinicAccountRepository;
 import com.kuador.medical.shared.web.ApiException;
 import com.kuador.medical.shared.web.FieldViolation;
 import jakarta.persistence.EntityManager;
@@ -40,9 +42,11 @@ public class AssignmentService {
     static final String NOT_ALLOWED = "NOT_ALLOWED";
     /** OWNER is clinic-wide: it is assigned with {@code ALL_BRANCHES} only. */
     static final String OWNER_REQUIRES_ALL_BRANCHES = "OWNER_REQUIRES_ALL_BRANCHES";
+    /** Field of the staff user that a clinical role requires. */
+    static final String PROFESSIONAL_REGISTRATION = "professionalRegistration";
 
     private final EntityManager entityManager;
-    private final TenantMembershipRepository memberships;
+    private final ClinicAccountRepository accounts;
     private final RoleRepository roles;
     private final RolePermissionRepository rolePermissions;
     private final RoleAssignmentRepository assignments;
@@ -52,7 +56,7 @@ public class AssignmentService {
 
     AssignmentService(
             EntityManager entityManager,
-            TenantMembershipRepository memberships,
+            ClinicAccountRepository accounts,
             RoleRepository roles,
             RolePermissionRepository rolePermissions,
             RoleAssignmentRepository assignments,
@@ -60,7 +64,7 @@ public class AssignmentService {
             EffectivePermissions effectivePermissions,
             AuditRecorder audit) {
         this.entityManager = entityManager;
-        this.memberships = memberships;
+        this.accounts = accounts;
         this.roles = roles;
         this.rolePermissions = rolePermissions;
         this.assignments = assignments;
@@ -91,10 +95,17 @@ public class AssignmentService {
                 .toList();
     }
 
+    /**
+     * Replaces the assignments of a staff user of the current clinic. A clinical role requires
+     * the user to have a professional registration (rule 3 of the plan of MEDK-12).
+     */
     @Transactional
-    List<AssignmentView> replace(UUID userId, RoleAssignmentsRequest request, AuthenticatedAccount caller) {
-        memberships.findByUserAccountId(userId).orElseThrow(ApiException::notFound);
+    public List<AssignmentView> replace(UUID userId, RoleAssignmentsRequest request, AuthenticatedAccount caller) {
+        ClinicAccount account = accounts.findInCurrentTenant(userId, AccountKind.STAFF).orElseThrow(ApiException::notFound);
         List<EscalationGuard.Slot> requested = requestedSlots(request);
+        if (account.getProfessionalRegistration() == null && anyClinical(requested)) {
+            throw ApiException.validation(List.of(new FieldViolation(PROFESSIONAL_REGISTRATION, REQUIRED)));
+        }
         List<RoleAssignment> current = assignments.findByUser(userId);
         Map<UUID, Role> currentRoles = rolesById(current.stream().map(RoleAssignment::getRoleId).toList());
         List<EscalationGuard.Slot> currentSlots = current.stream()
@@ -178,6 +189,30 @@ public class AssignmentService {
             }
         }
         return slots;
+    }
+
+    /** Whether a user of the current clinic holds a clinical role in any branch. */
+    @Transactional(readOnly = true)
+    public boolean holdsClinicalRole(UUID userId) {
+        List<UUID> roleIds = assignments.findByUser(userId).stream().map(RoleAssignment::getRoleId).distinct().toList();
+        return rolesById(roleIds).values().stream().anyMatch(Role::isClinical);
+    }
+
+    /** Whether a user of the current clinic holds the clinic-wide OWNER role. */
+    @Transactional(readOnly = true)
+    public boolean isOwner(UUID userId) {
+        return effectivePermissions.of(userId, null).owner();
+    }
+
+    /** Active users of the current clinic holding OWNER. */
+    @Transactional(readOnly = true)
+    public long activeOwnerCount() {
+        return activeOwners();
+    }
+
+    private boolean anyClinical(List<EscalationGuard.Slot> slots) {
+        List<UUID> roleIds = slots.stream().map(slot -> slot.role().id()).distinct().toList();
+        return rolesById(roleIds).values().stream().anyMatch(Role::isClinical);
     }
 
     private long activeOwners() {

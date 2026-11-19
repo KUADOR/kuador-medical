@@ -75,7 +75,7 @@ class PasswordResetIT {
         assertThat(known).hasStatus(HttpStatus.ACCEPTED);
         assertThat(notKnown).hasStatus(HttpStatus.ACCEPTED);
         assertThat(known.getResponse().getContentAsByteArray()).isEqualTo(notKnown.getResponse().getContentAsByteArray());
-        assertThat(mail.sentTo(email)).hasSize(1);
+        assertThat(mail.awaitSentTo(email, 1)).hasSize(1);
         assertThat(mail.sentTo(unknown)).isEmpty();
     }
 
@@ -83,9 +83,9 @@ class PasswordResetIT {
     void theEmailCarriesAnAppLinkWithTheTokenInTheFragmentStoredOnlyAsAHash() {
         api.requestPasswordReset(email);
 
-        EmailMessage message = mail.sentTo(email).getLast();
+        EmailMessage message = mail.awaitSentTo(email, 1).getLast();
         String token = token(message);
-        assertThat(message.text()).contains("Clinica Recupera");
+        assertThat(message.body()).contains("Clinica Recupera");
         assertThat(jdbc.queryForObject(
                 "select count(*) from identity_one_time_token where token_hash = ?", Integer.class, token)).isZero();
         assertThat(jdbc.queryForObject("""
@@ -97,25 +97,27 @@ class PasswordResetIT {
     @Test
     void oneLinkPerClinicEachBoundToItsClinic() {
         UUID otherClinic = api.signUp("Clinica Segunda", IdentityApi.uniqueEmail("owner-b"), IdentityApi.randomPassword());
-        staff.membership(otherClinic, staff.accountId(email));
+        staff.staffUser(otherClinic, email, IdentityApi.randomPassword());
 
         api.requestPasswordReset(email);
 
-        List<EmailMessage> sent = mail.sentTo(email);
+        List<EmailMessage> sent = mail.awaitSentTo(email, 2);
         assertThat(sent).hasSize(2);
-        assertThat(sent).extracting(EmailMessage::text)
+        assertThat(sent).extracting(EmailMessage::body)
                 .anySatisfy(text -> assertThat(text).contains("Clinica Recupera"))
                 .anySatisfy(text -> assertThat(text).contains("Clinica Segunda"));
-        assertThat(jdbc.queryForList(
-                "select tenant_id from identity_one_time_token where user_id = ? and purpose = 'PASSWORD_RESET'",
-                UUID.class, staff.accountId(email))).containsExactlyInAnyOrder(tenantId, otherClinic);
+        assertThat(jdbc.queryForList("""
+                select t.tenant_id from identity_one_time_token t
+                join identity_user_account a on a.tenant_id = t.tenant_id and a.id = t.user_id
+                where a.email_normalized = ? and t.purpose = 'PASSWORD_RESET'""",
+                UUID.class, email)).containsExactlyInAnyOrder(tenantId, otherClinic);
     }
 
     @Test
     void theTokenSetsANewPasswordOnceAndRevokesTheSessions() {
         String refreshToken = api.session(email, password).get("refreshToken").toString();
         api.requestPasswordReset(email);
-        String token = token(mail.sentTo(email).getLast());
+        String token = token(mail.awaitSentTo(email, 1).getLast());
         String newPassword = IdentityApi.randomPassword();
 
         assertThat(api.confirmPasswordReset(token, newPassword)).hasStatus(HttpStatus.NO_CONTENT);
@@ -132,7 +134,7 @@ class PasswordResetIT {
     @Test
     void aWeakPasswordDoesNotConsumeTheToken() {
         api.requestPasswordReset(email);
-        String token = token(mail.sentTo(email).getLast());
+        String token = token(mail.awaitSentTo(email, 1).getLast());
 
         assertThat(api.confirmPasswordReset(token, "short"))
                 .hasStatus(HttpStatus.BAD_REQUEST)
@@ -144,9 +146,9 @@ class PasswordResetIT {
     @Test
     void expiredUnknownOrSupersededTokensAreRejected() {
         api.requestPasswordReset(email);
-        String superseded = token(mail.sentTo(email).getLast());
+        String superseded = token(mail.awaitSentTo(email, 1).getLast());
         api.requestPasswordReset(email);
-        String expired = token(mail.sentTo(email).getLast());
+        String expired = token(mail.awaitSentTo(email, 2).getLast());
         jdbc.update("update identity_one_time_token set expires_at = now() - interval '1 minute' where tenant_id = ?",
                 tenantId);
 
@@ -160,14 +162,14 @@ class PasswordResetIT {
 
     @Test
     void aDisabledAccountGetsNoLink() {
-        jdbc.update("update user_account set status = 'DISABLED' where email = ?", email);
+        staff.disable(tenantId, email);
 
         assertThat(api.requestPasswordReset(email)).hasStatus(HttpStatus.ACCEPTED);
         assertThat(mail.sentTo(email)).isEmpty();
     }
 
     private static String token(EmailMessage message) {
-        Matcher matcher = LINK_TOKEN.matcher(message.text());
+        Matcher matcher = LINK_TOKEN.matcher(message.body());
         assertThat(matcher.find()).as("reset link in the email").isTrue();
         return matcher.group(1);
     }

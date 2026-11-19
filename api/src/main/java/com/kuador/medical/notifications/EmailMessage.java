@@ -3,15 +3,15 @@ package com.kuador.medical.notifications;
 import java.util.Objects;
 
 /**
- * A plain-text email. The address and the text may hold personal data and one-time links, so
- * {@link #toString()} never prints them.
+ * A plain-text email. The body may carry one-time links, so {@link #toString()} never prints the
+ * recipient, the subject nor the body (Constitution V).
  */
-public record EmailMessage(String to, String subject, String text) {
+public record EmailMessage(String to, String subject, String body) {
 
     public EmailMessage {
         Objects.requireNonNull(to, "to");
         Objects.requireNonNull(subject, "subject");
-        Objects.requireNonNull(text, "text");
+        Objects.requireNonNull(body, "body");
     }
 
     @Override

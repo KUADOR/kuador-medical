@@ -59,7 +59,7 @@ class MultiClinicLoginIT {
         clinicA = api.signUp("Clinica Uno", email, password);
         clinicB = api.signUp("Clinica Dos", IdentityApi.uniqueEmail("owner-b"), IdentityApi.randomPassword());
         otherClinic = api.signUp("Clinica Ajena", IdentityApi.uniqueEmail("owner-c"), IdentityApi.randomPassword());
-        staff.membership(clinicB, staff.accountId(email));
+        staff.staffUser(clinicB, email, password);
     }
 
     @Test
@@ -114,9 +114,8 @@ class MultiClinicLoginIT {
     }
 
     @Test
-    void aDisabledMembershipIsNotListed() {
-        jdbc.update("update tenant_membership set status = 'DISABLED' where tenant_id = ? and user_account_id = ?",
-                clinicB, staff.accountId(email));
+    void aDisabledAccountIsNotListed() {
+        staff.disable(clinicB, email);
 
         Map<String, Object> body = api.body(api.login(email, password));
 

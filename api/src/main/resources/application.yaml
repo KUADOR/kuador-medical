@@ -83,6 +83,9 @@ kuador:
     provider: ${KUADOR_SMS_PROVIDER:}
     api-key: ${KUADOR_SMS_API_KEY:}
     sender: ${KUADOR_SMS_SENDER:}
+  plans:
+    # Temporary staff user limit for every clinic until the plans module exists (empty: none).
+    user-limit: ${KUADOR_PLAN_USER_LIMIT:}
   password:
     min-length: 12
   bootstrap-admin:

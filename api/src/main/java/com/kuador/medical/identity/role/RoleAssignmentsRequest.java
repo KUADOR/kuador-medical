@@ -10,15 +10,15 @@ import org.jspecify.annotations.Nullable;
  * Body of {@code PUT /staff-users/{id}/role-assignments}, discriminated by {@code mode}:
  * {@code ALL_BRANCHES} carries {@code roleId}, {@code PER_BRANCH} carries {@code assignments}.
  */
-record RoleAssignmentsRequest(
+public record RoleAssignmentsRequest(
         @NotNull Mode mode,
         @Nullable UUID roleId,
         @Nullable List<@Valid @NotNull BranchRole> assignments) {
 
-    enum Mode {
+    public enum Mode {
         ALL_BRANCHES,
         PER_BRANCH
     }
 
-    record BranchRole(@NotNull UUID branchId, @NotNull UUID roleId) {}
+    public record BranchRole(@NotNull UUID branchId, @NotNull UUID roleId) {}
 }
