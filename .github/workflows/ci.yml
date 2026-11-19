@@ -54,6 +54,7 @@ jobs:
             movil:
               - *shared
               - 'movil/**'
+              - 'contracts/**'
             contract:
               - *shared
               - 'contracts/**'
@@ -100,6 +101,14 @@ jobs:
       - name: Generated API types match the contract
         run: npm run api:check
       - run: npm run build
+      - name: App Links / Universal Links files are valid and bundled
+        run: |
+          for f in assetlinks.json apple-app-site-association; do
+            node -e 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))' "dist/web/browser/.well-known/$f" \
+              || { echo "Invalid or missing .well-known/$f"; exit 1; }
+          done
+      - name: App Links entrypoint writes valid files
+        run: scripts/test-app-links.sh
       - run: npm test -- --watch=false
 
   movil:

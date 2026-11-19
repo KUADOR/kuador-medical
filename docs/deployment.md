@@ -19,8 +19,8 @@ Perfiles de la api:
 
 Perfiles de Compose:
 
-- sin perfil: solo `db` (`docker compose up -d db`).
-- `full`: `db`, `api` y `web` en contenedores (`docker compose --profile full up -d --build`).
+- sin perfil: `db` y `mailpit` (`docker compose up -d db mailpit`).
+- `full`: `db`, `mailpit`, `api` y `web` en contenedores (`docker compose --profile full up -d --build`).
 
 ## Infraestructura
 
@@ -31,7 +31,7 @@ Perfiles de Compose:
 | Pieza | Cómo se construye | Puerto | Dominio por entorno |
 |---|---|---|---|
 | api | `./mvnw -B package` en `api/`; imagen con `api/Dockerfile` (JRE 25, usuario sin privilegios) | 8080 en el contenedor; `API_PORT` en local (por defecto 8080) | [POR DEFINIR: pruebas / producción] |
-| web | `npm run build` en `web/` (Node.js `^22.22.3` o `^24.15.0`); imagen con `web/Dockerfile` (nginx sin privilegios, sirve el build y hace proxy de `/api/` a la api; al arrancar reescribe `config.json` si recibe `API_BASE_URL`) | 8080 en el contenedor; `WEB_PORT` en local (por defecto 4200) | [POR DEFINIR: pruebas / producción] |
+| web | `npm run build` en `web/` (Node.js `^22.22.3` o `^24.15.0`); imagen con `web/Dockerfile` (nginx sin privilegios, sirve el build y hace proxy de `/api/` a la api; al arrancar reescribe `config.json` si recibe `API_BASE_URL` y los archivos de `/.well-known/` si recibe `APP_LINKS_*`; ver «Deep links») | 8080 en el contenedor; `WEB_PORT` en local (por defecto 4200) | [POR DEFINIR: pruebas / producción] |
 | movil | Build de Flutter en `movil/` con `--dart-define=API_BASE_URL=…` (iOS mínimo 15.0) [POR DEFINIR: distribución a tiendas o canal interno] | No aplica | No aplica |
 
 En local los puertos se publican solo en `127.0.0.1`.
@@ -41,7 +41,17 @@ En local los puertos se publican solo en `127.0.0.1`.
 | Servicio | Versión | Para qué | Cómo se levanta | Datos que guarda |
 |---|---|---|---|---|
 | PostgreSQL | 18 (`postgres:18-alpine`) | Base de datos de la api | Local: servicio `db` de `compose.yaml`, puerto `DB_PORT` (por defecto 5432). Pruebas automáticas: Testcontainers. Pruebas y producción: [POR DEFINIR: contenedor o servicio administrado] | Datos de todos los tenants, incluidos datos de salud. Local: volumen `db-data`. [POR DEFINIR: volumen y respaldo en pruebas y producción] |
-| Proveedores de notificaciones y pagos | [POR DEFINIR] | Envío por varios canales y cobro de suscripciones | Servicios externos [POR DEFINIR: proveedores] | Ninguno propio |
+| Mailpit | 1.29 (`axllent/mailpit:v1.29`) | Solo local: servidor SMTP que atrapa todos los correos (invitaciones, recuperación, verificación) para verlos sin enviarlos | Servicio `mailpit` de `compose.yaml`: SMTP en `127.0.0.1:${MAILPIT_SMTP_PORT}` (por defecto 1025) e interfaz web en `http://localhost:${MAILPIT_UI_PORT}` (por defecto 8025). Nunca en pruebas ni producción | Correos de prueba en memoria; se pierden al detenerlo |
+| Correo (SMTP) | [POR DEFINIR: proveedor] | Invitaciones del personal y de pacientes adultos, recuperación de contraseña y verificación de correo | Servicio externo por SMTP con STARTTLS, configurado con `KUADOR_SMTP_*` | Ninguno propio |
+| SMS | [POR DEFINIR: proveedor] | Invitación de activación al teléfono registrado (mayoría de edad) | Servicio externo con `KUADOR_SMS_*`. Sin `KUADOR_SMS_PROVIDER` el envío por SMS queda deshabilitado | Ninguno propio |
+| Proveedores de pagos | [POR DEFINIR] | Cobro de suscripciones | Servicios externos [POR DEFINIR: proveedores] | Ninguno propio |
+
+Librerías de la api que cambian cómo se despliega (no son servicios aparte, viven en la base PostgreSQL):
+
+| Librería | Para qué | Qué exige al desplegar |
+|---|---|---|
+| Flyway (`spring-boot-starter-flyway`, `flyway-database-postgresql`) | Migraciones de la base en `api/src/main/resources/db/migration` (`V<n>__<descripción>.sql`) | La api las aplica al arrancar, antes de atender solicitudes. El usuario `DB_USERNAME` necesita permiso para crear y modificar tablas en su esquema. Una migración publicada nunca se edita: se agrega una nueva. Si una migración falla, la api no arranca; se corrige con una migración nueva y se vuelve a desplegar (Flyway guarda el historial en `flyway_schema_history`) |
+| ShedLock | Lock distribuido de las tareas programadas (por ejemplo, el job diario de mayoría de edad de MEDK-18), para que con varias réplicas de la api cada ejecución corra una sola vez | Usa la tabla `shedlock` de la misma base, creada por una migración Flyway de la tarea que lo agrega (MEDK-18). No necesita variables ni servicio propio. Los relojes de los servidores deben estar sincronizados (NTP) |
 
 ## Variables y secretos
 
@@ -56,7 +66,31 @@ Solo nombres: los valores nunca van en este documento ni en el repo. En local vi
 | DB_NAME | db | local | `.env` | no | Nombre de la base que crea Compose (por defecto `medical`) |
 | DB_PORT | db | local | `.env` | no | Puerto del host para PostgreSQL (por defecto 5432) |
 | KUADOR_JWT_SECRET | api | local, pruebas, producción | `.env` / gestor de secretos | sí | Firma de los tokens (≥ 256 bits, es decir ≥ 32 bytes; distinta por entorno). Obligatoria: sin ella la api no arranca |
-| KUADOR_JWT_TTL | api | todos | `.env` / variables del entorno | no | Vida del token (por defecto `PT30M`) |
+| KUADOR_JWT_TTL | api | todos | `.env` / variables del entorno | no | Vida del token de acceso (por defecto `PT30M`; ADR-013 lo baja a `PT15M` cuando MEDK-15 implemente los refresh tokens) |
+| KUADOR_JWT_REFRESH_TTL | api | todos | `.env` / variables del entorno | no | Vida del refresh token rotativo (por defecto `P7D`) |
+| KUADOR_JWT_PRE_AUTH_TTL | api | todos | `.env` / variables del entorno | no | Vida del `preAuthToken` entre el login y la elección de clínica o sucursal (por defecto `PT5M`) |
+| KUADOR_LOGIN_MAX_FAILURES | api | todos | `.env` / variables del entorno | no | Intentos fallidos permitidos por correo + IP y por cuenta dentro de la ventana (por defecto 5) |
+| KUADOR_LOGIN_FAILURE_WINDOW | api | todos | `.env` / variables del entorno | no | Ventana en la que se cuentan los intentos fallidos (por defecto `PT15M`) |
+| KUADOR_LOGIN_LOCK_DURATION | api | todos | `.env` / variables del entorno | no | Duración del bloqueo temporal al superar el límite (por defecto `PT15M`) |
+| KUADOR_INVITATION_TTL | api | todos | `.env` / variables del entorno | no | Vencimiento del enlace de invitación (por defecto `PT72H`) |
+| KUADOR_PASSWORD_RESET_TTL | api | todos | `.env` / variables del entorno | no | Vencimiento del enlace de recuperación de contraseña (por defecto `PT30M`) |
+| KUADOR_EMAIL_VERIFICATION_TTL | api | todos | `.env` / variables del entorno | no | Vencimiento del enlace de verificación de correo del autorregistro (por defecto `PT24H`) |
+| KUADOR_WEB_BASE_URL | api | local, pruebas, producción | `.env` / variables del entorno | no | URL base de la web para los enlaces de los correos (local: `http://localhost:4200`). Obligatoria en pruebas y producción |
+| KUADOR_APP_LINK_BASE_URL | api | pruebas, producción | variables del entorno | no | `https://<dominio de deep links>` [POR DEFINIR: dominio]. Base de los enlaces de invitación, recuperación y verificación, que abren la app (App Links / Universal Links) o la web. Si está vacía se usa `KUADOR_WEB_BASE_URL`. Ese dominio debe servir la web con los archivos de `/.well-known/` (ver «Deep links») |
+| KUADOR_SMTP_HOST | api | todos | `.env` / variables del entorno | no | Servidor SMTP. Local: `localhost` (Mailpit; `mailpit` dentro del perfil `full`) |
+| KUADOR_SMTP_PORT | api | todos | `.env` / variables del entorno | no | Puerto SMTP (por defecto 587; local 1025) |
+| KUADOR_SMTP_AUTH | api | todos | `.env` / variables del entorno | no | Autenticación SMTP (por defecto `true`; local `false`) |
+| KUADOR_SMTP_STARTTLS | api | todos | `.env` / variables del entorno | no | STARTTLS obligatorio (por defecto `true`; local `false`) |
+| KUADOR_SMTP_USERNAME | api | pruebas, producción | variables del entorno | no | Usuario SMTP del proveedor [POR DEFINIR: proveedor] |
+| KUADOR_SMTP_PASSWORD | api | pruebas, producción | gestor de secretos | sí | Clave SMTP del proveedor. Mailpit no la necesita |
+| KUADOR_MAIL_FROM | api | todos | `.env` / variables del entorno | no | Remitente de los correos [POR DEFINIR: dirección y dominio de envío en pruebas y producción] |
+| KUADOR_SMS_PROVIDER | api | pruebas, producción | variables del entorno | no | Adaptador de SMS [POR DEFINIR: proveedor]. Vacío: SMS deshabilitado |
+| KUADOR_SMS_API_KEY | api | pruebas, producción | gestor de secretos | sí | Credencial del proveedor de SMS. Los nombres de `KUADOR_SMS_*` pueden cambiar cuando se defina el proveedor |
+| KUADOR_SMS_SENDER | api | pruebas, producción | variables del entorno | no | Remitente o número de envío de SMS |
+| MAILPIT_SMTP_PORT / MAILPIT_UI_PORT | mailpit | local | `.env` | no | Puertos del host para Mailpit (por defecto 1025 y 8025) |
+| APP_LINKS_ANDROID_PACKAGE | web | pruebas, producción | variables del contenedor web | no | `applicationId` de Android para `assetlinks.json` (por defecto `com.kuador.medical_kuador`) |
+| APP_LINKS_ANDROID_SHA256 | web | pruebas, producción | variables del contenedor web | no | Huellas SHA-256 de los certificados de firma de la app Android, separadas por coma (la de la firma de Google Play y, si aplica, la de subida). Son públicas, no son secretos |
+| APP_LINKS_IOS_APP_IDS | web | pruebas, producción | variables del contenedor web | no | `<TeamID>.<bundle id>` de la app iOS, separados por coma (bundle actual `com.kuador.medicalKuador`) [POR DEFINIR: Team ID de Apple] |
 | KUADOR_BOOTSTRAP_ADMIN_EMAIL | api | local, pruebas, producción | `.env` / variables del entorno | no | Correo de la cuenta inicial SUPER_ADMIN (el acordado en MEDK-1) |
 | KUADOR_BOOTSTRAP_ADMIN_PASSWORD | api | local, pruebas, producción | `.env` / gestor de secretos | sí | Clave inicial del SUPER_ADMIN; ver «Cuenta inicial del SUPER_ADMIN» |
 | KUADOR_CORS_ALLOWED_ORIGINS | api | local, pruebas, producción | `.env` / variables del entorno | no | Origen permitido de la web |
@@ -64,7 +98,24 @@ Solo nombres: los valores nunca van en este documento ni en el repo. En local vi
 | API_PORT | api | local | `.env` | no | Puerto del host para la api en el perfil `full` |
 | WEB_PORT | web | local | `.env` | no | Puerto del host para la web en el perfil `full` |
 | API_BASE_URL | web (`config.json`), movil (`--dart-define`) | todos | web: `public/config.json` (por defecto `/api/v1`, mismo origen) o variable del contenedor web, que reescribe `config.json` al arrancar; movil: `--dart-define` | no | URL de la api (`…/api/v1`). En la web, una URL de otro origen exige incluir el origen de la web en `KUADOR_CORS_ALLOWED_ORIGINS` |
-| [POR DEFINIR: credenciales de proveedores de notificaciones, pagos y facturación] | api | pruebas, producción | [POR DEFINIR] | sí | — |
+| [POR DEFINIR: credenciales de proveedores de pagos y facturación] | api | pruebas, producción | [POR DEFINIR] | sí | — |
+
+Secretos de la épica MEDK-12, solo por nombre: `KUADOR_JWT_SECRET` (firma de los tokens de acceso y del `preAuthToken`; los refresh tokens y los tokens de un solo uso son opacos y se guardan como hash, sin clave propia), `KUADOR_SMTP_PASSWORD` y `KUADOR_SMS_API_KEY`. Las rutas de los enlaces (`/invitation`, `/password-reset`, `/email-verification`) son fijas en `application.yaml` y en `web/docker-entrypoint.d/50-app-links.sh`: si cambian, cambian en ambos y en las apps.
+
+### Deep links (App Links y Universal Links)
+
+Los enlaces de invitación, recuperación y verificación tienen la forma `https://<dominio>/<ruta>#t=<token>` (ADR-014): el token va en el fragmento y no llega a los logs de nginx ni de la api. En el dominio de `KUADOR_APP_LINK_BASE_URL` el contenedor web sirve:
+
+| Archivo | Content-Type | Contenido |
+|---|---|---|
+| `/.well-known/assetlinks.json` | `application/json` | Android: `package_name` y `sha256_cert_fingerprints` de `APP_LINKS_ANDROID_*` |
+| `/.well-known/apple-app-site-association` (sin extensión) | `application/json` | iOS: `appIDs` de `APP_LINKS_IOS_APP_IDS` y las tres rutas |
+
+- Los archivos del repo (`web/public/.well-known/`) no asocian ninguna app; `web/docker-entrypoint.d/50-app-links.sh` los reescribe al arrancar si recibe las variables y rechaza valores mal formados (el contenedor no arranca).
+- nginx los sirve sin redirección, con `Cache-Control: max-age=3600`, y responde 404 a cualquier otro archivo de `/.well-known/` (no cae en `index.html`).
+- Requisitos del dominio: HTTPS con certificado válido y sin redirecciones hacia esos archivos (Apple y Android no las siguen). Apple consulta los archivos a través de su CDN: tras cambiarlos puede tardar en verlos.
+- La configuración de las apps (`autoVerify` en `AndroidManifest.xml`, `Associated Domains` en iOS) la hace MEDK-23 con el mismo dominio.
+- En local no hay verificación de dominio (necesita HTTPS público); los enlaces se prueban abriendo la URL de la web o con `adb shell am start -a android.intent.action.VIEW -d "<url>"` y `xcrun simctl openurl booted "<url>"`.
 
 Generar valores aleatorios para secretos locales: `openssl rand -base64 24` (clave de base) y `openssl rand -base64 48` (firma JWT). Cada entorno tiene sus propios valores; nunca se reutilizan los de local.
 
@@ -83,7 +134,7 @@ La api crea la cuenta al arrancar solo si no existe ningún SUPER_ADMIN, con `KU
 
 1. Requisitos: Docker con Compose v2, JDK 25, Node.js LTS, Flutter estable.
 2. `cp .env.example .env` y completar `DB_PASSWORD`, `KUADOR_JWT_SECRET`, `KUADOR_BOOTSTRAP_ADMIN_EMAIL` y `KUADOR_BOOTSTRAP_ADMIN_PASSWORD`.
-3. `docker compose up -d db` y esperar a que `docker compose ps` muestre `db` como `healthy`.
+3. `docker compose up -d db mailpit` y esperar a que `docker compose ps` muestre `db` y `mailpit` como `healthy`. Los correos que envía la api se ven en `http://localhost:8025`.
 4. Comprobar la base: `docker compose exec db psql -U "$DB_USERNAME" -d "$DB_NAME" -c 'select version();'` (con las variables de `.env` cargadas) o con cualquier cliente en `127.0.0.1:${DB_PORT}`.
 5. api en el host: `set -a; . ./.env; set +a` y luego `cd api && ./mvnw spring-boot:run`.
 6. web en el host: `cd web && npm install && npm start` (`http://localhost:4200`; el servidor de desarrollo hace proxy de `/api` a `http://localhost:8080`).
@@ -97,7 +148,8 @@ Si el puerto 5432 del equipo ya está ocupado, cambiar `DB_PORT` y el puerto de 
 
 1. Preparar el servidor [POR DEFINIR: proveedor y plataforma].
 2. Crear las aplicaciones (api, web) y la base PostgreSQL 18 por entorno.
-3. Cargar variables y secretos en el gestor del entorno, sin escribir sus valores en el repo; `SPRING_PROFILES_ACTIVE=prod`.
+3. Cargar variables y secretos en el gestor del entorno, sin escribir sus valores en el repo; `SPRING_PROFILES_ACTIVE=prod`. Incluye `KUADOR_WEB_BASE_URL`, `KUADOR_APP_LINK_BASE_URL`, `KUADOR_SMTP_*`, `KUADOR_MAIL_FROM` y, cuando haya proveedor, `KUADOR_SMS_*`; en el contenedor web, `APP_LINKS_*`.
+   - Apuntar el dominio de deep links a la web con HTTPS y comprobar `curl -sI https://<dominio>/.well-known/apple-app-site-association` (200, `application/json`, sin redirección) y lo mismo con `assetlinks.json`.
 4. Primer despliegue en pruebas, cambiar la clave del SUPER_ADMIN y retirar `KUADOR_BOOTSTRAP_ADMIN_PASSWORD`; verificar; luego producción.
 
 ### Cada despliegue
@@ -114,9 +166,11 @@ Un solo workflow, `.github/workflows/ci.yml` (nombre `ci`), corre en cada Pull R
 |---|---|---|
 | `ci` | siempre | Comprueba que existan los documentos de la metodología |
 | `api` | `api/**`, `contracts/**` | JDK 25 (Temurin) y `./mvnw -B verify` en `api/`; Docker del runner para Testcontainers (PostgreSQL) |
-| `web` | `web/**`, `contracts/**` | Node.js 24, `npm ci`, `npm run api:check` (tipos generados al día con el contrato), `npm run build`, `npm test -- --watch=false` |
-| `movil` | `movil/**` | Flutter estable fijado en `3.47.9` (la 3.50 depreca `package:flutter/material.dart` y `flutter analyze` falla; subir la versión es una tarea aparte que migra el código), `flutter pub get`, `flutter analyze`, `flutter test` |
-| `contract` | `contracts/**`, `redocly.yaml`, `.redocly.lint-ignore.yaml` | `npx @redocly/cli@2 lint` con la configuración de la raíz |
+| `web` | `web/**`, `contracts/**` | Node.js 24, `npm ci`, `npm run api:check` (tipos generados al día con el contrato), `npm run build`, archivos de `/.well-known/` válidos y dentro del build, `scripts/test-app-links.sh` (el script de arranque escribe JSON válido y rechaza valores mal formados), `npm test -- --watch=false` |
+| `movil` | `movil/**`, `contracts/**` | Flutter estable fijado en `3.47.9` (la 3.50 depreca `package:flutter/material.dart` y `flutter analyze` falla; subir la versión es una tarea aparte que migra el código), `flutter pub get`, `flutter analyze`, `flutter test` |
+| `contract` | `contracts/**`, `redocly.yaml`, `.redocly.lint-ignore.yaml` | `npx @redocly/cli@2 lint` con la configuración de la raíz, sobre `identity.openapi.yaml` y `user-registration.openapi.yaml` |
+
+Validación del contrato: `contract` revisa la estructura y las reglas de Redocly; `api` corre `UserRegistrationContractTest` en `./mvnw -B verify` (permiso declarado en cada operación, operaciones planificadas presentes, `ErrorCode` y `PermissionCode` iguales al código); `web` comprueba que los tipos generados coincidan con el contrato. `movil` corre `flutter analyze` y `flutter test` también cuando cambia el contrato.
 
 Cualquier cambio en `.github/workflows/ci.yml` corre los cinco checks. El filtro por ruta lo hace el job `changes` dentro del workflow: un check cuya pieza no cambió queda «skipped», y GitHub lo cuenta como aprobado, así los checks pueden ser requeridos sin bloquear PRs que no tocan esa pieza.
 
@@ -134,7 +188,8 @@ Comprobar en local lo mismo que el CI: ver «Comandos del proyecto» en `AGENTS.
 
 ## Verificación
 
-- Local: `docker compose ps` muestra `db` como `healthy` y la base responde a `select version();`.
+- Local: `docker compose ps` muestra `db` y `mailpit` como `healthy` y la base responde a `select version();`; `http://localhost:8025` abre Mailpit.
+- web: `curl -sI <web>/.well-known/assetlinks.json` y `curl -sI <web>/.well-known/apple-app-site-association` responden 200 con `Content-Type: application/json`; `curl -sI <web>/.well-known/otro` responde 404.
 - api: `POST /api/v1/auth/login` con la cuenta inicial responde 200 con `scope: PLATFORM` y `mustChangePassword: true`; hasta cambiar la clave (`POST /api/v1/auth/password`) solo responden `/auth/password` y `/me`.
 - api: `GET /api/v1/system/info` (público) responde 200 con `status` y `database` en `UP`; si la base no responde, devuelve `DOWN` en ambos (sigue respondiendo 200). Las migraciones Flyway (`api/src/main/resources/db/migration`) se aplican al arrancar.
 - Punta a punta (local): `scripts/smoke-test.sh` con el perfil `full` arriba; debe terminar en 0. Ver «Prueba de humo».
@@ -180,3 +235,4 @@ Resultado de MEDK-11 (2026-11-19, perfil `full` en macOS con Docker 29): 45 paso
 | 2026-11-19 | Web Angular: `config.json` en tiempo de ejecución con `API_BASE_URL` (por defecto `/api/v1`, mismo origen), reescritura de `config.json` al arrancar el contenedor web si recibe `API_BASE_URL`, proxy local a la api (`npm start`) y mock Prism del contrato en el puerto 4010 (`npm run dev:mock`) | MEDK-7 |
 | 2026-11-19 | CI por pieza en GitHub Actions (`ci`, `api`, `web`, `movil`, `contract`) con filtros por ruta; Flutter `3.47.9` fijado en CI; checks a marcar como requeridos hacia `develop` y `main` | MEDK-10 |
 | 2026-11-19 | Prueba de humo de punta a punta `scripts/smoke-test.sh` (api y web del perfil `full`), variable local `SMOKE_SUPER_ADMIN_NEW_PASSWORD` en `.env.example`, resultado de la verificación manual de web y movil contra la api real; mínimo de iOS de la app movil sube de 13.0 a 15.0 para compilar con Xcode 27 | MEDK-11 |
+| 2026-11-19 | Mailpit en el entorno local (servicio `mailpit`, puertos 1025 y 8025); variables de duración de tokens, límite de intentos, enlaces (`KUADOR_WEB_BASE_URL`, `KUADOR_APP_LINK_BASE_URL`), SMTP (`KUADOR_SMTP_*`, `KUADOR_MAIL_FROM`) y SMS (`KUADOR_SMS_*`); secretos nuevos `KUADOR_SMTP_PASSWORD` y `KUADOR_SMS_API_KEY` (solo nombres); `/.well-known/assetlinks.json` y `apple-app-site-association` servidos como `application/json` y generados con `APP_LINKS_*`; CI: `movil` corre con cambios del contrato y `web` valida los archivos de deep links; dependencias Flyway y ShedLock documentadas | MEDK-19 |
