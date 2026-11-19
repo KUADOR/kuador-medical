@@ -31,7 +31,7 @@ Perfiles de Compose:
 | Pieza | Cómo se construye | Puerto | Dominio por entorno |
 |---|---|---|---|
 | api | `./mvnw -B package` en `api/`; imagen con `api/Dockerfile` (JRE 25, usuario sin privilegios) | 8080 en el contenedor; `API_PORT` en local (por defecto 8080) | [POR DEFINIR: pruebas / producción] |
-| web | `npm run build` en `web/`; imagen con `web/Dockerfile` (nginx sin privilegios, sirve el build y hace proxy de `/api/` a la api) | 8080 en el contenedor; `WEB_PORT` en local (por defecto 4200) | [POR DEFINIR: pruebas / producción] |
+| web | `npm run build` en `web/` (Node.js `^22.22.3` o `^24.15.0`); imagen con `web/Dockerfile` (nginx sin privilegios, sirve el build y hace proxy de `/api/` a la api; al arrancar reescribe `config.json` si recibe `API_BASE_URL`) | 8080 en el contenedor; `WEB_PORT` en local (por defecto 4200) | [POR DEFINIR: pruebas / producción] |
 | movil | Build de Flutter en `movil/` con `--dart-define=API_BASE_URL=…` [POR DEFINIR: distribución a tiendas o canal interno] | No aplica | No aplica |
 
 En local los puertos se publican solo en `127.0.0.1`.
@@ -62,7 +62,7 @@ Solo nombres: los valores nunca van en este documento ni en el repo. En local vi
 | KUADOR_CORS_ALLOWED_ORIGINS | api | local, pruebas, producción | `.env` / variables del entorno | no | Origen permitido de la web |
 | API_PORT | api | local | `.env` | no | Puerto del host para la api en el perfil `full` |
 | WEB_PORT | web | local | `.env` | no | Puerto del host para la web en el perfil `full` |
-| API_BASE_URL | web (`config.json`), movil (`--dart-define`) | todos | Configuración de cada pieza | no | URL de la api (`…/api/v1`) |
+| API_BASE_URL | web (`config.json`), movil (`--dart-define`) | todos | web: `public/config.json` (por defecto `/api/v1`, mismo origen) o variable del contenedor web, que reescribe `config.json` al arrancar; movil: `--dart-define` | no | URL de la api (`…/api/v1`). En la web, una URL de otro origen exige incluir el origen de la web en `KUADOR_CORS_ALLOWED_ORIGINS` |
 | [POR DEFINIR: credenciales de proveedores de notificaciones, pagos y facturación] | api | pruebas, producción | [POR DEFINIR] | sí | — |
 
 Generar valores aleatorios para secretos locales: `openssl rand -base64 24` (clave de base) y `openssl rand -base64 48` (firma JWT). Cada entorno tiene sus propios valores; nunca se reutilizan los de local.
@@ -85,7 +85,8 @@ La api crea la cuenta al arrancar solo si no existe ningún SUPER_ADMIN, con `KU
 3. `docker compose up -d db` y esperar a que `docker compose ps` muestre `db` como `healthy`.
 4. Comprobar la base: `docker compose exec db psql -U "$DB_USERNAME" -d "$DB_NAME" -c 'select version();'` (con las variables de `.env` cargadas) o con cualquier cliente en `127.0.0.1:${DB_PORT}`.
 5. api en el host: `set -a; . ./.env; set +a` y luego `cd api && ./mvnw spring-boot:run`.
-6. web en el host: `cd web && npm install && npm start` (`http://localhost:4200`).
+6. web en el host: `cd web && npm install && npm start` (`http://localhost:4200`; el servidor de desarrollo hace proxy de `/api` a `http://localhost:8080`).
+   - Sin api: `cd web && npm run dev:mock` levanta el mock Prism del contrato en `http://localhost:4010` y la web en `http://localhost:4200` con proxy de `/api/v1` al mock.
 7. Alternativa con todo en contenedores: `docker compose --profile full up -d --build`.
 8. Detener: `docker compose down` (con `-v` se borran los datos locales).
 
@@ -104,7 +105,27 @@ Al fusionar en `develop` se construye y despliega a pruebas; al fusionar en `mai
 
 ## CI/CD
 
-[POR DEFINIR: workflow que construye (`./mvnw -B package`, `npm run build`), ejecuta pruebas (`./mvnw -B verify`, `npm test -- --watch=false`), publica y despliega cada rama en su entorno.]
+### Integración continua (GitHub Actions)
+
+Un solo workflow, `.github/workflows/ci.yml` (nombre `ci`), corre en cada Pull Request hacia `develop` o `main` y en cada push a esas ramas. No usa secretos: la api prueba con Testcontainers (perfil `test`) y el resto no necesita credenciales.
+
+| Check | Corre si cambia | Qué hace |
+|---|---|---|
+| `ci` | siempre | Comprueba que existan los documentos de la metodología |
+| `api` | `api/**`, `contracts/**` | JDK 25 (Temurin) y `./mvnw -B verify` en `api/`; Docker del runner para Testcontainers (PostgreSQL) |
+| `web` | `web/**`, `contracts/**` | Node.js 24, `npm ci`, `npm run api:check` (tipos generados al día con el contrato), `npm run build`, `npm test -- --watch=false` |
+| `movil` | `movil/**` | Flutter estable fijado en `3.47.9` (la 3.50 depreca `package:flutter/material.dart` y `flutter analyze` falla; subir la versión es una tarea aparte que migra el código), `flutter pub get`, `flutter analyze`, `flutter test` |
+| `contract` | `contracts/**`, `redocly.yaml`, `.redocly.lint-ignore.yaml` | `npx @redocly/cli@2 lint` con la configuración de la raíz |
+
+Cualquier cambio en `.github/workflows/ci.yml` corre los cinco checks. El filtro por ruta lo hace el job `changes` dentro del workflow: un check cuya pieza no cambió queda «skipped», y GitHub lo cuenta como aprobado, así los checks pueden ser requeridos sin bloquear PRs que no tocan esa pieza.
+
+Checks requeridos hacia `develop` (y `main`): `ci`, `api`, `web`, `movil` y `contract`, con «Require branches to be up to date». Se configuran en *Settings → Branches* (o *Rules → Rulesets*) del repo. [POR DEFINIR: hoy el repo es privado en un plan de la organización sin protección de ramas (la API responde 403); hace falta subir el plan a GitHub Team o hacer público el repo para poder marcarlos como requeridos.]
+
+Comprobar en local lo mismo que el CI: ver «Comandos del proyecto» en `AGENTS.md`; el contrato con `npx @redocly/cli@2 lint` desde la raíz.
+
+### Entrega continua
+
+[POR DEFINIR: publicación de imágenes y despliegue de `develop` a pruebas y de `main` a producción.]
 
 ## Respaldos y vuelta atrás
 
@@ -125,3 +146,5 @@ Al fusionar en `develop` se construye y despliega a pruebas; al fusionar en `mai
 | 2026-11-19 | Entorno local con Docker Compose (PostgreSQL 18 y perfil `full` con api y web), `.env.example`, perfiles `local`/`test`/`prod`, variables y secretos de la api (renombra `SPRING_DATASOURCE_*` a `DB_*` según el plan), carga de la clave inicial del SUPER_ADMIN como secreto | MEDK-3 |
 | 2026-11-19 | Esqueleto de la api: migración base Flyway `V1__baseline.sql` aplicada al arrancar, comprobación de salud `GET /api/v1/system/info`, `./mvnw -B verify` necesita Docker (Testcontainers). Sin variables ni secretos nuevos | MEDK-4 |
 | 2026-11-19 | Autorregistro, login JWT, `GET /me`, cambio de clave y creación de la cuenta inicial SUPER_ADMIN al arrancar. `KUADOR_JWT_SECRET` pasa a ser obligatoria (la api no arranca sin ella o si tiene menos de 32 bytes); `KUADOR_BOOTSTRAP_ADMIN_*` ya se usan. Sin variables, puertos ni servicios nuevos | MEDK-5 |
+| 2026-11-19 | Web Angular: `config.json` en tiempo de ejecución con `API_BASE_URL` (por defecto `/api/v1`, mismo origen), reescritura de `config.json` al arrancar el contenedor web si recibe `API_BASE_URL`, proxy local a la api (`npm start`) y mock Prism del contrato en el puerto 4010 (`npm run dev:mock`) | MEDK-7 |
+| 2026-11-19 | CI por pieza en GitHub Actions (`ci`, `api`, `web`, `movil`, `contract`) con filtros por ruta; Flutter `3.47.9` fijado en CI; checks a marcar como requeridos hacia `develop` y `main` | MEDK-10 |

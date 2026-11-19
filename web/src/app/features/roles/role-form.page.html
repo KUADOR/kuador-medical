@@ -1,0 +1,117 @@
+<section class="page" aria-labelledby="role-form-title">
+  <p><a [routerLink]="rolesLink">← Volver a roles</a></p>
+  <h1 id="role-form-title">{{ heading() }}</h1>
+
+  @switch (state().kind) {
+    @case ('loading') {
+      <p class="hint" aria-live="polite">Cargando…</p>
+    }
+    @case ('failed') {
+      <p class="alert" role="alert" data-testid="load-error">{{ loadFailure()?.message }}</p>
+      @if (!loadFailure()?.notFound) {
+        <div class="actions">
+          <button type="button" class="button" (click)="load()">Volver a intentar</button>
+        </div>
+      }
+    }
+    @default {
+      @if (readOnly()) {
+        <p class="alert alert--info" data-testid="read-only">
+          @if (role()?.systemRole) {
+            OWNER y ADMIN son roles del sistema: puedes consultarlos, pero no editarlos ni
+            eliminarlos.
+          } @else {
+            No tienes permiso para editar roles: solo puedes consultarlo.
+          }
+        </p>
+      }
+
+      <form class="form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        @if (failure(); as message) {
+          <div class="alert" role="alert" data-testid="form-error" tabindex="-1">
+            <p>{{ message }}</p>
+            @if (versionConflict()) {
+              <button type="button" class="button button--secondary" (click)="load()">
+                Recargar el rol
+              </button>
+            }
+          </div>
+        }
+
+        <div class="field">
+          <label for="role-name">Nombre</label>
+          <input
+            id="role-name"
+            type="text"
+            formControlName="name"
+            autocomplete="off"
+            [attr.maxlength]="nameMaxLength"
+            [attr.aria-invalid]="error('name') ? 'true' : null"
+            [attr.aria-describedby]="error('name') ? 'role-name-error' : null"
+          />
+          @if (error('name'); as message) {
+            <p id="role-name-error" class="field__error">{{ message }}</p>
+          }
+        </div>
+
+        <div class="field">
+          <label for="role-description">Descripción (opcional)</label>
+          <textarea
+            id="role-description"
+            formControlName="description"
+            [attr.maxlength]="descriptionMaxLength"
+            [attr.aria-invalid]="error('description') ? 'true' : null"
+            [attr.aria-describedby]="error('description') ? 'role-description-error' : null"
+          ></textarea>
+          @if (error('description'); as message) {
+            <p id="role-description-error" class="field__error">{{ message }}</p>
+          }
+        </div>
+
+        <fieldset
+          class="field"
+          [attr.aria-invalid]="error('permissions') ? 'true' : null"
+          [attr.aria-describedby]="
+            error('permissions') ? 'role-permissions-error' : 'role-permissions-hint'
+          "
+        >
+          <legend>Permisos</legend>
+          <p id="role-permissions-hint" class="field__hint">
+            Elige qué puede hacer quien tenga este rol. Los permisos vienen del catálogo del
+            sistema.
+          </p>
+          @for (option of options(); track option.code) {
+            <label class="checkbox">
+              <input
+                type="checkbox"
+                [value]="option.code"
+                [checked]="selected().has(option.code)"
+                [disabled]="readOnly()"
+                (change)="toggle(option.code, $event)"
+                data-testid="permission"
+              />
+              <span>
+                {{ permissionLabel(option) }}
+                <span class="checkbox__code">{{ option.code }}</span>
+              </span>
+            </label>
+          } @empty {
+            <p class="hint">No hay permisos disponibles.</p>
+          }
+          @if (error('permissions'); as message) {
+            <p id="role-permissions-error" class="field__error">{{ message }}</p>
+          }
+        </fieldset>
+
+        @if (!readOnly()) {
+          <div class="actions">
+            <button type="submit" class="button" [disabled]="submitting()">
+              {{ submitting() ? 'Guardando…' : isNew() ? 'Crear rol' : 'Guardar cambios' }}
+            </button>
+            <a class="button button--secondary" [routerLink]="rolesLink">Cancelar</a>
+          </div>
+        }
+      </form>
+    }
+  }
+</section>

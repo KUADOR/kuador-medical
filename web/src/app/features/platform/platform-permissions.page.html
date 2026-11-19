@@ -1,0 +1,52 @@
+<section class="page" aria-labelledby="platform-permissions-title">
+  <h1 id="platform-permissions-title">Catálogo de permisos</h1>
+  <p class="hint">
+    Permisos fijos del sistema. Las clínicas arman sus roles solo con los permisos de alcance
+    «Clínica»; los de «Plataforma» nunca se asignan a un rol de clínica.
+  </p>
+
+  <div [attr.aria-busy]="state().kind === 'loading'">
+    @switch (state().kind) {
+      @case ('loading') {
+        <p class="hint">Cargando catálogo…</p>
+      }
+      @case ('failed') {
+        <p class="alert" role="alert" data-testid="load-error">{{ failure() }}</p>
+        <div class="actions">
+          <button type="button" class="button" (click)="load()">Volver a intentar</button>
+        </div>
+      }
+      @default {
+        <div class="table-wrapper">
+          <table class="table">
+            <caption class="visually-hidden">
+              Catálogo completo de permisos
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Permiso</th>
+                <th scope="col">Código</th>
+                <th scope="col">Alcance</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (permission of permissions(); track permission.code) {
+                <tr data-testid="permission-row">
+                  <td>{{ permissionLabel(permission) }}</td>
+                  <td>
+                    <code>{{ permission.code }}</code>
+                  </td>
+                  <td>{{ scopeLabels[permission.scope] }}</td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="3">El catálogo está vacío.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+  </div>
+</section>
