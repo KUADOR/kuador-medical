@@ -105,7 +105,27 @@ Al fusionar en `develop` se construye y despliega a pruebas; al fusionar en `mai
 
 ## CI/CD
 
-[POR DEFINIR: workflow que construye (`./mvnw -B package`, `npm run build`), ejecuta pruebas (`./mvnw -B verify`, `npm test -- --watch=false`), publica y despliega cada rama en su entorno.]
+### Integración continua (GitHub Actions)
+
+Un solo workflow, `.github/workflows/ci.yml` (nombre `ci`), corre en cada Pull Request hacia `develop` o `main` y en cada push a esas ramas. No usa secretos: la api prueba con Testcontainers (perfil `test`) y el resto no necesita credenciales.
+
+| Check | Corre si cambia | Qué hace |
+|---|---|---|
+| `ci` | siempre | Comprueba que existan los documentos de la metodología |
+| `api` | `api/**`, `contracts/**` | JDK 25 (Temurin) y `./mvnw -B verify` en `api/`; Docker del runner para Testcontainers (PostgreSQL) |
+| `web` | `web/**`, `contracts/**` | Node.js 24, `npm ci`, `npm run api:check` (tipos generados al día con el contrato), `npm run build`, `npm test -- --watch=false` |
+| `movil` | `movil/**` | Flutter estable, `flutter pub get`, `flutter analyze`, `flutter test` |
+| `contract` | `contracts/**`, `redocly.yaml`, `.redocly.lint-ignore.yaml` | `npx @redocly/cli@2 lint` con la configuración de la raíz |
+
+Cualquier cambio en `.github/workflows/ci.yml` corre los cinco checks. El filtro por ruta lo hace el job `changes` dentro del workflow: un check cuya pieza no cambió queda «skipped», y GitHub lo cuenta como aprobado, así los checks pueden ser requeridos sin bloquear PRs que no tocan esa pieza.
+
+Checks requeridos hacia `develop` (y `main`): `ci`, `api`, `web`, `movil` y `contract`, con «Require branches to be up to date». Se configuran en *Settings → Branches* (o *Rules → Rulesets*) del repo. [POR DEFINIR: hoy el repo es privado en un plan de la organización sin protección de ramas (la API responde 403); hace falta subir el plan a GitHub Team o hacer público el repo para poder marcarlos como requeridos.]
+
+Comprobar en local lo mismo que el CI: ver «Comandos del proyecto» en `AGENTS.md`; el contrato con `npx @redocly/cli@2 lint` desde la raíz.
+
+### Entrega continua
+
+[POR DEFINIR: publicación de imágenes y despliegue de `develop` a pruebas y de `main` a producción.]
 
 ## Respaldos y vuelta atrás
 
@@ -124,3 +144,4 @@ Al fusionar en `develop` se construye y despliega a pruebas; al fusionar en `mai
 | {date} | Primera versión | — |
 | 2026-11-19 | Entorno local con Docker Compose (PostgreSQL 18 y perfil `full` con api y web), `.env.example`, perfiles `local`/`test`/`prod`, variables y secretos de la api (renombra `SPRING_DATASOURCE_*` a `DB_*` según el plan), carga de la clave inicial del SUPER_ADMIN como secreto | MEDK-3 |
 | 2026-11-19 | Web Angular: `config.json` en tiempo de ejecución con `API_BASE_URL` (por defecto `/api/v1`, mismo origen), reescritura de `config.json` al arrancar el contenedor web si recibe `API_BASE_URL`, proxy local a la api (`npm start`) y mock Prism del contrato en el puerto 4010 (`npm run dev:mock`) | MEDK-7 |
+| 2026-11-19 | CI por pieza en GitHub Actions (`ci`, `api`, `web`, `movil`, `contract`) con filtros por ruta; checks a marcar como requeridos hacia `develop` y `main` | MEDK-10 |
