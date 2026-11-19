@@ -1,5 +1,6 @@
 package com.kuador.medical.identity.role;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -18,6 +19,9 @@ public interface RoleRepository extends JpaRepository<Role, UUID> {
 
     @Query("select r from Role r")
     List<Role> findAllInCurrentTenant();
+
+    @Query("select r from Role r where r.id in :ids")
+    List<Role> findAllInCurrentTenant(@Param("ids") Collection<UUID> ids);
 
     @Query("select count(r) > 0 from Role r where lower(r.name) = lower(:name)")
     boolean existsByName(@Param("name") String name);

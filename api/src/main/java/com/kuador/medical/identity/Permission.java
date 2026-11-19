@@ -58,6 +58,12 @@ public enum Permission {
         return description;
     }
 
+    /** Module that owns the permission: the first segment of the code, {@code identity} for {@code roles.*}. */
+    public String module() {
+        String first = code.substring(0, code.indexOf('.'));
+        return "roles".equals(first) ? "identity" : first;
+    }
+
     public static Optional<Permission> fromCode(String code) {
         return Arrays.stream(values()).filter(permission -> permission.code.equals(code)).findFirst();
     }

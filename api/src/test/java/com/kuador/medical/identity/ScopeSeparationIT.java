@@ -84,7 +84,7 @@ class ScopeSeparationIT {
         UUID tenantId = api.signUp("Clinica Revocada", email, password);
         String token = api.token(email, password);
 
-        jdbc.update("delete from role_permission where tenant_id = ? and permission_code = 'roles.read'", tenantId);
+        jdbc.update("delete from identity_role_permission where tenant_id = ? and permission_code = 'roles.read'", tenantId);
 
         assertThat(api.get(CLINIC_OPERATION, token)).hasStatus(HttpStatus.FORBIDDEN);
     }

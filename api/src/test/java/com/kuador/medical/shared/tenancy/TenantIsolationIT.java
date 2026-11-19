@@ -46,7 +46,7 @@ class TenantIsolationIT {
 
     @Test
     void entitiesTakeTheTenantOfTheCurrentContext() {
-        UUID storedTenant = jdbc.queryForObject("select tenant_id from role where id = ?", UUID.class, probeOfB);
+        UUID storedTenant = jdbc.queryForObject("select tenant_id from identity_role where id = ?", UUID.class, probeOfB);
 
         assertThat(storedTenant).isEqualTo(tenantB);
     }
@@ -83,7 +83,7 @@ class TenantIsolationIT {
 
         assertThat(updated).isZero();
         assertThat(deleted).isZero();
-        assertThat(jdbc.queryForObject("select name from role where id = ?", String.class, probeOfB))
+        assertThat(jdbc.queryForObject("select name from identity_role where id = ?", String.class, probeOfB))
                 .isEqualTo("role-of-b");
     }
 
@@ -93,7 +93,7 @@ class TenantIsolationIT {
         probe.forceTenantId(tenantB);
 
         assertThatThrownBy(() -> inTenant(tenantA, () -> persist(probe))).isInstanceOf(RuntimeException.class);
-        assertThat(jdbc.queryForObject("select count(*) from role where name = 'smuggled'", Integer.class))
+        assertThat(jdbc.queryForObject("select count(*) from identity_role where name = 'smuggled'", Integer.class))
                 .isZero();
     }
 
@@ -111,7 +111,7 @@ class TenantIsolationIT {
     void withoutTenantNothingCanBeWritten() {
         assertThatThrownBy(() -> transaction.execute(status -> persist(new TenantScopedProbe("orphan"))))
                 .isInstanceOf(RuntimeException.class);
-        assertThat(jdbc.queryForObject("select count(*) from role where name = 'orphan'", Integer.class))
+        assertThat(jdbc.queryForObject("select count(*) from identity_role where name = 'orphan'", Integer.class))
                 .isZero();
     }
 

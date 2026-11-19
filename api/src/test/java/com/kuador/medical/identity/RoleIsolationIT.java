@@ -38,6 +38,9 @@ class RoleIsolationIT {
     @Autowired
     private JdbcTemplate jdbc;
 
+    /** Roles of identity/role-seed.yaml. */
+    private static final int SEEDED_ROLES = 11;
+
     private IdentityApi api;
     private Clinic clinicA;
     private Clinic clinicB;
@@ -58,7 +61,7 @@ class RoleIsolationIT {
     void listOnlyContainsTheRolesOfTheOwnClinic() {
         List<Map<String, Object>> rolesOfA = api.bodyList(api.get("/api/v1/roles", clinicA.token()));
 
-        assertThat(rolesOfA).extracting(role -> role.get("name")).containsExactly("OWNER", "ADMIN");
+        assertThat(rolesOfA).extracting(role -> role.get("name")).startsWith("OWNER", "ADMIN").doesNotContain("Reception");
         assertThat(rolesOfA).extracting(role -> role.get("id")).doesNotContain(roleOfB);
         assertThat(rolesOfA).extracting(role -> role.get("id")).doesNotContainAnyElementsOf(systemRoleIdsOf(clinicB));
     }
@@ -89,7 +92,7 @@ class RoleIsolationIT {
         }
 
         assertThat(api.get("/api/v1/roles/" + roleOfB, clinicB.token())).hasStatus(HttpStatus.OK);
-        assertThat(roleCount(clinicB.tenantId())).isEqualTo(3);
+        assertThat(roleCount(clinicB.tenantId())).isEqualTo(SEEDED_ROLES + 1);
     }
 
     @Test
@@ -101,11 +104,11 @@ class RoleIsolationIT {
 
         assertThat(created).hasStatus(HttpStatus.CREATED);
         UUID id = UUID.fromString(api.body(created).get("id").toString());
-        assertThat(jdbc.queryForObject("select tenant_id from role where id = ?", UUID.class, id))
+        assertThat(jdbc.queryForObject("select tenant_id from identity_role where id = ?", UUID.class, id))
                 .isEqualTo(clinicA.tenantId());
-        assertThat(jdbc.queryForList("select tenant_id from role_permission where role_id = ?", UUID.class, id))
+        assertThat(jdbc.queryForList("select tenant_id from identity_role_permission where role_id = ?", UUID.class, id))
                 .containsOnly(clinicA.tenantId());
-        assertThat(roleCount(clinicB.tenantId())).isEqualTo(3);
+        assertThat(roleCount(clinicB.tenantId())).isEqualTo(SEEDED_ROLES + 1);
     }
 
     @Test
@@ -123,11 +126,11 @@ class RoleIsolationIT {
 
     private List<String> systemRoleIdsOf(Clinic clinic) {
         return jdbc.queryForList(
-                "select id::text from role where tenant_id = ? and system_code is not null", String.class, clinic.tenantId());
+                "select id::text from identity_role where tenant_id = ? and system_code is not null", String.class, clinic.tenantId());
     }
 
     private int roleCount(UUID tenantId) {
-        return jdbc.queryForObject("select count(*) from role where tenant_id = ?", Integer.class, tenantId);
+        return jdbc.queryForObject("select count(*) from identity_role where tenant_id = ?", Integer.class, tenantId);
     }
 
     private static void assertNotFound(MvcTestResult result) {

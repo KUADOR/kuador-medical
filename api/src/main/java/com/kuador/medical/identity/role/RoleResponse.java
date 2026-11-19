@@ -7,11 +7,18 @@ import org.jspecify.annotations.Nullable;
 
 /** {@code Role} of the contract. */
 record RoleResponse(
-        UUID id, String name, @Nullable String description, boolean systemRole, List<String> permissions, long version) {
+        UUID id,
+        String name,
+        @Nullable String description,
+        @Nullable SystemRole systemKey,
+        boolean systemRole,
+        boolean clinical,
+        List<String> permissions,
+        long version) {
 
     static RoleResponse of(RoleView role) {
         return new RoleResponse(
-                role.id(), role.name(), role.description(), role.systemRole(),
+                role.id(), role.name(), role.description(), role.systemKey(), role.systemRole(), role.clinical(),
                 role.permissions().stream().map(Permission::code).toList(), role.version());
     }
 }
