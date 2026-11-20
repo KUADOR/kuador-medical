@@ -18,6 +18,7 @@ import {
   submit,
   type,
 } from '../../../../testing/app-harness';
+import { expectNoAxeViolations } from '../../../../testing/axe';
 
 describe('LoginPage', () => {
   let app: AppHarness;
@@ -42,6 +43,16 @@ describe('LoginPage', () => {
     app.backend.expectOne('/api/v1/me').flush(account);
     await app.settle();
   }
+
+  it('has no accessibility violations, also with validation errors (axe)', async () => {
+    await open();
+    await expectNoAxeViolations(app.page());
+
+    submit(app.page());
+    await app.settle();
+    await expectNoAxeViolations(app.page());
+    app.backend.expectNone('/api/v1/auth/login');
+  });
 
   it('shows Spanish validation messages and sends nothing when the form is empty', async () => {
     await open();

@@ -1,0 +1,71 @@
+/*
+ * Base layer of the web piece: reset, theme, visible focus and reduced motion.
+ * Reads only the generated tokens (tokens.css, loaded before this file). The theme follows
+ * prefers-color-scheme and can be forced with [data-theme='light' | 'dark'] on <html>.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  font: var(--kd-type-body);
+  color: var(--kd-text-default);
+  background: var(--kd-surface-base);
+}
+
+img,
+picture,
+video,
+canvas,
+svg {
+  max-width: 100%;
+}
+
+img,
+video {
+  height: auto;
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+}
+
+button:not(:disabled),
+[role='button']:not([aria-disabled='true']) {
+  cursor: pointer;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* Visible focus for keyboard users on every interactive element (WCAG 2.4.7, 2.4.11). */
+:focus-visible {
+  outline: 0.1875rem solid var(--kd-color-focus);
+  outline-offset: 0.125rem;
+}
+
+/* Reduced motion: animations and transitions end almost at once; nothing loops. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

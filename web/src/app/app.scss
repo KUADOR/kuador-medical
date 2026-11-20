@@ -63,9 +63,10 @@
 }
 
 .app-header__logout {
-  min-height: 2.75rem;
+  min-height: var(--kd-size-target-min);
   padding: var(--space-1) var(--space-3);
-  border: 1px solid var(--color-on-primary);
+  border: var(--kd-border-strong);
+  border-color: var(--color-on-primary);
   border-radius: var(--radius);
   background: transparent;
   color: var(--color-on-primary);

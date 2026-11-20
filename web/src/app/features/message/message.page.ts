@@ -16,13 +16,7 @@ import { RouterLink } from '@angular/router';
       <p><a routerLink="/">Ir al estado del sistema</a></p>
     </section>
   `,
-  styles: `
-    .message {
-      display: grid;
-      gap: var(--space-3);
-      max-width: 40rem;
-    }
-  `,
+  styleUrl: './message.page.scss',
 })
 export class MessagePage {
   /** Bound from route data through withComponentInputBinding(). */

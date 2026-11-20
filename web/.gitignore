@@ -38,6 +38,13 @@ yarn-error.log
 testem.log
 /typings
 __screenshots__/
+# Playwright visual baselines are versioned, but only the Linux ones (generated in the
+# Playwright container, the same image CI uses): `npm run test:visual:docker`.
+!/e2e/visual/__screenshots__/
+/e2e/visual/__screenshots__/**/*-darwin.png
+/e2e/visual/__screenshots__/**/*-win32.png
+/test-results
+/playwright-report
 
 # System files
 .DS_Store

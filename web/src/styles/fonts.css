@@ -1,0 +1,20 @@
+/*
+ * Self-hosted web fonts (no third-party CDN). The family is defined by the identity guide
+ * (MEDK-33, task 6); until then --kd-type-family-base uses the system font and this file
+ * declares no @font-face.
+ *
+ * To add a family: put its .woff2 files in src/assets/fonts/ (with the license) and declare
+ * each weight with a relative URL, so the build copies the file with a content hash under
+ * /media/ (cached for a year by nginx.conf):
+ *
+ *   @font-face {
+ *     font-family: 'Family Name';
+ *     font-style: normal;
+ *     font-weight: 400;
+ *     font-display: swap;
+ *     src: url('../assets/fonts/family-name-400.woff2') format('woff2');
+ *   }
+ *
+ * Then set the family name first in design/tokens/typography.tokens.json and regenerate.
+ * Remote URLs are rejected by the style lint.
+ */
