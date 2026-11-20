@@ -1,4 +1,5 @@
-# CI per piece. Protected branches require the jobs «ci», «api», «web», «movil» and «contract».
+# CI per piece. Protected branches require the jobs «ci», «api», «web», «movil», «contract»,
+# «design», «web-visual» and «web-lighthouse».
 # Path filters run inside the workflow (job «changes») so that a job whose piece did not change
 # ends as «skipped», which GitHub treats as passing for required checks.
 name: ci
@@ -35,6 +36,7 @@ jobs:
       web: ${{ steps.filter.outputs.web }}
       movil: ${{ steps.filter.outputs.movil }}
       contract: ${{ steps.filter.outputs.contract }}
+      design: ${{ steps.filter.outputs.design }}
     steps:
       - uses: actions/checkout@v7
       - id: filter
@@ -60,6 +62,12 @@ jobs:
               - 'contracts/**'
               - 'redocly.yaml'
               - '.redocly.lint-ignore.yaml'
+            # Token sources and the generated outputs: a hand edit of an output is drift too.
+            design:
+              - *shared
+              - 'design/**'
+              - 'web/src/styles/tokens.css'
+              - 'movil/lib/design_system/tokens.g.dart'
 
   api:
     name: api
@@ -111,6 +119,74 @@ jobs:
         run: scripts/test-app-links.sh
       - run: npm test -- --watch=false
 
+  web-visual:
+    name: web-visual
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Same image as «npm run test:visual:docker», so baselines match pixel for pixel.
+    # Keep the tag equal to «@playwright/test» in web/package.json (checked below).
+    container:
+      image: mcr.microsoft.com/playwright:v1.65.1-noble
+      options: --ipc=host
+    env:
+      PLAYWRIGHT_VERSION: 1.65.1
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+      - name: Playwright image matches the package version
+        run: test "$(node -p 'require("./package.json").devDependencies["@playwright/test"]')" = "$PLAYWRIGHT_VERSION"
+      - run: npm ci
+      # web/playwright.config.ts: dev server with a simulated API (page.route), synthetic data only.
+      - name: Visual regression and axe-core (Playwright)
+        run: npm run test:visual
+      - name: Render proposed snapshots
+        if: failure()
+        run: npm run test:visual:update || true
+      - name: Upload report and snapshots
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: web-visual-linux
+          path: |
+            web/playwright-report/
+            web/e2e/visual/__screenshots__/
+          retention-days: 7
+
+  web-lighthouse:
+    name: web-lighthouse
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      # web/lighthouserc.json: Lighthouse mobile profile on the production build, 3 runs,
+      # median LCP must stay under 2.5 s (SC-010). Uses the Chrome of the runner.
+      - name: Lighthouse CI
+        run: npm run lighthouse
+      - name: Upload Lighthouse reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: web-lighthouse
+          path: web/.lighthouseci/
+          retention-days: 7
+          if-no-files-found: ignore
+
   movil:
     name: movil
     needs: changes
@@ -130,7 +206,49 @@ jobs:
           cache: true
       - run: flutter pub get
       - run: flutter analyze
+      # Includes the golden tests (tag «golden», test/goldens/): baselines are rendered on Linux.
       - run: flutter test
+      # On failure, render the goldens again on this runner and upload them with the diffs, so a
+      # reviewed visual change can update its baselines without a local Linux setup.
+      - name: Render proposed goldens
+        if: failure()
+        run: flutter test --tags golden --update-goldens || true
+      - name: Upload goldens and diffs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: movil-goldens-linux
+          path: |
+            movil/test/**/*.png
+          retention-days: 7
+
+  design:
+    name: design
+    needs: changes
+    if: needs.changes.outputs.design == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: design
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: design/package-lock.json
+      - run: npm ci
+      - name: Generator tests
+        run: npm test
+      # Regenerates CSS and Dart from design/tokens/ (contract and AA contrast included) and fails
+      # if the versioned outputs differ: change the tokens and run «npm run build», never edit
+      # web/src/styles/tokens.css or movil/lib/design_system/tokens.g.dart by hand.
+      - name: Generated tokens match the versioned outputs
+        run: |
+          npm run build
+          git diff --exit-code -- ../web/src/styles/tokens.css ../movil/lib/design_system/tokens.g.dart \
+            || { echo "::error::Token drift: run «cd design && npm run build» and commit the outputs"; exit 1; }
 
   contract:
     name: contract

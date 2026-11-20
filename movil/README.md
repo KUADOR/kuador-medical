@@ -141,6 +141,20 @@ flutter build ios --dart-define=API_BASE_URL=https://<api-host> --dart-define=AP
 
 Requires Flutter stable (Dart >= 3.10) and, for Android builds, JDK 17+.
 
+### Goldens
+
+Golden tests carry the tag `golden` (`dart_test.yaml`) and live in `test/goldens/`. CI runs them
+on Linux with Flutter `3.47.9` (job `movil`), so the baselines are the Linux renderings; macOS
+renders text and antialiasing slightly differently, so `flutter test` skips the goldens outside Linux. When the job fails, it renders the goldens
+again on the runner and uploads them, with the diffs, as the artifact `movil-goldens-linux`:
+after reviewing them, copy the new PNG files into `test/goldens/` and commit them in the same PR.
+With Docker, the same can be done locally (there is no published Flutter image for `3.47.9`, so
+the script clones the SDK at that tag into a Docker volume the first time):
+
+```bash
+scripts/update-goldens.sh
+```
+
 ## Structure
 
 ```
