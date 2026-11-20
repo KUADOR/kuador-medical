@@ -39,4 +39,4 @@ cd web && npm run test:visual:docker    # capturas Linux, como en CI
 ## Notas
 
 - Despliegue: no cambia.
-- Bundle inicial: `develop` ya supera el presupuesto de 500 kB (549,5 kB). Con esta tarea queda en 575,3 kB (+25,8 kB): la ficha ahora se carga de forma diferida (`loadComponent`), y lo que sigue sumando es la lista de vínculos compartida con «Mis representantes» (carga ansiosa). Sin la carga diferida eran 589,4 kB. El presupuesto es la propuesta 4 de `audit.md`; conviene revisarlo junto con la carga diferida de las demás rutas.
+- Bundle inicial: `develop` (con MEDK-42) ya supera el presupuesto de 500 kB: 585,9 kB. Con esta rama queda en 577,1 kB (−8,8 kB), porque la ficha ahora se carga de forma diferida (`loadComponent`). El presupuesto es la propuesta 4 de `audit.md`; conviene revisarlo junto con la carga diferida de las demás rutas.
