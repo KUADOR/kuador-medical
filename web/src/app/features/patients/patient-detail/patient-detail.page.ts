@@ -10,6 +10,16 @@ import {
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import {
+  KdAlert,
+  KdButton,
+  KdCard,
+  KdErrorState,
+  KdField,
+  KdIcon,
+  KdInput,
+  KdLoadingState,
+} from '../../../design-system';
 import type { Patient, PatientInvitationRequest } from '../../../core/api/api-types';
 import { CONSENT_TEXT_VERSION } from '../../../core/catalogs/patient-catalogs';
 import { errorMessage, toProblem } from '../../../core/errors/error-messages';
@@ -35,18 +45,35 @@ type LoadState =
 
 type Channel = PatientInvitationRequest['channel'];
 
+/** The one action of the view filled with the accent (DESIGN.md R-02). */
+type PrimaryAction = 'consent' | 'invite' | null;
+
 /** Accounts that can (re)receive an activation invitation. */
 const INVITABLE: readonly Patient['accountStatus'][] = ['NONE', 'INVITED'];
 
 /**
  * Administrative data of a patient (/patients/:id): consent, account invitation and guardian
  * links. Each action shows only with its permission; the API enforces it again.
+ * Built with the design system only (MEDK-43): same data and actions as before the redesign.
  */
 @Component({
   selector: 'mk-patient-detail-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, FormsModule, PatientGuardianLinks],
+  imports: [
+    RouterLink,
+    FormsModule,
+    PatientGuardianLinks,
+    KdAlert,
+    KdButton,
+    KdCard,
+    KdErrorState,
+    KdField,
+    KdIcon,
+    KdInput,
+    KdLoadingState,
+  ],
   templateUrl: './patient-detail.page.html',
+  styleUrl: './patient-detail.page.scss',
 })
 export class PatientDetailPage implements OnInit {
   private readonly patients = inject(PatientsService);
@@ -92,6 +119,23 @@ export class PatientDetailPage implements OnInit {
   protected readonly canInvite = computed(() => {
     const patient = this.patient();
     return !!patient && !patient.minor && INVITABLE.includes(patient.accountStatus);
+  });
+
+  /** The add guardian form is open: its submit is the primary action then. */
+  protected readonly addingGuardian = signal(false);
+
+  /**
+   * Pending work first: a missing or outdated consent, then the account invitation. Nothing is
+   * filled with the accent when there is nothing pending.
+   */
+  protected readonly primaryAction = computed<PrimaryAction>(() => {
+    if (this.addingGuardian() || !this.canRegister()) {
+      return null;
+    }
+    if (this.consentOutdated()) {
+      return 'consent';
+    }
+    return this.canInvite() ? 'invite' : null;
   });
 
   // ---- consent

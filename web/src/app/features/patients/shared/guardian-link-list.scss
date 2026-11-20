@@ -1,0 +1,50 @@
+// Current and historical guardian links (MEDK-43): values from the --kd-* tokens only.
+:host {
+  display: block;
+}
+
+.link-list {
+  display: grid;
+  gap: var(--kd-space-3);
+}
+
+.link-list__heading {
+  margin: 0;
+  font: var(--kd-type-subtitle);
+}
+
+.link-list__muted {
+  margin: 0;
+  color: var(--kd-text-muted);
+  font: var(--kd-type-body-sm);
+}
+
+.link-list__table-wrapper {
+  overflow-x: auto;
+  border: var(--kd-border-hairline);
+  border-radius: var(--kd-radius-md);
+}
+
+.link-list__table {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--kd-type-body-sm);
+
+  th,
+  td {
+    padding: var(--kd-space-2) var(--kd-space-3);
+    border-bottom: var(--kd-border-hairline);
+    text-align: left;
+    vertical-align: top;
+  }
+
+  thead th {
+    background: var(--kd-surface-sunken);
+    color: var(--kd-text-muted);
+    font: var(--kd-type-label);
+  }
+
+  tbody tr:last-child > * {
+    border-bottom: none;
+  }
+}

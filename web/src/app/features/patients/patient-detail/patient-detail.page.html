@@ -1,185 +1,251 @@
-<section class="page" aria-labelledby="patient-title">
-  <p><a [routerLink]="patientsLink">← Volver a pacientes</a></p>
+<section class="patient-record" aria-labelledby="patient-title">
+  <div>
+    <a kdButton variant="tertiary" icon="arrow-left" [routerLink]="patientsLink">
+      Volver a pacientes
+    </a>
+  </div>
 
   @switch (state().kind) {
     @case ('loading') {
-      <h1 id="patient-title">Paciente</h1>
-      <p class="hint" aria-live="polite">Cargando…</p>
+      <h1 id="patient-title" class="patient-record__title">Paciente</h1>
+      <kd-loading-state label="Cargando la ficha del paciente…" />
     }
     @case ('failed') {
-      <h1 id="patient-title">Paciente</h1>
-      <p class="alert" role="alert" data-testid="load-error">{{ loadFailure()?.message }}</p>
-      @if (!loadFailure()?.notFound) {
-        <div class="actions">
-          <button type="button" class="button" (click)="load()">Volver a intentar</button>
-        </div>
+      <h1 id="patient-title" class="patient-record__title">Paciente</h1>
+      @if (loadFailure(); as failure) {
+        <kd-error-state
+          data-testid="load-error"
+          [heading]="failure.notFound ? 'No encontramos al paciente' : 'No pudimos cargar la ficha'"
+          [description]="failure.message"
+          retryLabel="Volver a intentar"
+          [retryable]="!failure.notFound"
+          (retry)="load()"
+        />
       }
     }
     @default {
       @if (patient(); as p) {
-        <div class="page__header">
-          <div>
-            <h1 id="patient-title">{{ fullName(p) }}</h1>
-            @if (p.minor) {
-              <span class="badge" data-testid="minor-badge">Menor de edad</span>
-            } @else if (p.adultSince) {
-              <span class="badge">Mayor de edad desde {{ formatDate(p.adultSince) }}</span>
+        <header class="patient-record__header">
+          <div class="patient-record__identity">
+            <h1 id="patient-title" class="patient-record__title">{{ fullName(p) }}</h1>
+            @if (p.minor || p.adultSince) {
+              <p class="patient-record__tags">
+                @if (p.minor) {
+                  <span class="patient-record__tag" data-testid="minor-badge">
+                    <kd-icon name="user" [size]="20" />
+                    Menor de edad
+                  </span>
+                } @else if (p.adultSince) {
+                  <span class="patient-record__tag">
+                    <kd-icon name="user" [size]="20" />
+                    Mayor de edad desde {{ formatDate(p.adultSince) }}
+                  </span>
+                }
+              </p>
             }
           </div>
           @if (canEdit()) {
-            <a class="button button--secondary" [routerLink]="editLink()" data-testid="edit-link"
-              >Editar datos</a
-            >
+            <a kdButton icon="pencil" [routerLink]="editLink()" data-testid="edit-link">
+              Editar datos
+            </a>
           }
-        </div>
+        </header>
 
         <div aria-live="polite">
           @if (notice(); as message) {
-            <p class="alert alert--success" role="status" data-testid="notice">{{ message }}</p>
+            <kd-alert tone="ok" data-testid="notice" dismissible (dismissed)="notice.set(null)">
+              {{ message }}
+            </kd-alert>
           }
         </div>
 
-        <section class="card" aria-labelledby="data-title">
-          <h2 id="data-title">Datos personales</h2>
-          <dl class="data-list">
-            <dt>Documento</dt>
-            <dd>{{ documentTypeLabel(p.documentType) }} {{ p.documentNumber }}</dd>
-            <dt>Fecha de nacimiento</dt>
-            <dd>{{ formatDate(p.birthDate) }}</dd>
-            <dt>Sexo</dt>
-            <dd>{{ sexLabel(p.sex) }}</dd>
-            <dt>Correo</dt>
-            <dd>{{ p.email || '—' }}</dd>
-            <dt>Teléfono</dt>
-            <dd>{{ p.phone || '—' }}</dd>
-            <dt>Dirección</dt>
-            <dd>{{ p.address || '—' }}</dd>
-            <dt>Origen</dt>
-            <dd>{{ originLabels[p.origin] }}</dd>
-            <dt>Registrado</dt>
-            <dd>{{ formatDate(p.createdAt) }}</dd>
-          </dl>
-          <p class="hint">La ficha clínica se completa en el módulo de historia clínica.</p>
-        </section>
+        <div class="patient-record__grid">
+          <kd-card
+            class="patient-record__data"
+            heading="Datos personales"
+            description="La ficha clínica se completa en el módulo de historia clínica."
+            data-testid="personal-data"
+          >
+            <dl class="patient-record__fields">
+              <div class="patient-record__field">
+                <dt>Documento</dt>
+                <dd>{{ documentTypeLabel(p.documentType) }} {{ p.documentNumber }}</dd>
+              </div>
+              <div class="patient-record__field">
+                <dt>Fecha de nacimiento</dt>
+                <dd>{{ formatDate(p.birthDate) }}</dd>
+              </div>
+              <div class="patient-record__field">
+                <dt>Sexo</dt>
+                <dd>{{ sexLabel(p.sex) }}</dd>
+              </div>
+              <div class="patient-record__field">
+                <dt>Correo</dt>
+                <dd>{{ p.email || '—' }}</dd>
+              </div>
+              <div class="patient-record__field">
+                <dt>Teléfono</dt>
+                <dd>{{ p.phone || '—' }}</dd>
+              </div>
+              <div class="patient-record__field">
+                <dt>Dirección</dt>
+                <dd>{{ p.address || '—' }}</dd>
+              </div>
+              <div class="patient-record__field">
+                <dt>Origen</dt>
+                <dd>{{ originLabels[p.origin] }}</dd>
+              </div>
+              <div class="patient-record__field">
+                <dt>Registrado</dt>
+                <dd>{{ formatDate(p.createdAt) }}</dd>
+              </div>
+            </dl>
+          </kd-card>
 
-        <section class="card" aria-labelledby="consent-title" data-testid="consent">
-          <h2 id="consent-title">Consentimiento de datos personales</h2>
-          @if (p.currentConsent; as consent) {
-            <p data-testid="consent-summary">
-              Otorgado por {{ grantorLabels[consent.grantedBy] }} el
-              {{ formatDate(consent.grantedAt) }} (versión {{ consent.textVersion }}).
-              @if (consent.revokedAt) {
-                Revocado el {{ formatDate(consent.revokedAt) }}.
-              }
-            </p>
-          } @else {
-            <p data-testid="consent-summary">No hay un consentimiento vigente.</p>
-          }
-          @if (consentOutdated() && canRegister()) {
-            <div class="form">
-              @if (!p.minor) {
-                <div class="field">
-                  <label for="consent-grantedBy">¿Quién otorga el consentimiento?</label>
-                  <select
-                    id="consent-grantedBy"
-                    name="consentGrantedBy"
-                    [ngModel]="consentGrantedBy()"
-                    (ngModelChange)="consentGrantedBy.set($event)"
-                  >
-                    <option value="PATIENT">El paciente</option>
-                    <option value="GUARDIAN">Su representante</option>
-                  </select>
+          <div class="patient-record__side">
+            <kd-card heading="Consentimiento de datos personales" data-testid="consent">
+              <p class="patient-record__status" data-testid="consent-summary">
+                @if (p.currentConsent; as consent) {
+                  <kd-icon
+                    [name]="consentOutdated() ? 'triangle-alert' : 'circle-check'"
+                    [size]="20"
+                  />
+                  <span>
+                    Otorgado por {{ grantorLabels[consent.grantedBy] }} el
+                    {{ formatDate(consent.grantedAt) }} (versión {{ consent.textVersion }}).
+                    @if (consent.revokedAt) {
+                      Revocado el {{ formatDate(consent.revokedAt) }}.
+                    }
+                  </span>
+                } @else {
+                  <kd-icon name="triangle-alert" [size]="20" />
+                  <span>No hay un consentimiento vigente.</span>
+                }
+              </p>
+              @if (consentOutdated() && canRegister()) {
+                <div class="patient-record__form">
+                  @if (!p.minor) {
+                    <kd-field label="¿Quién otorga el consentimiento?">
+                      <select
+                        kdInput
+                        id="consent-grantedBy"
+                        name="consentGrantedBy"
+                        [ngModel]="consentGrantedBy()"
+                        (ngModelChange)="consentGrantedBy.set($event)"
+                      >
+                        <option value="PATIENT">El paciente</option>
+                        <option value="GUARDIAN">Su representante</option>
+                      </select>
+                    </kd-field>
+                  }
+                  @if (consentFailure(); as message) {
+                    <kd-alert tone="error" data-testid="consent-error">{{ message }}</kd-alert>
+                  }
                 </div>
               }
-              @if (consentFailure(); as message) {
-                <p class="alert" role="alert" data-testid="consent-error">{{ message }}</p>
+              @if (consentOutdated() && canRegister()) {
+                <div kdCardActions>
+                  <button
+                    kdButton
+                    type="button"
+                    icon="file-text"
+                    [variant]="primaryAction() === 'consent' ? 'primary' : 'secondary'"
+                    [disabled]="recordingConsent()"
+                    (click)="recordConsent()"
+                  >
+                    {{
+                      recordingConsent()
+                        ? 'Registrando…'
+                        : 'Registrar consentimiento (versión ' + consentVersion + ')'
+                    }}
+                  </button>
+                </div>
               }
-              <div class="actions">
-                <button
-                  type="button"
-                  class="button"
-                  [disabled]="recordingConsent()"
-                  (click)="recordConsent()"
-                >
-                  {{
-                    recordingConsent()
-                      ? 'Registrando…'
-                      : 'Registrar consentimiento (versión ' + consentVersion + ')'
-                  }}
-                </button>
-              </div>
-            </div>
-          }
-        </section>
+            </kd-card>
 
-        <section class="card" aria-labelledby="account-title" data-testid="account">
-          <h2 id="account-title">Cuenta del paciente</h2>
-          <p>
-            Estado:
-            <strong data-testid="account-status">{{ accountStatusLabels[p.accountStatus] }}</strong>
-          </p>
-          @if (p.minor) {
-            <p class="hint">
-              Los menores de edad no tienen cuenta propia. Al cumplir la mayoría de edad se le
-              ofrecerá activarla.
-            </p>
-          } @else if (canInvite() && canRegister()) {
-            <fieldset class="fieldset">
-              <legend>
-                {{
-                  p.accountStatus === 'INVITED'
-                    ? 'Reenviar la invitación'
-                    : 'Invitar a activar la cuenta'
-                }}
-              </legend>
-              <div class="choice-row">
-                <label class="checkbox">
-                  <input
-                    type="radio"
-                    name="invite-channel"
-                    value="EMAIL"
-                    [disabled]="!p.email"
-                    [ngModel]="channel()"
-                    (ngModelChange)="channel.set($event)"
-                  />
-                  <span>Por correo{{ p.email ? '' : ' (sin correo registrado)' }}</span>
-                </label>
-                <label class="checkbox">
-                  <input
-                    type="radio"
-                    name="invite-channel"
-                    value="SMS"
-                    [disabled]="!p.phone"
-                    [ngModel]="channel()"
-                    (ngModelChange)="channel.set($event)"
-                  />
-                  <span>Por mensaje de texto{{ p.phone ? '' : ' (sin teléfono registrado)' }}</span>
-                </label>
-              </div>
-              @if (inviteFailure(); as message) {
-                <p class="alert" role="alert" data-testid="invite-error">{{ message }}</p>
-              }
-              <div class="actions">
-                <button
-                  type="button"
-                  class="button"
-                  data-testid="invite"
-                  [disabled]="inviting() || (!p.email && !p.phone)"
-                  (click)="invite()"
-                >
-                  {{ inviting() ? 'Enviando…' : 'Enviar invitación' }}
-                </button>
-              </div>
-              @if (!p.email && !p.phone) {
-                <p class="hint">
-                  Registra un correo o un teléfono del paciente para poder enviarle la invitación.
+            <kd-card heading="Cuenta del paciente" data-testid="account">
+              <p class="patient-record__status">
+                <kd-icon name="user" [size]="20" />
+                <span>
+                  Estado:
+                  <strong data-testid="account-status">{{
+                    accountStatusLabels[p.accountStatus]
+                  }}</strong>
+                </span>
+              </p>
+              @if (p.minor) {
+                <p class="patient-record__muted">
+                  Los menores de edad no tienen cuenta propia. Al cumplir la mayoría de edad se le
+                  ofrecerá activarla.
                 </p>
+              } @else if (canInvite() && canRegister()) {
+                <fieldset class="patient-record__fieldset">
+                  <legend class="patient-record__legend">
+                    {{
+                      p.accountStatus === 'INVITED'
+                        ? 'Reenviar la invitación'
+                        : 'Invitar a activar la cuenta'
+                    }}
+                  </legend>
+                  <kd-field [label]="'Por correo' + (p.email ? '' : ' (sin correo registrado)')">
+                    <input
+                      kdInput
+                      type="radio"
+                      name="invite-channel"
+                      value="EMAIL"
+                      [disabled]="!p.email"
+                      [ngModel]="channel()"
+                      (ngModelChange)="channel.set($event)"
+                    />
+                  </kd-field>
+                  <kd-field
+                    [label]="'Por mensaje de texto' + (p.phone ? '' : ' (sin teléfono registrado)')"
+                  >
+                    <input
+                      kdInput
+                      type="radio"
+                      name="invite-channel"
+                      value="SMS"
+                      [disabled]="!p.phone"
+                      [ngModel]="channel()"
+                      (ngModelChange)="channel.set($event)"
+                    />
+                  </kd-field>
+                  @if (inviteFailure(); as message) {
+                    <kd-alert tone="error" data-testid="invite-error">{{ message }}</kd-alert>
+                  }
+                  @if (!p.email && !p.phone) {
+                    <p class="patient-record__muted">
+                      Registra un correo o un teléfono del paciente para poder enviarle la
+                      invitación.
+                    </p>
+                  }
+                </fieldset>
               }
-            </fieldset>
-          }
-        </section>
+              @if (!p.minor && canInvite() && canRegister()) {
+                <div kdCardActions>
+                  <button
+                    kdButton
+                    type="button"
+                    icon="mail"
+                    data-testid="invite"
+                    [variant]="primaryAction() === 'invite' ? 'primary' : 'secondary'"
+                    [disabled]="inviting() || (!p.email && !p.phone)"
+                    (click)="invite()"
+                  >
+                    {{ inviting() ? 'Enviando…' : 'Enviar invitación' }}
+                  </button>
+                </div>
+              }
+            </kd-card>
+          </div>
+        </div>
 
-        <mk-patient-guardian-links [patient]="p" [canManage]="canManageGuardians()" />
+        <mk-patient-guardian-links
+          [patient]="p"
+          [canManage]="canManageGuardians()"
+          (formOpenChange)="addingGuardian.set($event)"
+        />
       }
     }
   }

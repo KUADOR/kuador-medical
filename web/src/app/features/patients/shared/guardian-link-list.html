@@ -1,0 +1,82 @@
+@if (links().length === 0) {
+  <kd-empty-state
+    data-testid="links-empty"
+    icon="users"
+    heading="Sin vínculos registrados"
+    [description]="emptyMessage()"
+    [headingLevel]="3"
+  />
+} @else {
+  <div class="link-list">
+    <h3 class="link-list__heading">Vigentes</h3>
+    @if (groups().current.length === 0) {
+      <p class="link-list__muted" data-testid="no-current">No hay vínculos vigentes.</p>
+    } @else {
+      <kd-list label="Vínculos vigentes">
+        @for (link of groups().current; track link.id) {
+          <kd-list-item
+            data-testid="current-link"
+            icon="user"
+            [heading]="fullName(link.guardian)"
+            [description]="describe(link)"
+            [meta]="linkTypeLabels[link.linkType]"
+          >
+            @if (canEnd()) {
+              <button
+                kdListItemEnd
+                kdButton
+                type="button"
+                [attr.data-end-link]="link.id"
+                (click)="end.emit(link)"
+              >
+                Terminar vínculo<span class="visually-hidden">
+                  con {{ fullName(link.guardian) }}</span
+                >
+              </button>
+            }
+          </kd-list-item>
+        }
+      </kd-list>
+    }
+
+    <h3 class="link-list__heading">Historial</h3>
+    @if (groups().history.length === 0) {
+      <p class="link-list__muted" data-testid="no-history">No hay vínculos terminados.</p>
+    } @else {
+      <div
+        class="link-list__table-wrapper"
+        tabindex="0"
+        role="region"
+        aria-label="Historial de vínculos"
+      >
+        <table class="link-list__table" data-testid="link-history">
+          <caption class="visually-hidden">
+            Historial de vínculos
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Persona</th>
+              <th scope="col">Tipo</th>
+              <th scope="col">Relación</th>
+              <th scope="col">Desde</th>
+              <th scope="col">Hasta</th>
+              <th scope="col">Motivo</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (link of groups().history; track link.id) {
+              <tr data-testid="past-link">
+                <th scope="row">{{ fullName(link.guardian) }}</th>
+                <td>{{ linkTypeLabels[link.linkType] }}</td>
+                <td>{{ link.relationship }}</td>
+                <td>{{ formatDate(link.validFrom) }}</td>
+                <td>{{ formatDate(link.validTo) }}</td>
+                <td>{{ link.endReason ? endReasonLabels[link.endReason] : '—' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+}
