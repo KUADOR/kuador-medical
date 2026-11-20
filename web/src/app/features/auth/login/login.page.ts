@@ -11,12 +11,13 @@ import {
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { GENERIC_ERROR_MESSAGE, errorMessage } from '../../../core/errors/error-messages';
-import { controlErrorMessage, focusFirstInvalid } from '../../../core/forms/form-errors';
+import { focusFirstInvalid } from '../../../core/forms/form-errors';
 import { NoticeService } from '../../../core/notice/notice.service';
 import { AuthRoutes } from '../../../core/session/auth-routes';
 import { AuthService } from '../../../core/session/auth.service';
 import { nextUrlAfterLogin } from '../../../core/session/login-navigation';
 import { AppRoutes } from '../../../core/session/navigation';
+import { KdAlert, KdButton, KdField, KdInput } from '../../../design-system';
 
 /**
  * Email and password login. When the password matches several clinics, or one clinic with
@@ -25,8 +26,9 @@ import { AppRoutes } from '../../../core/session/navigation';
 @Component({
   selector: 'mk-login-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, KdAlert, KdButton, KdField, KdInput],
   templateUrl: './login.page.html',
+  styleUrl: '../shared/auth-panel.scss',
 })
 export class LoginPage {
   private readonly auth = inject(AuthService);
@@ -50,11 +52,6 @@ export class LoginPage {
   constructor() {
     // A new login replaces any clinic or branch choice left half done.
     this.auth.cancelPendingStep();
-  }
-
-  protected error(name: 'email' | 'password'): string | null {
-    const control = this.form.controls[name];
-    return control.touched ? controlErrorMessage(control) : null;
   }
 
   protected async submit(): Promise<void> {

@@ -6,7 +6,14 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import { App } from './app';
 import { routes } from './app.routes';
 import { SessionStore } from './core/session/session.store';
-import { FULL_ACCOUNT, LOGIN, SUPER_ADMIN } from '../testing/fixtures';
+import { expectNoAxeViolations } from '../testing/axe';
+import {
+  FULL_ACCOUNT,
+  LOGIN,
+  RECEPTION_ACCOUNT,
+  STAFF_ADMIN_ACCOUNT,
+  SUPER_ADMIN,
+} from '../testing/fixtures';
 
 describe('App', () => {
   beforeEach(async () => {
@@ -21,14 +28,17 @@ describe('App', () => {
     }).compileComponents();
   });
 
-  it('renders the shell with a skip link and the main landmark', async () => {
+  it('renders the design system shell with a skip link and the main landmark', async () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
     const root = fixture.nativeElement as HTMLElement;
 
-    expect(root.querySelector('.skip-link')?.getAttribute('href')).toBe('#main-content');
-    expect(root.querySelector('main#main-content')).not.toBeNull();
-    expect(root.querySelector('nav')?.getAttribute('aria-label')).toBe('Navegación principal');
+    expect(root.querySelector('kd-shell')).not.toBeNull();
+    expect(root.querySelector('.kd-shell__skip')?.getAttribute('href')).toBe('#kd-main');
+    expect(root.querySelector('main#kd-main')).not.toBeNull();
+    expect(root.querySelector('kd-nav nav')?.getAttribute('aria-label')).toBe(
+      'Navegación principal',
+    );
   });
 
   it('opens the status page by default', async () => {
@@ -60,7 +70,7 @@ describe('App', () => {
   }
 
   function navLabels(root: HTMLElement): string[] {
-    return Array.from(root.querySelectorAll('nav a')).map((a) => a.textContent?.trim() ?? '');
+    return Array.from(root.querySelectorAll('kd-nav a')).map((a) => a.textContent?.trim() ?? '');
   }
 
   it('offers login and signup to visitors', async () => {
@@ -69,8 +79,8 @@ describe('App', () => {
     const root = fixture.nativeElement as HTMLElement;
 
     expect(navLabels(root)).toEqual(['Estado del sistema']);
-    expect(root.querySelector('.app-header__account')?.textContent).toContain('Ingresar');
-    expect(root.querySelector('.app-header__account')?.textContent).toContain('Registrar clínica');
+    expect(root.querySelector('.kd-shell__account')?.textContent).toContain('Ingresar');
+    expect(root.querySelector('.kd-shell__account')?.textContent).toContain('Registrar clínica');
   });
 
   it('builds the clinic menu from the permissions of GET /me', async () => {
@@ -97,6 +107,35 @@ describe('App', () => {
     expect(navLabels(root)).toEqual(['Estado del sistema']);
   });
 
+  it('offers the patient search first, with its icon, to staff who may read patients', async () => {
+    const root = await shellWith(STAFF_ADMIN_ACCOUNT);
+
+    expect(navLabels(root)).toEqual(['Pacientes', 'Personal', 'Roles', 'Estado del sistema']);
+    expect(root.querySelector('kd-nav a[href="/patients"] kd-icon')).not.toBeNull();
+  });
+
+  it('does not offer the patient search without patients.read (R9)', async () => {
+    const root = await shellWith({
+      ...STAFF_ADMIN_ACCOUNT,
+      permissions: STAFF_ADMIN_ACCOUNT.permissions.filter((code) => code !== 'patients.read'),
+    });
+    expect(navLabels(root)).toEqual(['Personal', 'Roles', 'Estado del sistema']);
+  });
+
+  it('does not offer the patient search when the plan lacks the patients module (R9)', async () => {
+    const root = await shellWith({ ...RECEPTION_ACCOUNT, enabledModules: ['identity'] });
+    expect(navLabels(root)).toEqual(['Estado del sistema']);
+  });
+
+  it('has no accessibility violations for visitors and staff (axe)', async () => {
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+    await expectNoAxeViolations(fixture.nativeElement as HTMLElement);
+    fixture.destroy();
+
+    await expectNoAxeViolations(await shellWith(STAFF_ADMIN_ACCOUNT));
+  });
+
   it('shows the active branch of the session', async () => {
     const root = await shellWith(FULL_ACCOUNT);
     expect(root.querySelector('[data-testid="active-branch"]')?.textContent).toContain(
@@ -106,7 +145,7 @@ describe('App', () => {
 
   it('logs out from the header and revokes the refresh token', async () => {
     const root = await shellWith(FULL_ACCOUNT);
-    (root.querySelector('.app-header__logout') as HTMLButtonElement).click();
+    (root.querySelector('[data-testid="logout"]') as HTMLButtonElement).click();
     await Promise.resolve();
 
     expect(TestBed.inject(SessionStore).isAuthenticated()).toBe(false);

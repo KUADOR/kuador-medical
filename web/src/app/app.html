@@ -1,41 +1,37 @@
-<a class="skip-link" href="#main-content">Saltar al contenido</a>
-
-<header class="app-header">
-  <a class="app-header__brand" routerLink="/">Medical Kuador</a>
-  <nav aria-label="Navegación principal">
-    <ul class="app-header__nav">
-      @for (item of menu(); track item.link) {
-        <li>
-          <a [routerLink]="item.link" routerLinkActive="is-active" ariaCurrentWhenActive="page">{{
-            item.label
-          }}</a>
-        </li>
-      }
-      <li>
-        <a [routerLink]="links.status" routerLinkActive="is-active" ariaCurrentWhenActive="page"
-          >Estado del sistema</a
-        >
-      </li>
-    </ul>
-  </nav>
-  <div class="app-header__account">
-    @if (isAuthenticated()) {
-      @if (accountLabel(); as label) {
-        <span data-testid="account-name">{{ label }}</span>
-      }
-      <mk-branch-switcher />
-      <button type="button" class="app-header__logout" (click)="logout()">Salir</button>
-    } @else {
-      <a [routerLink]="links.login" routerLinkActive="is-active" ariaCurrentWhenActive="page"
-        >Ingresar</a
-      >
-      <a [routerLink]="links.signup" routerLinkActive="is-active" ariaCurrentWhenActive="page"
-        >Registrar clínica</a
-      >
-    }
-  </div>
-</header>
-
-<main id="main-content" class="app-main" tabindex="-1">
+@if (bareLayout()) {
   <router-outlet />
-</main>
+} @else {
+  <kd-shell brand="Medical Kuador">
+    <div kdShellNav class="app-nav">
+      @if (isAuthenticated()) {
+        <div class="app-nav__context">
+          @if (accountLabel(); as label) {
+            <p class="app-nav__account" data-testid="account-name">{{ label }}</p>
+          }
+          <mk-branch-switcher />
+        </div>
+      }
+      <kd-nav label="Navegación principal" [items]="navItems()" />
+    </div>
+
+    <div kdShellAccount class="app-account">
+      @if (isAuthenticated()) {
+        <button
+          kdButton
+          variant="tertiary"
+          icon="log-out"
+          type="button"
+          data-testid="logout"
+          (click)="logout()"
+        >
+          Salir
+        </button>
+      } @else {
+        <a kdButton variant="tertiary" icon="log-in" [routerLink]="links.login">Ingresar</a>
+        <a kdButton variant="tertiary" [routerLink]="links.signup">Registrar clínica</a>
+      }
+    </div>
+
+    <router-outlet />
+  </kd-shell>
+}

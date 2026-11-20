@@ -1,0 +1,62 @@
+// Patient search (MEDK-42). Layout only: every control and state is a library component.
+// Tokens only (ADR-007).
+.patients {
+  display: grid;
+  gap: var(--kd-space-6);
+  max-width: 64rem;
+}
+
+.patients__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--kd-space-3);
+}
+
+.patients__title {
+  margin: 0;
+  font: var(--kd-type-display);
+  color: var(--kd-text-default);
+}
+
+.patients__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kd-space-2);
+}
+
+.patients__search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--kd-space-3);
+  padding: var(--kd-space-4);
+  border: var(--kd-border-hairline);
+  border-radius: var(--kd-radius-lg);
+  background: var(--kd-surface-raised);
+}
+
+.patients__query {
+  flex: 1 1 18rem;
+}
+
+.patients__results {
+  display: grid;
+  gap: var(--kd-space-3);
+}
+
+.patients__total,
+.patients__page-label {
+  margin: 0;
+  font: var(--kd-type-body-sm);
+  color: var(--kd-text-muted);
+}
+
+.patients__pages {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--kd-space-3);
+}

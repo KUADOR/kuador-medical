@@ -12,6 +12,7 @@ import {
   NORTH_BRANCH,
   problem,
 } from '../../../../testing/fixtures';
+import { expectNoAxeViolations } from '../../../../testing/axe';
 import { BranchSwitcher } from './branch-switcher';
 
 const tick = () => new Promise((resolve) => setTimeout(resolve));
@@ -99,5 +100,17 @@ describe('BranchSwitcher', () => {
     );
     expect(root.querySelector<HTMLSelectElement>('#branch-switcher')?.value).toBe(MAIN_BRANCH.id);
     expect(session.accessToken()).toBe('test-token');
+  });
+
+  it('has no accessibility violations, also with an error (axe)', async () => {
+    const fixture = await render();
+    await expectNoAxeViolations(fixture.nativeElement);
+
+    choose(fixture.nativeElement, NORTH_BRANCH.id);
+    const { body, init } = problem(403, 'BRANCH_NOT_ASSIGNED');
+    backend.expectOne('/api/v1/auth/switch-branch').flush(body, init);
+    await tick();
+    fixture.detectChanges();
+    await expectNoAxeViolations(fixture.nativeElement);
   });
 });
