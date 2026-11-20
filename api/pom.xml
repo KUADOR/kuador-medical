@@ -53,6 +53,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-flyway</artifactId>
         </dependency>
+        <!-- MEDK-29: only GET /actuator/health is exposed (management.* in application.yaml). -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
         <!-- MEDK-16: SMTP adapter of notifications.NotificationSender (spring.mail.*, KUADOR_SMTP_*). -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

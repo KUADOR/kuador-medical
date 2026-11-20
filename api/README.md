@@ -34,4 +34,13 @@ Boundaries are verified by `ModularityTests` (Spring Modulith, ADR-009).
 
 ## Profiles
 
-`local` (compose database, values from `.env`), `test` (Testcontainers, set by the build), `prod` (everything from the environment). Variables: `docs/deployment.md`.
+`local` (compose database, values from the environment or `api/.env`, copied from `api/.env.example`), `test` (Testcontainers, set by the build), `prod` (everything from the environment). Variables: `docs/deployment.md`.
+
+### Local profile (MEDK-29)
+
+- **Fail fast.** `shared.config.LocalEnvironmentValidator` stops the start-up when `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `KUADOR_JWT_SECRET` or `LOCAL_SEED_PASSWORD` is missing or blank, naming the variables and never their values.
+- **Seed.** Only `local` adds the Flyway location `classpath:db/localseed`: `db.localseed.LocalSeedMigration` (repeatable, idempotent) creates the fictitious clinics A and B, each with one branch, OWNER/ADMIN and one OWNER test user whose password is `LOCAL_SEED_PASSWORD` (stored as an Argon2id hash). Ids and emails are constants of that class.
+- **Listens on** `SERVER_ADDRESS:SERVER_PORT` (default `0.0.0.0:8080`) so a physical device on the LAN can reach it.
+- **Actuator** exposes only `GET /actuator/health` (public, components without details) in every profile.
+- **Public endpoints** are an explicit list, `shared.security.PublicEndpoints`; `EndpointPermissionTest` fails when a `@PublicEndpoint` handler is not on it.
+- Tests: `LocalConfigFailFastTest`, `EndpointPermissionTest`, `LocalSeedLocationTest`, `LocalProfileIT`, `LocalSeedTenantIsolationIT` (A never reads or writes B, even sending ids of B) and `DefaultProfileWithoutSeedIT`.
