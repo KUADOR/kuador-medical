@@ -2,3 +2,4 @@ src/app/core/api/identity.schema.d.ts
 src/app/core/api/user-registration.schema.d.ts
 dist/
 .angular/
+src/app/design-system/icon/icons.generated.ts

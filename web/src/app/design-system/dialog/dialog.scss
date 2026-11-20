@@ -1,0 +1,50 @@
+// R-04: dialogs float, so they get a shadow; overlay surface and large radius (R-11).
+.kd-dialog {
+  width: min(32rem, calc(100vw - 2 * var(--kd-space-4)));
+  max-height: calc(100vh - 2 * var(--kd-space-8));
+  padding: var(--kd-space-6);
+  border: var(--kd-border-hairline);
+  border-radius: var(--kd-radius-lg);
+  background: var(--kd-surface-overlay);
+  color: var(--kd-text-default);
+  box-shadow: var(--kd-shadow-lg);
+
+  &[open] {
+    display: grid;
+    gap: var(--kd-space-4);
+  }
+
+  &::backdrop {
+    background: color-mix(in srgb, var(--kd-text-default) 45%, transparent);
+  }
+}
+
+.kd-dialog__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--kd-space-2);
+  margin: calc(-1 * var(--kd-space-2)) calc(-1 * var(--kd-space-2)) 0 0;
+}
+
+.kd-dialog__heading {
+  margin: var(--kd-space-2) 0 0;
+  font: var(--kd-type-title);
+}
+
+.kd-dialog__description {
+  margin: 0;
+  color: var(--kd-text-muted);
+}
+
+.kd-dialog__body:empty,
+.kd-dialog__actions:empty {
+  display: none;
+}
+
+.kd-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--kd-space-2);
+}

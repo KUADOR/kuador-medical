@@ -1,0 +1,51 @@
+:host {
+  --kd-alert-tone: var(--kd-color-info);
+
+  display: flex;
+  align-items: flex-start;
+  gap: var(--kd-space-3);
+  padding: var(--kd-space-3) var(--kd-space-4);
+  border: var(--kd-border-hairline);
+  border-left: var(--kd-space-1) solid var(--kd-alert-tone);
+  border-radius: var(--kd-radius-md);
+  background: var(--kd-surface-raised);
+  color: var(--kd-text-default);
+}
+
+:host(.kd-alert--ok) {
+  --kd-alert-tone: var(--kd-color-ok);
+}
+
+:host(.kd-alert--warning) {
+  --kd-alert-tone: var(--kd-color-warning);
+}
+
+:host(.kd-alert--error) {
+  --kd-alert-tone: var(--kd-color-error);
+}
+
+.kd-alert__icon {
+  margin-top: var(--kd-space-1);
+  color: var(--kd-alert-tone);
+}
+
+.kd-alert__content {
+  flex: 1;
+  min-width: 0;
+  align-self: center;
+  padding-block: var(--kd-space-1);
+}
+
+.kd-alert__heading {
+  margin: 0;
+  font: var(--kd-type-label);
+  color: var(--kd-alert-tone);
+}
+
+:host ::ng-deep .kd-alert__content p {
+  margin: 0;
+}
+
+button {
+  margin: calc(-1 * var(--kd-space-2)) calc(-1 * var(--kd-space-2)) calc(-1 * var(--kd-space-2)) 0;
+}

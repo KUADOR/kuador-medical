@@ -25,6 +25,7 @@ Requires Node.js `^22.22.3` or `^24.15.0`.
 | `npm run dev:mock` | `mock` and `start:mock` together. |
 | `npm run api:generate` | Regenerates `identity.schema.d.ts` and `user-registration.schema.d.ts` in `src/app/core/api/`. |
 | `npm run api:check` | Fails if the generated types are out of date with the contracts. |
+| `npm run icons:generate` | Regenerates `src/app/design-system/icon/icons.generated.ts` from `design/icons/*.svg`; `npm run icons:check` (also a guard test) fails if it is stale. |
 | `npm run lint` | Style guards (ADR-007): Stylelint (no hex, named colors or color functions; no `px` outside `src/app/design-system/` and the generated `tokens.css`; no remote URLs) and angular-eslint (no inline styles in templates or components). Runs before `build` and `test`. |
 | `npm run test:guards` | Node tests of the guards themselves (`tests/guards/`); runs before `test`. |
 | `npm run test:visual` | Playwright screenshots (light, dark, mobile) plus axe-core in a real browser, against a simulated API with synthetic data (`e2e/visual/`). |
@@ -92,6 +93,8 @@ src/app/
                       self-registration switch and public link, adult patient authorized contacts
     platform/         Full permission catalog for the SUPER_ADMIN
     message/          Informative page (forbidden, not found)
+  design-system/   Component library (MEDK-40): standalone components that read only --kd-* tokens.
+                    Public API in index.ts; see its README.md. Catalog at /design-system (dev builds only)
 src/testing/    Test-only fixtures and app harness (real routes, guards and interceptor)
 ```
 

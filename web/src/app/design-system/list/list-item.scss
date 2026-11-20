@@ -1,0 +1,67 @@
+// R-03: rows are tonal layers (raised surface + hairline), no shadow.
+:host {
+  display: flex;
+  align-items: center;
+  gap: var(--kd-space-2);
+  padding-right: var(--kd-space-2);
+  border: var(--kd-border-hairline);
+  border-radius: var(--kd-radius-md);
+  background: var(--kd-surface-raised);
+  color: var(--kd-text-default);
+}
+
+// R-10: selected row = accent mixed into the surface + accent border.
+:host(.is-selected) {
+  border-color: var(--kd-color-accent);
+  background: color-mix(in srgb, var(--kd-color-accent) 12%, var(--kd-surface-raised));
+}
+
+.kd-list-item__row {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--kd-space-3);
+  min-width: 0;
+  min-height: var(--kd-size-target-min);
+  padding: var(--kd-space-3) var(--kd-space-2) var(--kd-space-3) var(--kd-space-4);
+  border-radius: var(--kd-radius-md);
+  color: inherit;
+  text-decoration: none;
+}
+
+a.kd-list-item__row:hover {
+  background: color-mix(in srgb, var(--kd-text-default) 4%, transparent);
+}
+
+.kd-list-item__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--kd-radius-full);
+  background: var(--kd-surface-sunken);
+  color: var(--kd-color-accent);
+}
+
+.kd-list-item__text {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+.kd-list-item__heading {
+  font: var(--kd-type-label);
+  overflow-wrap: anywhere;
+}
+
+.kd-list-item__description,
+.kd-list-item__meta {
+  font: var(--kd-type-body-sm);
+  color: var(--kd-text-muted);
+}
+
+.kd-list-item__meta {
+  flex: none;
+}

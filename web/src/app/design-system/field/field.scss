@@ -1,0 +1,84 @@
+:host {
+  display: grid;
+  gap: var(--kd-space-1);
+  min-width: 0;
+}
+
+.kd-field__label {
+  font: var(--kd-type-label);
+  color: var(--kd-text-default);
+}
+
+.kd-field__hint {
+  margin: 0;
+  font: var(--kd-type-body-sm);
+  color: var(--kd-text-muted);
+}
+
+.kd-field__error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--kd-space-1);
+  margin: 0;
+  font: var(--kd-type-label);
+  color: var(--kd-color-error);
+}
+
+// Text controls and selects (the projected kdInput lives in the page's DOM: ::ng-deep is scoped
+// by :host, so it only reaches this field's own control).
+:host ::ng-deep .kd-input:is(input:not([type='checkbox'], [type='radio']), select, textarea) {
+  width: 100%;
+  min-height: var(--kd-size-target-min);
+  padding: var(--kd-space-2) var(--kd-space-3);
+  border: var(--kd-border-strong);
+  border-radius: var(--kd-radius-md);
+  background: var(--kd-surface-raised);
+  color: var(--kd-text-default);
+  font: var(--kd-type-body);
+
+  &:disabled {
+    background: var(--kd-surface-sunken);
+    color: var(--kd-text-muted);
+  }
+
+  &[aria-invalid='true'] {
+    border-color: var(--kd-color-error);
+    box-shadow: inset 0 0 0 1px var(--kd-color-error);
+  }
+}
+
+:host ::ng-deep textarea.kd-input {
+  min-height: 6rem;
+  resize: vertical;
+}
+
+// Checkbox or radio: control first, label next to it; the whole row is a 44 px target (R-05).
+:host(.kd-field--check) {
+  grid-template-columns: auto 1fr;
+  column-gap: var(--kd-space-3);
+  align-items: center;
+
+  .kd-field__label {
+    order: 1;
+    display: flex;
+    align-items: center;
+    min-height: var(--kd-size-target-min);
+    font: var(--kd-type-body);
+    cursor: pointer;
+  }
+
+  .kd-field__hint,
+  .kd-field__error {
+    order: 2;
+    grid-column: 2;
+  }
+}
+
+:host(.kd-field--check) ::ng-deep .kd-input {
+  order: 0;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--kd-color-accent);
+  cursor: pointer;
+}

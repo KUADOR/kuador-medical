@@ -53,6 +53,8 @@ jobs:
               - *shared
               - 'web/**'
               - 'contracts/**'
+              # The icon component is generated from the icon set (npm run icons:check).
+              - 'design/icons/**'
             movil:
               - *shared
               - 'movil/**'

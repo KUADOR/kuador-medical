@@ -1,0 +1,41 @@
+:host {
+  display: block;
+}
+
+:host(:empty) {
+  display: none;
+}
+
+.kd-error-summary {
+  display: grid;
+  gap: var(--kd-space-2);
+  padding: var(--kd-space-4);
+  border: var(--kd-border-hairline);
+  border-left: var(--kd-space-1) solid var(--kd-color-error);
+  border-radius: var(--kd-radius-md);
+  background: var(--kd-surface-raised);
+}
+
+.kd-error-summary__heading {
+  display: flex;
+  align-items: center;
+  gap: var(--kd-space-2);
+  margin: 0;
+  font: var(--kd-type-subtitle);
+  color: var(--kd-color-error);
+}
+
+.kd-error-summary__list {
+  display: grid;
+  gap: var(--kd-space-1);
+  margin: 0;
+  padding-left: var(--kd-space-8);
+
+  a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--kd-size-target-min);
+    color: var(--kd-color-error);
+    font: var(--kd-type-label);
+  }
+}
