@@ -1,0 +1,34 @@
+:host {
+  display: block;
+}
+
+.kd-nav__list {
+  display: grid;
+  gap: var(--kd-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.kd-nav__link {
+  display: flex;
+  align-items: center;
+  gap: var(--kd-space-3);
+  min-height: var(--kd-size-target-min);
+  padding: var(--kd-space-2) var(--kd-space-3);
+  border-radius: var(--kd-radius-md);
+  color: var(--kd-text-default);
+  font: var(--kd-type-label);
+  text-decoration: none;
+  transition: background-color var(--kd-motion-duration-fast) var(--kd-motion-easing-standard);
+
+  &:hover {
+    background: color-mix(in srgb, var(--kd-text-default) 6%, transparent);
+  }
+
+  // R-10: soft selection by mixing the accent with the surface, plus an accent indicator.
+  &.is-active {
+    background: color-mix(in srgb, var(--kd-color-accent) 12%, var(--kd-surface-raised));
+    box-shadow: inset 3px 0 0 var(--kd-color-accent);
+  }
+}

@@ -1,0 +1,23 @@
+:host {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--kd-size-target-min);
+  height: var(--kd-size-target-min);
+  padding: 0;
+  border: none;
+  border-radius: var(--kd-radius-md);
+  background: transparent;
+  color: var(--kd-text-default);
+  transition: background-color var(--kd-motion-duration-fast) var(--kd-motion-easing-standard);
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--kd-text-default) 8%, transparent);
+  }
+
+  &:disabled {
+    color: var(--kd-text-muted);
+    cursor: not-allowed;
+  }
+}

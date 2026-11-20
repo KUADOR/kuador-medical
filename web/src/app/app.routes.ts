@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { environment } from '../environments/environment';
 import {
   guestGuard,
   homeGuard,
@@ -195,6 +196,24 @@ export const routes: Routes = [
     title: `Sin permiso · ${APP_TITLE}`,
     data: { heading: 'Sin permiso', message: 'No tienes permiso para ver esta página.' },
   },
+  // Living catalog of the design system with synthetic data, for the visual and accessibility
+  // tests (MEDK-40). Only in development builds: production has no such route.
+  ...(environment.designSystemCatalog
+    ? [
+        {
+          path: 'design-system',
+          loadComponent: () =>
+            import('./design-system/catalog/catalog.page').then((m) => m.DesignSystemCatalogPage),
+          title: `Sistema de diseño · ${APP_TITLE}`,
+        },
+        {
+          path: 'design-system/shell',
+          loadComponent: () =>
+            import('./design-system/catalog/shell-demo.page').then((m) => m.ShellDemoPage),
+          title: `Sistema de diseño · Shell · ${APP_TITLE}`,
+        },
+      ]
+    : []),
   {
     path: '**',
     component: MessagePage,

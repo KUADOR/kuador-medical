@@ -1,0 +1,25 @@
+:host {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--kd-space-3);
+  padding: var(--kd-space-8) var(--kd-space-4);
+  color: var(--kd-text-muted);
+  font: var(--kd-type-body);
+}
+
+.kd-loading__spinner {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--kd-surface-sunken);
+  border-top-color: var(--kd-color-accent);
+  border-radius: var(--kd-radius-full);
+  animation: kd-spin 800ms linear infinite;
+}
+
+@keyframes kd-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

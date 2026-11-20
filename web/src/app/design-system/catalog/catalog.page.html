@@ -1,0 +1,144 @@
+<div class="catalog">
+  <h1>Sistema de diseño</h1>
+  <p class="catalog__lead">Componentes de la librería con datos ficticios.</p>
+
+  <section class="catalog__section" aria-labelledby="catalog-buttons">
+    <h2 id="catalog-buttons">Botones</h2>
+    <div class="catalog__row" data-testid="buttons">
+      <button kdButton variant="primary" icon="calendar-plus" type="button">Agendar cita</button>
+      <button kdButton type="button">Ver agenda</button>
+      <button kdButton variant="tertiary" type="button">Cancelar</button>
+      <button kdButton variant="danger" icon="trash-2" type="button">Eliminar rol</button>
+      <button kdButton type="button" disabled>Sin cupos</button>
+      <button kdIconButton icon="pencil" label="Editar paciente" type="button"></button>
+      <button kdIconButton icon="ellipsis-vertical" label="Más opciones" type="button"></button>
+    </div>
+  </section>
+
+  <section class="catalog__section" aria-labelledby="catalog-icons">
+    <h2 id="catalog-icons">Íconos</h2>
+    <div class="catalog__row">
+      <kd-icon name="calendar" label="Agenda" />
+      <kd-icon name="users" label="Pacientes" />
+      <kd-icon name="stethoscope" label="Consulta" />
+      <kd-icon name="pill" label="Farmacia" />
+      <kd-icon name="bell" label="Notificaciones" />
+      <kd-icon name="search" [size]="20" label="Buscar" />
+    </div>
+  </section>
+
+  <section class="catalog__section" aria-labelledby="catalog-form">
+    <h2 id="catalog-form">Formulario</h2>
+    <form class="catalog__form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <kd-error-summary [errors]="summary()" />
+      <kd-field label="Nombre" hint="Como aparece en la cédula.">
+        <input kdInput type="text" formControlName="name" autocomplete="off" />
+      </kd-field>
+      <kd-field label="Correo">
+        <input kdInput id="catalog-email" type="email" formControlName="email" autocomplete="off" />
+      </kd-field>
+      <kd-field label="Especialidad">
+        <select kdInput formControlName="specialty">
+          <option value="general">Medicina general</option>
+          <option value="pediatrics">Pediatría</option>
+        </select>
+      </kd-field>
+      <kd-field label="Notas" hint="Opcional.">
+        <textarea kdInput formControlName="notes"></textarea>
+      </kd-field>
+      <kd-field label="Sucursal">
+        <input kdInput type="text" formControlName="disabledField" />
+      </kd-field>
+      <kd-field label="Enviar recordatorios por correo">
+        <input kdInput type="checkbox" formControlName="reminders" />
+      </kd-field>
+      <div class="catalog__row">
+        <button kdButton variant="primary" type="submit">Guardar paciente</button>
+        <button kdButton variant="tertiary" type="reset">Limpiar</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="catalog__section" aria-labelledby="catalog-list">
+    <h2 id="catalog-list">Lista</h2>
+    <kd-list label="Citas de hoy">
+      <kd-list-item
+        heading="Paciente Ficticio Uno"
+        description="Medicina general"
+        meta="09:30"
+        icon="user"
+        link="/design-system"
+        [selected]="true"
+      />
+      <kd-list-item
+        heading="Paciente Ficticio Dos"
+        description="Pediatría"
+        meta="10:00"
+        icon="user"
+        link="/design-system/shell"
+      >
+        <button kdListItemEnd kdIconButton icon="pencil" label="Editar cita de Paciente Ficticio Dos" type="button"></button>
+      </kd-list-item>
+      <kd-list-item heading="Horario libre" description="Sin paciente asignado" meta="10:30" icon="clock" />
+    </kd-list>
+  </section>
+
+  <section class="catalog__section" aria-labelledby="catalog-cards">
+    <h2 id="catalog-cards">Tarjetas</h2>
+    <div class="catalog__grid">
+      <kd-card heading="Próxima cita" description="Medicina general · Sucursal Centro" [headingLevel]="3">
+        <p class="catalog__text">Lunes 23 de noviembre, 09:30</p>
+        <div kdCardActions>
+          <button kdButton variant="tertiary" type="button">Cancelar cita</button>
+          <button kdButton type="button" (click)="dialogOpen.set(true)">Reprogramar</button>
+        </div>
+      </kd-card>
+      <kd-card heading="Contacto" [headingLevel]="3">
+        <p class="catalog__text">paciente.ficticio&#64;example.test</p>
+      </kd-card>
+    </div>
+  </section>
+
+  <section class="catalog__section" aria-labelledby="catalog-alerts">
+    <h2 id="catalog-alerts">Avisos</h2>
+    <kd-alert tone="info">Hay horarios nuevos disponibles esta semana.</kd-alert>
+    <kd-alert tone="ok">Cita agendada.</kd-alert>
+    <kd-alert tone="warning" dismissible>Tu sesión vence en 5 minutos.</kd-alert>
+    <kd-alert tone="error" heading="No pudimos guardar la cita">
+      Revisa tu conexión e inténtalo de nuevo.
+    </kd-alert>
+  </section>
+
+  <section class="catalog__section" aria-labelledby="catalog-states">
+    <h2 id="catalog-states">Estados</h2>
+    <div class="catalog__grid">
+      <kd-empty-state
+        heading="No tienes citas hoy"
+        description="Las citas agendadas aparecerán aquí."
+        icon="calendar"
+        [headingLevel]="3"
+      >
+        <button kdEmptyStateActions kdButton type="button">Ver agenda de mañana</button>
+      </kd-empty-state>
+      <kd-loading-state label="Cargando citas…" />
+      <kd-error-state [headingLevel]="3" />
+    </div>
+  </section>
+
+  <section class="catalog__section" aria-labelledby="catalog-dialog">
+    <h2 id="catalog-dialog">Diálogo</h2>
+    <div class="catalog__row">
+      <button kdButton type="button" icon="calendar-x" (click)="dialogOpen.set(true)">Cancelar cita</button>
+    </div>
+    <kd-dialog
+      heading="¿Cancelar la cita?"
+      description="El horario quedará libre para otro paciente."
+      [(open)]="dialogOpen"
+    >
+      <div kdDialogActions>
+        <button kdButton variant="tertiary" type="button" (click)="dialogOpen.set(false)">Volver</button>
+        <button kdButton variant="danger" type="button" (click)="dialogOpen.set(false)">Cancelar cita</button>
+      </div>
+    </kd-dialog>
+  </section>
+</div>

@@ -11,6 +11,8 @@
     "dev:mock": "concurrently --kill-others --names mock,web \"npm run mock\" \"npm run start:mock\"",
     "api:generate": "openapi-typescript ../contracts/identity.openapi.yaml -o src/app/core/api/identity.schema.d.ts && openapi-typescript ../contracts/user-registration.openapi.yaml -o src/app/core/api/user-registration.schema.d.ts",
     "api:check": "openapi-typescript ../contracts/identity.openapi.yaml -o src/app/core/api/identity.schema.d.ts --check && openapi-typescript ../contracts/user-registration.openapi.yaml -o src/app/core/api/user-registration.schema.d.ts --check",
+    "icons:generate": "node scripts/generate-icons.mjs",
+    "icons:check": "node scripts/generate-icons.mjs --check",
     "prebuild": "npm run lint",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",

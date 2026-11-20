@@ -3,4 +3,6 @@
 export const environment = {
   /** Same origin: nginx forwards /api/ to the api in the container image. */
   apiBaseUrl: '/api/v1',
+  /** Design system catalog at /design-system (MEDK-40): development builds only. */
+  designSystemCatalog: false,
 };
