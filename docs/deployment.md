@@ -21,7 +21,7 @@ Perfiles de Compose:
 
 - sin perfil: `db` y `mailpit` (`docker compose up -d db mailpit`).
 - `full`: `db`, `mailpit`, `api` y `web` en contenedores (`docker compose --profile full up -d --build`).
-- `compose.local.yaml`: solo `db` (PostgreSQL), para correr api y web en el host con sus comandos nativos. Toma el servicio `db` de `compose.yaml` (misma imagen, variables, volumen y healthcheck) y usa el mismo nombre de proyecto, así que comparte contenedor y datos con `docker compose up -d db`. Ver «Paso a paso › Local › Base de datos local».
+- `compose.local.yaml`: solo `db` (PostgreSQL), para correr api y web en el host con sus comandos nativos. Toma el servicio `db` de `compose.yaml` (misma imagen, variables, volumen y healthcheck) y usa el mismo nombre de proyecto, así que comparte contenedor y datos con `docker compose up -d db`. Ver «Paso a paso › Entorno local».
 
 ## Infraestructura
 
@@ -101,7 +101,7 @@ Solo nombres: los valores nunca van en este documento ni en el repo. En local vi
 | KUADOR_BOOTSTRAP_ADMIN_EMAIL | api | local, pruebas, producción | `.env` / variables del entorno | no | Correo de la cuenta inicial SUPER_ADMIN (el acordado en MEDK-1) |
 | KUADOR_BOOTSTRAP_ADMIN_PASSWORD | api | local, pruebas, producción | `.env` / gestor de secretos | sí | Clave inicial del SUPER_ADMIN; ver «Cuenta inicial del SUPER_ADMIN» |
 | KUADOR_CORS_ALLOWED_ORIGINS | api | local, pruebas, producción | `.env` / variables del entorno | no | Origen permitido de la web. Opcional en local (por defecto `http://localhost:4200`; vacío = sin CORS, suficiente si la web usa su proxy de desarrollo) |
-| LOCAL_SEED_PASSWORD | api | solo local | `.env` / `api/.env` | sí | Contraseña de los dos usuarios de prueba de la semilla local (≥ 12 caracteres; ver «api en local»). Obligatoria con el perfil `local`; los demás perfiles la ignoran. Se guarda solo como hash; para cambiarla hay que recrear la base local |
+| LOCAL_SEED_PASSWORD | api | solo local | `.env` / `api/.env` | sí | Contraseña de los dos usuarios de prueba de la semilla local (≥ 12 caracteres; ver «Entorno local»). Obligatoria con el perfil `local`; los demás perfiles la ignoran. Se guarda solo como hash; para cambiarla hay que recrear la base local |
 | SERVER_PORT | api | local | `.env` / `api/.env` | no | Puerto HTTP de la api en el host (por defecto 8080). En el perfil `full` de Compose se fija en 8080 dentro del contenedor y el puerto del host es `API_PORT` |
 | SERVER_ADDRESS | api | local | `.env` / `api/.env` | no | Interfaz de escucha (por defecto `0.0.0.0`, para que un dispositivo físico en la misma red llegue por la IP LAN del equipo). `127.0.0.1` la limita al propio equipo |
 | SMOKE_SUPER_ADMIN_NEW_PASSWORD | `scripts/smoke-test.sh` | local | `.env` | sí | Clave que la prueba de humo pone al SUPER_ADMIN en su primera corrida sobre una base nueva (≥ 12 caracteres) y con la que ingresa en las siguientes. Solo local; la api la ignora |
@@ -142,46 +142,93 @@ La api crea la cuenta al arrancar solo si no existe ningún SUPER_ADMIN, con `KU
 
 ## Paso a paso
 
-### Local
+### Entorno local
 
-#### Base de datos local
+Procedimiento único para levantar en el equipo de cada persona la base, la api, la web y la app móvil, y comprobar que se hablan. Los valores son solo de desarrollo y nunca se reutilizan en otros entornos. Verificado de punta a punta en MEDK-32 (ver «Verificación › Entorno local»).
 
-Prerrequisitos: Docker con Compose v2 (Docker Desktop en macOS/Windows o Docker Engine en Linux) y el puerto 5432 libre en el equipo (o cambiar `DB_PORT`).
+#### Prerrequisitos
 
-1. `cp .env.example .env` y completar `DB_PASSWORD` con cualquier valor local (por ejemplo `openssl rand -base64 24`). `DB_NAME` y `DB_USERNAME` ya traen `medical`; `.env` está en `.gitignore` y no debe versionarse.
-2. `docker compose -f compose.local.yaml --env-file .env up -d --wait`: levanta PostgreSQL 18 en `127.0.0.1:${DB_PORT}` (por defecto 5432) con el volumen `medical-kuador_db-data` y espera al healthcheck (`pg_isready`). Sin `DB_PASSWORD` no arranca y el mensaje dice qué variable falta.
-3. `docker compose -f compose.local.yaml ps` debe mostrar `db` como `healthy`.
-4. Detener: `docker compose -f compose.local.yaml down` (con `-v` se borran los datos locales).
+| Herramienta | Versión | Para qué | Cómo comprobarla |
+|---|---|---|---|
+| Docker con Compose v2 | Docker Desktop (macOS/Windows) o Docker Engine (Linux) | PostgreSQL local; también lo usan las pruebas de la api (Testcontainers) | `docker compose version` |
+| JDK | 25 | api (`./mvnw`) | `java -version` debe decir 25. Con varias versiones instaladas, apuntar `JAVA_HOME` al JDK 25 (por ejemplo `sdk use java 25…` con SDKMAN) |
+| Node.js | `^22.22.3` o `^24.15.0` (campo `engines` de `web/package.json`) | web (`npm start`) | `node -v` |
+| Flutter | estable (el CI fija `3.47.9`) | app móvil | `flutter doctor` |
+| Android SDK con emulador | Android Studio o `cmdline-tools`; JDK 17 o superior para compilar Android | emulador y dispositivo Android | `emulator -list-avds`, `adb devices` |
+| Xcode (opcional, solo macOS) | el que exija Flutter; iOS mínimo 15.0 | simulador y dispositivo iOS | `xcrun simctl list devices` |
+| `openssl` | cualquiera | generar secretos locales | `openssl version` |
 
-Si también se usan `mailpit` u otros servicios de `compose.yaml`, Compose avisa de «orphan containers» al usar `compose.local.yaml`: es esperado porque ambos archivos comparten proyecto.
+#### Puertos
 
-#### api en local (perfil `local`)
+| Puerto | Servicio | Escucha en | Se cambia con |
+|---|---|---|---|
+| 5432 | PostgreSQL (servicio `db`) | `127.0.0.1` | `DB_PORT` y el puerto de `DB_URL` en `.env` |
+| 8080 | api (perfil `local`) | `0.0.0.0` (todas las interfaces, para el dispositivo físico) | `SERVER_PORT` y `SERVER_ADDRESS` |
+| 4200 | web (`ng serve`, con proxy de `/api` y `/actuator` a la api) | `localhost` | `npm start -- --port <n>`; el destino del proxy con `API_PROXY_TARGET` |
+| 1025 / 8025 | Mailpit, opcional (SMTP / interfaz web de los correos) | `127.0.0.1` | `MAILPIT_SMTP_PORT` / `MAILPIT_UI_PORT` |
 
-Prerrequisitos: JDK 25 y la base local levantada (subsección anterior).
+#### Orden de pasos
 
-1. `cp api/.env.example api/.env` y completar `DB_PASSWORD` (la misma de la base), `KUADOR_JWT_SECRET` (por ejemplo `openssl rand -base64 48`) y `LOCAL_SEED_PASSWORD` (≥ 12 caracteres). El perfil `local` importa `api/.env` si existe; las variables ya definidas en el entorno (por ejemplo, con `set -a; . ./.env; set +a` desde la raíz) tienen prioridad. `api/.env` está en `.gitignore` y en `api/.dockerignore`.
-2. `cd api && ./mvnw spring-boot:run`: escucha en `SERVER_ADDRESS:SERVER_PORT` (por defecto `0.0.0.0:8080`). Si falta o está vacía `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `KUADOR_JWT_SECRET` o `LOCAL_SEED_PASSWORD`, no arranca y el mensaje nombra la variable, nunca su valor.
-3. `curl -s http://localhost:8080/actuator/health` responde 200 con `"status":"UP"` y `components.db.status` en `UP`.
-4. Semilla local (solo perfil `local`, migración repetible `db.localseed.LocalSeedMigration`, ubicación `classpath:db/localseed`): dos clínicas ficticias, «Clínica Demo A» y «Clínica Demo B», con una sucursal «Sede principal», los roles OWNER y ADMIN y un usuario de prueba OWNER cada una: `usuario.a@clinica-a.example.test` y `usuario.b@clinica-b.example.test`, ambos con la contraseña `LOCAL_SEED_PASSWORD`. Sirven para probar a mano el aislamiento A/B (`POST /api/v1/auth/login` y luego `GET /api/v1/me`). Los perfiles `test` y `prod` no cargan esa ubicación.
-5. Dispositivo físico en la misma red: usar `http://<IP-LAN-del-equipo>:8080` y permitir el puerto 8080 en el firewall local.
+Desde la raíz del repositorio:
 
-#### Entorno completo
+1. **Variables.** `cp .env.example .env` y completar los secretos vacíos: `DB_PASSWORD` (`openssl rand -base64 24`), `KUADOR_JWT_SECRET` (`openssl rand -base64 48`) y `LOCAL_SEED_PASSWORD` (12 caracteres o más). El resto ya trae valores válidos para local. `.env` está en `.gitignore`: nunca se versiona.
+2. **Base de datos.** `docker compose -f compose.local.yaml --env-file .env up -d --wait` y comprobar con `docker compose -f compose.local.yaml ps` que `db` está `healthy`. Con `DB_PASSWORD` vacía no arranca y el mensaje nombra la variable. Si se quieren ver los correos que envía la api (invitaciones, recuperación): `docker compose up -d mailpit` y abrir `http://localhost:8025`; sin Mailpit la api arranca igual.
+3. **api.** En una terminal: `set -a; . ./.env; set +a` y luego `cd api && ./mvnw spring-boot:run`. Si falta o está vacía `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `KUADOR_JWT_SECRET` o `LOCAL_SEED_PASSWORD`, no arranca y el mensaje nombra la variable, nunca su valor. Alternativa sin cargar `.env` en el shell: `cp api/.env.example api/.env`, completar los mismos secretos y correr `./mvnw spring-boot:run` (el perfil `local` importa `api/.env`; lo que ya esté en el entorno tiene prioridad).
+4. **Comprobar la api.** `curl -s http://localhost:8080/actuator/health` responde 200 con `"status":"UP"` y `components.db.status` en `UP`.
+5. **web.** En otra terminal: `cd web && npm install && npm start` y abrir `http://localhost:4200`. Ingresar con un usuario de prueba (abajo): la web lleva a «Personal» y muestra el nombre de su clínica.
+6. **App móvil.** Desde `movil/`, `flutter pub get` y luego `flutter run` con el `API_BASE_URL` de la tabla «App móvil contra la api local». Ingresar con un usuario de prueba: la app muestra «Hola, …» y el nombre de su clínica.
+7. **Detener.** `Ctrl+C` en la api y en la web; `docker compose -f compose.local.yaml down` (con `-v` se borran los datos locales).
 
-1. Requisitos: Docker con Compose v2, JDK 25, Node.js LTS, Flutter estable.
-2. `cp .env.example .env` y completar `DB_PASSWORD`, `KUADOR_JWT_SECRET`, `LOCAL_SEED_PASSWORD`, `KUADOR_BOOTSTRAP_ADMIN_EMAIL` y `KUADOR_BOOTSTRAP_ADMIN_PASSWORD`.
-3. `docker compose up -d db mailpit` y esperar a que `docker compose ps` muestre `db` y `mailpit` como `healthy`. Los correos que envía la api se ven en `http://localhost:8025`.
-4. Comprobar la base: `docker compose exec db psql -U "$DB_USERNAME" -d "$DB_NAME" -c 'select version();'` (con las variables de `.env` cargadas) o con cualquier cliente en `127.0.0.1:${DB_PORT}`.
-5. api en el host: `set -a; . ./.env; set +a` y luego `cd api && ./mvnw spring-boot:run`.
-6. web en el host: `cd web && npm install && npm start` (`http://localhost:4200`; el servidor de desarrollo hace proxy de `/api` y `/actuator` a `API_PROXY_TARGET`, por defecto `http://localhost:8080`, sin reescribir la ruta, así que no hace falta CORS). Con la api en otro puerto o equipo: `API_PROXY_TARGET=http://localhost:9090 npm start`. Si la api no responde, el proxy contesta 502 y la web muestra «No pudimos conectar con el servidor. Revisa tu conexión e intenta de nuevo.».
-   - Sin api: `cd web && npm run dev:mock` levanta los mocks Prism de los contratos (`identity.openapi.yaml` en `http://localhost:4010` y `user-registration.openapi.yaml` en `http://localhost:4011`) y la web en `http://localhost:4200` con proxy de `/api/v1` a los mocks. Mientras la api no implemente `user-registration.openapi.yaml` (MEDK-14 a MEDK-16), el login de la web solo funciona contra el mock.
-7. Alternativa con todo en contenedores: `docker compose --profile full up -d --build`.
-8. Detener: `docker compose down` (con `-v` se borran los datos locales).
+Usuarios de prueba de la semilla local (solo perfil `local`; los perfiles `test` y `prod` no la cargan): `usuario.a@clinica-a.example.test` (Clínica Demo A) y `usuario.b@clinica-b.example.test` (Clínica Demo B), ambos OWNER de la sucursal «Sede principal» de su clínica y con la contraseña `LOCAL_SEED_PASSWORD`. Son datos ficticios. Sirven para probar a mano el aislamiento: cada uno ve solo su clínica, y un recurso de la otra (por ejemplo `GET /api/v1/roles/{id}` de un rol de B con el token de A) responde 404. La semilla se guarda con el hash de la contraseña: si se cambia `LOCAL_SEED_PASSWORD`, hay que recrear la base (`down -v` y volver al paso 2).
 
-Si el puerto 5432 del equipo ya está ocupado, cambiar `DB_PORT` y el puerto de `DB_URL` en `.env` (por ejemplo 55432).
+Alternativa con todo en contenedores (db, mailpit, api y web): `docker compose --profile full up -d --build` (web en `http://localhost:${WEB_PORT}`, api en `http://localhost:${API_PORT}`); detener con `docker compose down`. Es la que usa la prueba de humo (`scripts/smoke-test.sh`). Sin api, la web puede trabajar contra los mocks del contrato con `cd web && npm run dev:mock` (puertos 4010 y 4011).
+
+#### Variables del entorno local
+
+Todas las que leen las piezas en local. Los valores por defecto son los que trae `.env.example` (o los que usa la pieza si la variable no está); los secretos no tienen valor por defecto y nunca se escriben en el repo, en documentos ni en el tablero. El detalle de cada variable en todos los entornos está en «Variables y secretos».
+
+| Variable | Pieza | Propósito | Por defecto | ¿Obligatoria en local? | ¿Secreto? |
+|---|---|---|---|---|---|
+| `DB_NAME` | db | Nombre de la base que crea Compose | `medical` | No | No |
+| `DB_USERNAME` | db, api | Usuario de la base | `medical` | Sí (api) | No |
+| `DB_PASSWORD` | db, api | Clave de la base (la misma para Compose y la api) | — | Sí | Sí |
+| `DB_PORT` | db | Puerto del host para PostgreSQL | `5432` | No | No |
+| `DB_URL` | api | JDBC de la base; su puerto debe coincidir con `DB_PORT` | `jdbc:postgresql://localhost:5432/medical` | Sí | No |
+| `SPRING_PROFILES_ACTIVE` | api | Activa el perfil `local` (semilla, validación de variables, Mailpit) | `local` | Sí | No |
+| `SERVER_PORT` | api | Puerto HTTP de la api en el host | `8080` | No | No |
+| `SERVER_ADDRESS` | api | Interfaz de escucha; `0.0.0.0` permite el dispositivo físico, `127.0.0.1` la limita al equipo | `0.0.0.0` | No | No |
+| `KUADOR_JWT_SECRET` | api | Firma de los tokens de acceso (al menos 32 bytes) | — | Sí | Sí |
+| `LOCAL_SEED_PASSWORD` | api | Contraseña de los dos usuarios de prueba (al menos 12 caracteres) | — | Sí | Sí |
+| `KUADOR_CORS_ALLOWED_ORIGINS` | api | Orígenes permitidos; vacío = sin CORS (suficiente con el proxy de la web) | `http://localhost:4200` | No | No |
+| `KUADOR_BOOTSTRAP_ADMIN_EMAIL` | api | Correo de la cuenta inicial SUPER_ADMIN (ver «Cuenta inicial del SUPER_ADMIN») | vacío (no se crea) | No | No |
+| `KUADOR_BOOTSTRAP_ADMIN_PASSWORD` | api | Clave inicial del SUPER_ADMIN | — | No | Sí |
+| `KUADOR_JWT_TTL` / `KUADOR_JWT_REFRESH_TTL` / `KUADOR_JWT_PRE_AUTH_TTL` | api | Vida del token de acceso, del refresh token y del `preAuthToken` | `PT15M` / `P7D` / `PT5M` | No | No |
+| `KUADOR_LOGIN_MAX_FAILURES` / `KUADOR_LOGIN_FAILURE_WINDOW` / `KUADOR_LOGIN_LOCK_DURATION` | api | Límite de intentos de login, ventana y bloqueo | `5` / `PT15M` / `PT15M` | No | No |
+| `KUADOR_INVITATION_TTL` / `KUADOR_PASSWORD_RESET_TTL` / `KUADOR_EMAIL_VERIFICATION_TTL` | api | Vencimiento de los enlaces de un solo uso | `PT72H` / `PT30M` / `PT24H` | No | No |
+| `KUADOR_WEB_BASE_URL` | api | URL de la web en los enlaces de los correos | `http://localhost:4200` | No | No |
+| `KUADOR_APP_LINK_BASE_URL` | api | Base de los deep links; vacía usa `KUADOR_WEB_BASE_URL` | vacío | No | No |
+| `KUADOR_PLAN_USER_LIMIT` | api | Límite provisional de usuarios del personal; vacío o `0` = sin límite | vacío | No | No |
+| `KUADOR_CLINIC_TIME_ZONE` | api | Zona horaria IANA para saber si un paciente es menor de edad. No puede quedar vacía: un valor vacío detiene la api al arrancar | `UTC` | No | No |
+| `KUADOR_ADULTHOOD_CRON` / `KUADOR_ADULTHOOD_LOCK_AT_MOST_FOR` | api | Job de mayoría de edad (`-` lo desactiva) y vida máxima de su lock | `0 5 * * * *` / `PT1H` | No | No |
+| `KUADOR_SMTP_HOST` / `KUADOR_SMTP_PORT` | api | Servidor SMTP (Mailpit en local) | `localhost` / `1025` | No | No |
+| `KUADOR_SMTP_AUTH` / `KUADOR_SMTP_STARTTLS` | api | Autenticación y STARTTLS de SMTP | `false` / `false` | No | No |
+| `KUADOR_SMTP_USERNAME` | api | Usuario SMTP (Mailpit no lo usa) | vacío | No | No |
+| `KUADOR_SMTP_PASSWORD` | api | Clave SMTP (Mailpit no la usa) | vacío | No | Sí |
+| `KUADOR_MAIL_FROM` | api | Remitente de los correos | `no-reply@medical.example.test` | No | No |
+| `KUADOR_SMS_PROVIDER` / `KUADOR_SMS_SENDER` | api | Proveedor y remitente de SMS; sin proveedor el SMS queda deshabilitado | vacío | No | No |
+| `KUADOR_SMS_API_KEY` | api | Credencial del proveedor de SMS | vacío | No | Sí |
+| `MAILPIT_SMTP_PORT` / `MAILPIT_UI_PORT` | mailpit | Puertos del host de Mailpit | `1025` / `8025` | No | No |
+| `API_PROXY_TARGET` | web (`npm start`) | Destino del proxy de desarrollo de `/api` y `/actuator`; debe ser `http(s)` | `http://localhost:8080` | No | No |
+| `API_BASE_URL` | web (contenedor del perfil `full`) | URL de la api que el contenedor web escribe en `config.json` | `http://localhost:8080/api/v1` en `.env.example`; `/api/v1` en `public/config.json` | No | No |
+| `API_BASE_URL` | movil (`--dart-define`) | Origen de la api para la app (agrega `/api/v1`) | `http://10.0.2.2:8080` (emulador Android) | No | No |
+| `APP_LINK_HOST` | movil (`--dart-define`) | Host de los deep links; sin valor la build local acepta cualquier host | vacío | No | No |
+| `API_PORT` / `WEB_PORT` | api, web (perfil `full`) | Puertos del host con todo en contenedores | `8080` / `4200` | No | No |
+| `APP_LINKS_ANDROID_PACKAGE` / `APP_LINKS_ANDROID_SHA256` / `APP_LINKS_IOS_APP_IDS` | web (perfil `full`) | Archivos de `/.well-known/` (públicos, no secretos) | `com.kuador.medical_kuador` / vacío / vacío | No | No |
+| `SMOKE_SUPER_ADMIN_NEW_PASSWORD` | `scripts/smoke-test.sh` | Clave que la prueba de humo pone al SUPER_ADMIN | — | Solo para la prueba de humo | Sí |
 
 #### App móvil contra la api local
 
-Con la api levantada en el puerto 8080 (pasos anteriores), desde `movil/`:
+Con la api levantada en el puerto 8080, desde `movil/`:
 
 | Dónde corre la app | `API_BASE_URL` | Comando |
 |---|---|---|
@@ -189,10 +236,42 @@ Con la api levantada en el puerto 8080 (pasos anteriores), desde `movil/`:
 | Simulador iOS | `http://localhost:8080` | `flutter run --dart-define=API_BASE_URL=http://localhost:8080` |
 | Dispositivo físico (Android o iOS) | `http://<IP-LAN-del-equipo>:8080` | `flutter run --dart-define=API_BASE_URL=http://<IP-LAN-del-equipo>:8080` |
 
-- IP LAN del equipo: `ipconfig getifaddr en0` en macOS, `hostname -I` en Linux, `ipconfig` en Windows. El teléfono debe estar en la misma red (sin aislamiento de clientes en el wifi), la api debe escuchar en todas las interfaces (`SERVER_ADDRESS`, por defecto `0.0.0.0` en el perfil `local`) y el firewall del equipo debe permitir conexiones entrantes al puerto 8080.
 - HTTP en claro solo en builds debug: en Android, `android/app/src/debug/res/xml/network_security_config.xml` (solo se incluye en debug); en iOS, `NSAllowsLocalNetworking` en `Info.plist`, que la fase de build «Strip Local Networking» (`ios/scripts/strip_local_networking.sh`) quita en Release y Profile. Las builds release y profile solo permiten HTTPS.
 - Si la api no responde (apagada, rechazo de conexión o 15 s sin respuesta), la app muestra «No pudimos conectarnos con el servidor. Revisa tu conexión e inténtalo de nuevo.». La app no registra tokens, contraseñas ni datos personales en consola.
 - Un valor de `API_BASE_URL` que no sea una URL `http`/`https` detiene la app al iniciar con un error que nombra la variable, sin mostrar el valor.
+
+#### Dispositivo físico: IP LAN y firewall
+
+1. El teléfono y el equipo deben estar en la misma red wifi, sin aislamiento de clientes (frecuente en redes de invitados) y sin VPN que desvíe el tráfico.
+2. Obtener la IP LAN del equipo:
+   - macOS: `ipconfig getifaddr en0`. Si sale vacío, la red va por otra interfaz: `route -n get default | grep interface` la indica (por ejemplo `en1`) y luego `ipconfig getifaddr en1`.
+   - Linux: `hostname -I` (la primera dirección de la red local, normalmente `192.168.x.x` o `10.x.x.x`).
+   - Windows: `ipconfig` y tomar «Dirección IPv4» del adaptador wifi o Ethernet.
+3. La api debe escuchar en todas las interfaces: `SERVER_ADDRESS=0.0.0.0` (valor por defecto del perfil `local`). Comprobar desde el equipo: `curl -s http://<IP-LAN>:8080/actuator/health`.
+4. Permitir conexiones entrantes al puerto 8080:
+   - macOS: Ajustes del Sistema › Red › Firewall. Si está activo, en «Opciones…» permitir conexiones entrantes a `java` (el proceso de la api); macOS lo pregunta la primera vez que la api escucha. Estado actual: `/usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate`.
+   - Linux con ufw: `sudo ufw allow 8080/tcp` (quitarlo luego con `sudo ufw delete allow 8080/tcp`); con firewalld: `sudo firewall-cmd --add-port=8080/tcp` (sin `--permanent`, se pierde al reiniciar).
+   - Windows (PowerShell como administrador): `New-NetFirewallRule -DisplayName "Medical Kuador api local" -Direction Inbound -Protocol TCP -LocalPort 8080 -Action Allow -Profile Private`, con la red marcada como privada.
+5. Desde el navegador del teléfono abrir `http://<IP-LAN>:8080/actuator/health`: si responde `UP`, la app también llegará. Luego `flutter run -d <dispositivo> --dart-define=API_BASE_URL=http://<IP-LAN>:8080` (`flutter devices` lista los dispositivos).
+6. Abrir el puerto solo en redes de confianza y cerrarlo al terminar: la api local expone la semilla de prueba.
+
+#### Solución de problemas
+
+| Síntoma | Causa probable | Qué hacer |
+|---|---|---|
+| `docker compose … up` falla con «port is already allocated» o «address already in use» en 5432 | Otro PostgreSQL (local o de otro proyecto) usa el puerto | Cambiar `DB_PORT` (por ejemplo `55432`) y el puerto de `DB_URL` en `.env`, y volver a levantar |
+| Compose avisa de «orphan containers» | `compose.local.yaml` y `compose.yaml` comparten proyecto | Es esperado; no afecta |
+| La api no arranca: «Missing or blank environment variables: …» | Falta esa variable o está vacía (por ejemplo, `.env` no se cargó en esa terminal) | Completarla en `.env` y repetir `set -a; . ./.env; set +a` en la misma terminal donde corre `./mvnw` |
+| La api no arranca: `Invalid ID for ZoneOffset` en `configuredClinicCalendar` | `KUADOR_CLINIC_TIME_ZONE` está definida pero vacía (un `.env` copiado de una versión anterior de `.env.example`) | Poner `KUADOR_CLINIC_TIME_ZONE=UTC` o borrar la línea |
+| La api no arranca: `password authentication failed` | `DB_PASSWORD` distinta a la que se usó al crear el volumen | Usar la clave original o recrear la base: `docker compose -f compose.local.yaml down -v` y volver al paso 2 |
+| `./mvnw` falla con «release version 25 not supported» o no encuentra Java | El JDK activo no es el 25 | `JAVA_HOME` al JDK 25 en esa terminal |
+| Los usuarios de prueba no ingresan (401) | `LOCAL_SEED_PASSWORD` cambió después de crear la base | Recrear la base (`down -v`) o usar la contraseña original |
+| La web muestra «No pudimos conectar con el servidor…» y el proxy responde 502 | La api no está levantada o escucha en otro puerto | Levantar la api; si está en otro puerto o equipo, `API_PROXY_TARGET=http://localhost:<puerto> npm start` |
+| `npm start` no arranca y nombra `API_PROXY_TARGET` | El valor no es una URL `http(s)` | Corregir el valor |
+| El emulador Android muestra «No pudimos conectarnos con el servidor…» | La api está apagada, o la app apunta a `localhost` (en el emulador es el propio emulador) | Levantar la api y usar `http://10.0.2.2:8080` (valor por defecto) |
+| El dispositivo físico no conecta | Otra red, aislamiento de clientes en el wifi, firewall o `SERVER_ADDRESS=127.0.0.1` | Ver «Dispositivo físico: IP LAN y firewall»; probar primero `http://<IP-LAN>:8080/actuator/health` en el navegador del teléfono |
+| La compilación de Android falla por la versión de Java | Gradle de Android necesita JDK 17 o superior | Apuntar `JAVA_HOME` a un JDK 17+ al correr `flutter run` o `flutter build apk` |
+| La IP LAN cambió (otra red, DHCP) | La app se compiló con la IP anterior | Volver a correr `flutter run --dart-define=API_BASE_URL=http://<IP-nueva>:8080` |
 
 ### Primera vez (pruebas y producción)
 
@@ -247,6 +326,20 @@ Comprobar en local lo mismo que el CI: ver «Comandos del proyecto» en `AGENTS.
 - Punta a punta (local): `scripts/smoke-test.sh` con el perfil `full` arriba; debe terminar en 0. Ver «Prueba de humo».
 - [POR DEFINIR: revisión de logs y prueba de punta a punta en pruebas y producción (el script sirve apuntando `API_URL`/`WEB_URL` al entorno, pero cambia la clave del SUPER_ADMIN en su primera corrida: ahí se usa solo después de cambiarla a mano).]
 
+### Entorno local
+
+Lista de comprobación del procedimiento «Paso a paso › Entorno local» (épica MEDK-26):
+
+1. `db` `healthy` con `compose.local.yaml`; `GET /actuator/health` 200 con `UP` y `db` en `UP`; cualquier otra ruta de `/actuator` 404.
+2. Sin una variable obligatoria la api no arranca y el mensaje la nombra sin mostrar valores.
+3. Web: cada usuario de prueba ingresa y ve solo su clínica, sin errores en la consola.
+4. api: con el token de A, un recurso de B responde 404, el listado de A no incluye datos de B y un identificador de B enviado en cabeceras o parámetros se ignora (`/me` sigue devolviendo la clínica A).
+5. Móvil: ingreso de A y de B en el emulador Android con el `API_BASE_URL` por defecto, y en un dispositivo físico con `http://<IP-LAN>:8080`.
+6. Con la api apagada, web y móvil muestran en español que no se pudo conectar con el servidor.
+7. Pruebas en verde: `./mvnw -B verify`, `npm test -- --watch=false` (más `npm run build`) y `flutter analyze` + `flutter test`.
+
+Resultado de MEDK-32 (2026-11-19, clon limpio de `develop` en macOS con Docker 29, JDK 25, Node 22 y Flutter 3.44; emulador Android con imagen API 37 arm64): puntos 1 a 4, 6 y 7 en verde (api 355 pruebas unitarias y 219 de integración; web 293; móvil 114). Punto 5: emulador en verde con `http://10.0.2.2:8080` y también con la IP LAN del equipo (`--dart-define=API_BASE_URL=http://<IP-LAN>:8080`, la misma build que usa un dispositivo físico); la api respondió por la IP LAN. **Pendiente:** repetirlo en un teléfono físico real, que no estaba disponible en el equipo de la verificación. Observaciones: siguiendo el procedimiento la api no arrancaba porque `.env.example` dejaba `KUADOR_CLINIC_TIME_ZONE` vacía (se corrigió a `UTC`); el mensaje de servidor no disponible tiene redacción distinta en web («No pudimos conectar… intenta de nuevo») y móvil («No pudimos conectarnos… inténtalo de nuevo»).
+
 ### Prueba de humo
 
 `scripts/smoke-test.sh` (requiere `bash`, `curl`, `jq` y `openssl`) recorre la api real y, si `WEB_URL` no está vacío, también el contenedor web y su proxy `/api/`:
@@ -298,3 +391,4 @@ Resultado de MEDK-11 (2026-11-19, perfil `full` en macOS con Docker 29): 45 paso
 | 2026-11-19 | Perfil `local` de la api solo con referencias a variables y `api/.env.example` (importa `api/.env` si existe); la api no arranca en `local` si falta `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `KUADOR_JWT_SECRET` o `LOCAL_SEED_PASSWORD` (nombra la variable, sin valores). Variables nuevas: `LOCAL_SEED_PASSWORD` (secreto, solo local), `SERVER_PORT` y `SERVER_ADDRESS` (por defecto `0.0.0.0:8080` en local; el perfil `full` fija 8080). Semilla local con clínicas A y B (ubicación Flyway `db/localseed`, solo perfil `local`). Dependencia `spring-boot-starter-actuator`: solo `GET /actuator/health`, público y sin detalles | MEDK-29 |
 | 2026-11-19 | Web conectada a la api local por proxy: `web/proxy.conf.mjs` reemplaza a `proxy.conf.json` y reenvía `/api` y `/actuator` a la variable nueva `API_PROXY_TARGET` (por defecto `http://localhost:8080`); el proxy se aplica solo a la configuración `development` de `ng serve` (puerto 4200). `src/environments/environment.development.ts` con `apiBaseUrl` relativo (`/api/v1`); `config.json` sigue mandando en tiempo de ejecución. Sin secretos, servicios ni dependencias nuevas | MEDK-30 |
 | 2026-11-19 | App movil contra la api local: `API_BASE_URL` pasa a ser el origen de la api (la app agrega `/api/v1`; se sigue aceptando el valor con `/api/v1`) y su valor por defecto cambia de `http://localhost:8080/api/v1` a `http://10.0.2.2:8080` (emulador Android); valores para simulador iOS y dispositivo físico en «App móvil contra la api local». HTTP en claro solo en debug: `network_security_config` en `android/app/src/debug` (reemplaza `usesCleartextTraffic`) y `NSAllowsLocalNetworking` quitado de las builds Release y Profile de iOS por una fase de build. Sin secretos, puertos ni servicios nuevos | MEDK-31 |
+| 2026-11-19 | Sección «Paso a paso › Entorno local» consolidada (reemplaza «Local»): prerrequisitos, puertos 5432/8080/4200, orden único de pasos, tabla de variables locales (propósito, por defecto, obligatoria, secreto), IP LAN y firewall para el dispositivo físico y solución de problemas; lista de comprobación y resultado en «Verificación › Entorno local». `.env.example`: `KUADOR_CLINIC_TIME_ZONE` pasa de vacía a `UTC` (vacía detenía la api al arrancar). Sin variables, secretos, puertos ni servicios nuevos | MEDK-32 |
