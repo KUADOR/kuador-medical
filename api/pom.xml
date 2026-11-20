@@ -22,6 +22,7 @@
         <spring-modulith.version>2.1.2</spring-modulith.version>
         <nimbus-jose-jwt.version>10.10</nimbus-jose-jwt.version>
         <bouncycastle.version>1.87</bouncycastle.version>
+        <shedlock.version>7.11.0</shedlock.version>
     </properties>
 
     <dependencyManagement>
@@ -40,6 +41,17 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webmvc</artifactId>
+        </dependency>
+        <!-- Distributed lock of scheduled jobs (MEDK-18): one run across replicas. -->
+        <dependency>
+            <groupId>net.javacrumbs.shedlock</groupId>
+            <artifactId>shedlock-spring</artifactId>
+            <version>${shedlock.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>net.javacrumbs.shedlock</groupId>
+            <artifactId>shedlock-provider-jdbc-template</artifactId>
+            <version>${shedlock.version}</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
