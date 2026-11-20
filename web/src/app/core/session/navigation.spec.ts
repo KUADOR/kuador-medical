@@ -86,7 +86,7 @@ describe('navigation', () => {
     expect(safeReturnUrl('/\\evil.test')).toBeNull();
     expect(safeReturnUrl('/login?returnUrl=%2Froles')).toBeNull();
     expect(safeReturnUrl('/invitation')).toBeNull();
-    expect(safeReturnUrl('/reset-password')).toBeNull();
+    expect(safeReturnUrl('/password-reset')).toBeNull();
     expect(safeReturnUrl(undefined)).toBeNull();
   });
 });

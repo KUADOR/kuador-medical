@@ -16,14 +16,14 @@ describe('VerifyEmailPage', () => {
 
   afterEach(() => app.backend.verify());
 
-  async function open(url = `/verify-email#t=${TOKEN}`) {
+  async function open(url = `/email-verification#t=${TOKEN}`) {
     await app.harness.navigateByUrl(url);
     app.harness.detectChanges();
   }
 
   it('confirms the email with the token of the fragment and hides it', async () => {
     await open();
-    expect(TestBed.inject(Location).path(true)).toBe('/verify-email');
+    expect(TestBed.inject(Location).path(true)).toBe('/email-verification');
     const request = app.backend.expectOne('/api/v1/auth/email-verification/confirm');
     expect(request.request.body).toEqual({ token: TOKEN });
     request.flush(null, { status: 204, statusText: 'No Content' });
@@ -44,7 +44,7 @@ describe('VerifyEmailPage', () => {
   });
 
   it('rejects a link without token without calling the API', async () => {
-    await open('/verify-email');
+    await open('/email-verification');
     expect(byTestId(app.page(), 'link-error')).not.toBeNull();
   });
 });

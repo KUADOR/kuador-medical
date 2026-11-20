@@ -4,12 +4,12 @@ export const AuthRoutes = {
   loginClinic: '/login/clinic',
   loginBranch: '/login/branch',
   forgotPassword: '/forgot-password',
-  /** Target of the password reset email: /reset-password#t=<token> (ADR-014). */
-  resetPassword: '/reset-password',
+  /** Target of the password reset email: /password-reset#t=<token> (ADR-014, same path as the api links). */
+  resetPassword: '/password-reset',
   /** Target of the invitation email: /invitation#t=<token> (ADR-014). */
   invitation: '/invitation',
-  /** Target of the self-registration verification email: /verify-email#t=<token> (ADR-014). */
-  verifyEmail: '/verify-email',
+  /** Target of the self-registration verification email: /email-verification#t=<token> (ADR-014). */
+  verifyEmail: '/email-verification',
   changePassword: '/change-password',
   forbidden: '/forbidden',
 } as const;

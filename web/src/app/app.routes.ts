@@ -64,7 +64,7 @@ export const routes: Routes = [
   },
   {
     // Email links carry the one-time token in the fragment (#t=…), never in the path or query.
-    path: 'reset-password',
+    path: 'password-reset',
     component: ResetPasswordPage,
     title: `Crear contraseña nueva · ${APP_TITLE}`,
   },
@@ -74,7 +74,7 @@ export const routes: Routes = [
     title: `Activar cuenta · ${APP_TITLE}`,
   },
   {
-    path: 'verify-email',
+    path: 'email-verification',
     component: VerifyEmailPage,
     title: `Verificar correo · ${APP_TITLE}`,
   },

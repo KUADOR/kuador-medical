@@ -22,7 +22,7 @@ describe('ResetPasswordPage', () => {
 
   afterEach(() => app.backend.verify());
 
-  async function open(url = `/reset-password#t=${TOKEN}`) {
+  async function open(url = `/password-reset#t=${TOKEN}`) {
     await app.harness.navigateByUrl(url);
     app.harness.detectChanges();
   }
@@ -34,12 +34,12 @@ describe('ResetPasswordPage', () => {
 
   it('takes the token from the fragment and removes it from the address bar', async () => {
     await open();
-    expect(TestBed.inject(Location).path(true)).toBe('/reset-password');
+    expect(TestBed.inject(Location).path(true)).toBe('/password-reset');
     expect(app.page().querySelector('form')).not.toBeNull();
   });
 
   it('rejects a link without token with a Spanish message', async () => {
-    await open('/reset-password');
+    await open('/password-reset');
     expect(byTestId(app.page(), 'link-error')?.textContent?.trim()).toBe(
       ERROR_MESSAGES.ONE_TIME_TOKEN_INVALID,
     );

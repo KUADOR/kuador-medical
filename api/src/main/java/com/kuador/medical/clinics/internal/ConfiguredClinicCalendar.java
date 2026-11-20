@@ -4,6 +4,7 @@ import com.kuador.medical.clinics.ClinicCalendar;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
@@ -21,7 +22,9 @@ class ConfiguredClinicCalendar implements ClinicCalendar {
     private final Clock clock = Clock.systemUTC();
 
     ConfiguredClinicCalendar(Properties properties) {
-        this.zone = ZoneId.of(properties.timeZone());
+        String timeZone = properties.timeZone();
+        // An empty KUADOR_CLINIC_TIME_ZONE (as in .env.example) means "use the default".
+        this.zone = timeZone == null || timeZone.isBlank() ? ZoneOffset.UTC : ZoneId.of(timeZone.trim());
     }
 
     @Override
