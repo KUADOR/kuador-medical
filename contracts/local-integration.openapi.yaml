@@ -1,0 +1,429 @@
+openapi: 3.1.0
+info:
+  title: Medical Kuador Local Integration API
+  version: 0.1.0
+  summary: Minimal contract web and mobile use to connect to the local api (MEDK-26).
+  description: |
+    Minimal contract of the local integration epic (MEDK-26, plan decision 4): log in,
+    read the current session (user, clinic and permissions) and check that the api and
+    its database are up. Web and mobile build their mocks and clients from this file.
+
+    It **documents the operations the api already serves** (MEDK-15) and does not
+    redefine them: request and response schemas are referenced from
+    `user-registration.openapi.yaml`, which stays the single source of truth for
+    `POST /auth/login` and `GET /me`. Use `npx @redocly/cli bundle` to get a
+    self-contained file if a tool cannot follow relative references.
+
+    Paths are absolute from the api origin (`/api/v1/...` and `/actuator/health`), so a
+    mock serves the same paths as the api and the web development proxy needs no rewrite.
+
+    Rules that apply to every operation:
+
+    - **Tenant from the token only (ADR-007).** No request carries a tenant or clinic
+      identifier. The clinic is resolved from the access token; any identifier sent by
+      the client is ignored.
+    - **Explicit access, denied by default (ADR-008).** Every operation states its access
+      in `x-required-permission`. Public operations are also marked `x-public: true` and
+      have no security requirement.
+    - **Errors** use Problem Details (RFC 9457) with a stable `code`; clients translate
+      the `code` into a user-facing message in Spanish.
+    - **Examples** use fictitious data only.
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Kuador-Proprietary
+servers:
+  - url: /
+    description: Origin of the api (local http://localhost:8080; web through its development proxy).
+tags:
+  - name: Auth
+    description: Login with email and password.
+  - name: Session
+    description: Current user, clinic and permissions.
+  - name: System
+    description: Status of the api and its database.
+security:
+  - bearerAuth: []
+paths:
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      summary: Log in with email and password
+      description: |
+        Same operation as `POST /auth/login` of `user-registration.openapi.yaml`.
+        Verifies the password against every active account with that email across
+        clinics and returns one of three results, discriminated by `status`:
+
+        - `AUTHENTICATED`: tokens are issued. Send `accessToken` as
+          `Authorization: Bearer <accessToken>` on the following requests.
+        - `CLINIC_SELECTION_REQUIRED`: the password matched several clinics
+          (continue with `POST /api/v1/auth/login/clinic`).
+        - `BRANCH_SELECTION_REQUIRED`: the account has several branches
+          (continue with `POST /api/v1/auth/login/branch`).
+
+        The local seed users have a single clinic and branch, so they get
+        `AUTHENTICATED`. Wrong email or password, and disabled accounts, respond the
+        same `401`. Repeated failures respond `429`.
+      x-required-permission: public
+      x-public: true
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './user-registration.openapi.yaml#/components/schemas/LoginRequest'
+            examples:
+              login:
+                value:
+                  email: jane.doe@example.com
+                  password: a-long-example-passphrase
+      responses:
+        '200':
+          description: Result of the login step.
+          content:
+            application/json:
+              schema:
+                $ref: './user-registration.openapi.yaml#/components/schemas/LoginResult'
+              examples:
+                authenticated:
+                  value:
+                    status: AUTHENTICATED
+                    accessToken: eyJhbGciOiJIUzI1NiJ9.example-payload.example-signature
+                    tokenType: Bearer
+                    expiresIn: 900
+                    refreshToken: refresh-example-token
+                    refreshExpiresIn: 604800
+                    scope: TENANT
+                    clinic:
+                      id: 5b0c8f2e-3a51-4d6e-9f0a-1c2b3d4e5f60
+                      name: Example Clinic A
+                    branch:
+                      id: 2f6d1c0a-8b3e-4a7d-9c5f-6e1b2a3c4d5e
+                      name: Main branch
+                    mustChangePassword: false
+                clinicSelection:
+                  value:
+                    status: CLINIC_SELECTION_REQUIRED
+                    preAuthToken: pre-auth-example-token
+                    preAuthExpiresIn: 300
+                    clinics:
+                      - id: 5b0c8f2e-3a51-4d6e-9f0a-1c2b3d4e5f60
+                        name: Example Clinic A
+                      - id: 9d8c7b6a-5f4e-4d3c-8b2a-1f0e9d8c7b6a
+                        name: Example Clinic B
+                branchSelection:
+                  value:
+                    status: BRANCH_SELECTION_REQUIRED
+                    preAuthToken: pre-auth-example-token
+                    preAuthExpiresIn: 300
+                    clinic:
+                      id: 5b0c8f2e-3a51-4d6e-9f0a-1c2b3d4e5f60
+                      name: Example Clinic A
+                    branches:
+                      - id: 2f6d1c0a-8b3e-4a7d-9c5f-6e1b2a3c4d5e
+                        name: Main branch
+                      - id: 8e7d6c5b-4a39-4281-9f0e-d1c2b3a49586
+                        name: North branch
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/InvalidCredentials'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyAttempts'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/me:
+    get:
+      tags: [Session]
+      operationId: getCurrentSession
+      summary: Get the current user, clinic and permissions
+      description: |
+        Same operation as `GET /me` of `user-registration.openapi.yaml`. Returns the
+        account, its clinic (`clinic.id` and `clinic.name`), active branch, the roles and
+        effective permissions of the active assignment and the modules enabled by the
+        clinic plan.
+
+        The clinic is taken **only** from the access token: there is no parameter to
+        choose it, and headers or query parameters with another tenant identifier are
+        ignored, so a user of clinic A always gets clinic A.
+      x-required-permission: authenticated
+      responses:
+        '200':
+          description: Current session.
+          content:
+            application/json:
+              schema:
+                $ref: './user-registration.openapi.yaml#/components/schemas/CurrentSession'
+              examples:
+                staff:
+                  value:
+                    accountId: 0f1e2d3c-4b5a-4968-8776-655443322110
+                    kind: STAFF
+                    scope: TENANT
+                    displayName: Jane Doe
+                    clinic:
+                      id: 5b0c8f2e-3a51-4d6e-9f0a-1c2b3d4e5f60
+                      name: Example Clinic A
+                    activeBranch:
+                      id: 2f6d1c0a-8b3e-4a7d-9c5f-6e1b2a3c4d5e
+                      name: Main branch
+                    availableBranches:
+                      - id: 2f6d1c0a-8b3e-4a7d-9c5f-6e1b2a3c4d5e
+                        name: Main branch
+                    roles: [OWNER]
+                    permissions: [roles.read, identity.users.read, patients.read]
+                    enabledModules: [identity, patients]
+                    mustChangePassword: false
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/system/info:
+    get:
+      tags: [System]
+      operationId: getSystemInfo
+      summary: Get system status
+      description: |
+        Same operation as `GET /system/info` of `identity.openapi.yaml`, served by the
+        api today. Returns the application name, version and a live check of the
+        database. A down database is reported in the body with `200`, never as an error.
+      x-required-permission: public
+      x-public: true
+      security: []
+      responses:
+        '200':
+          description: System status.
+          content:
+            application/json:
+              schema:
+                $ref: './identity.openapi.yaml#/components/schemas/SystemInfo'
+              examples:
+                up:
+                  value:
+                    name: medical-kuador-api
+                    version: 0.1.0
+                    status: UP
+                    database: UP
+                databaseDown:
+                  value:
+                    name: medical-kuador-api
+                    version: 0.1.0
+                    status: DOWN
+                    database: DOWN
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /actuator/health:
+    get:
+      tags: [System]
+      operationId: getHealth
+      summary: Get health status
+      description: |
+        Spring Boot Actuator health endpoint, outside `/api/v1`. **Planned**: the api does
+        not expose Actuator yet; the MEDK-26 task "Perfil local del api" adds it, exposing
+        only `health` with the status of its components (no details). Until then use
+        `GET /api/v1/system/info`, which reports the same database check.
+
+        Responds `200` when the api and its database are up and `503` when a component
+        is down.
+      x-implementation-status: planned
+      x-required-permission: public
+      x-public: true
+      security: []
+      responses:
+        '200':
+          description: The api and its components are up.
+          content:
+            application/vnd.spring-boot.actuator.v3+json:
+              schema:
+                $ref: '#/components/schemas/Health'
+              examples:
+                up:
+                  value:
+                    status: UP
+                    components:
+                      db:
+                        status: UP
+                      ping:
+                        status: UP
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+              examples:
+                up:
+                  value:
+                    status: UP
+                    components:
+                      db:
+                        status: UP
+                      ping:
+                        status: UP
+        '503':
+          description: A component is down, for example the database.
+          content:
+            application/vnd.spring-boot.actuator.v3+json:
+              schema:
+                $ref: '#/components/schemas/Health'
+              examples:
+                databaseDown:
+                  value:
+                    status: DOWN
+                    components:
+                      db:
+                        status: DOWN
+                      ping:
+                        status: UP
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+              examples:
+                databaseDown:
+                  value:
+                    status: DOWN
+                    components:
+                      db:
+                        status: DOWN
+                      ping:
+                        status: UP
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Access token returned by `POST /api/v1/auth/login` (`accessToken`). It carries the
+        clinic, the account and the active branch; 15 minutes by default.
+
+  headers:
+    RetryAfter:
+      description: Seconds until a new attempt is allowed.
+      schema:
+        type: integer
+        minimum: 1
+
+  responses:
+    ValidationError:
+      description: The request is malformed or breaks a validation rule (`VALIDATION`), with one error per field.
+      content:
+        application/problem+json:
+          schema:
+            $ref: './user-registration.openapi.yaml#/components/schemas/Problem'
+          examples:
+            validation:
+              value:
+                type: about:blank
+                title: Bad Request
+                status: 400
+                code: VALIDATION
+                errors:
+                  - field: email
+                    code: INVALID_FORMAT
+    InvalidCredentials:
+      description: Wrong email or password, or the account cannot log in (`INVALID_CREDENTIALS`). The response never reveals which.
+      content:
+        application/problem+json:
+          schema:
+            $ref: './user-registration.openapi.yaml#/components/schemas/Problem'
+          examples:
+            invalidCredentials:
+              value:
+                type: about:blank
+                title: Unauthorized
+                status: 401
+                code: INVALID_CREDENTIALS
+    Unauthenticated:
+      description: The access token is missing, invalid or expired, or the account was disabled (`UNAUTHENTICATED`).
+      headers:
+        WWW-Authenticate:
+          description: Bearer challenge.
+          schema:
+            type: string
+      content:
+        application/problem+json:
+          schema:
+            $ref: './user-registration.openapi.yaml#/components/schemas/Problem'
+          examples:
+            unauthenticated:
+              value:
+                type: about:blank
+                title: Unauthorized
+                status: 401
+                code: UNAUTHENTICATED
+    Forbidden:
+      description: |
+        Access denied (`FORBIDDEN`): the module that serves the operation is not enabled.
+        Other operations also respond `403` when the active assignment lacks the required
+        permission or the password must be changed first (`PASSWORD_CHANGE_REQUIRED`);
+        `GET /api/v1/me` stays allowed while the password must be changed.
+      content:
+        application/problem+json:
+          schema:
+            $ref: './user-registration.openapi.yaml#/components/schemas/Problem'
+          examples:
+            forbidden:
+              value:
+                type: about:blank
+                title: Forbidden
+                status: 403
+                code: FORBIDDEN
+    TooManyAttempts:
+      description: Too many failed attempts; temporarily blocked (`TOO_MANY_ATTEMPTS`).
+      headers:
+        Retry-After:
+          $ref: '#/components/headers/RetryAfter'
+      content:
+        application/problem+json:
+          schema:
+            $ref: './user-registration.openapi.yaml#/components/schemas/Problem'
+          examples:
+            tooManyAttempts:
+              value:
+                type: about:blank
+                title: Too Many Requests
+                status: 429
+                code: TOO_MANY_ATTEMPTS
+    InternalError:
+      description: Unexpected error (`INTERNAL_ERROR`). No internal details are exposed.
+      content:
+        application/problem+json:
+          schema:
+            $ref: './user-registration.openapi.yaml#/components/schemas/Problem'
+          examples:
+            internal:
+              value:
+                type: about:blank
+                title: Internal Server Error
+                status: 500
+                code: INTERNAL_ERROR
+
+  schemas:
+    Health:
+      type: object
+      description: Spring Boot Actuator health, with the status of each component and no details.
+      required: [status]
+      properties:
+        status:
+          $ref: '#/components/schemas/HealthIndicatorStatus'
+        components:
+          type: object
+          description: Status of each health indicator, for example `db` (PostgreSQL) and `ping`.
+          additionalProperties:
+            type: object
+            required: [status]
+            properties:
+              status:
+                $ref: '#/components/schemas/HealthIndicatorStatus'
+
+    HealthIndicatorStatus:
+      type: string
+      description: Actuator status. `UNKNOWN` and `OUT_OF_SERVICE` are Actuator values not used by the api today.
+      enum: [UP, DOWN, OUT_OF_SERVICE, UNKNOWN]

@@ -6,6 +6,8 @@ apis:
     root: contracts/identity.openapi.yaml
   user-registration:
     root: contracts/user-registration.openapi.yaml
+  local-integration:
+    root: contracts/local-integration.openapi.yaml
 
 rules:
   operation-4xx-problem-details-rfc7807: error
