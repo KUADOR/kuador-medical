@@ -16,6 +16,8 @@ import {
   byTestId,
   createAppHarness,
 } from '../../../../testing/app-harness';
+import { expectNoAxeViolations } from '../../../../testing/axe';
+import { expectDesignSystemScreen, primaryActions } from '../../../../testing/screen-rules';
 import { LOGIN_STEP_EXPIRED_MESSAGE } from './login-selection.page';
 
 describe('LoginSelectionPage', () => {
@@ -66,6 +68,32 @@ describe('LoginSelectionPage', () => {
     expect(app.page().querySelector('h1')?.textContent).toContain('Elige la sucursal');
     expect(app.page().textContent).toContain('Test Clinic');
     expect(choices()).toEqual(['Main branch', 'North branch']);
+  });
+
+  it('is built with the design system, without a primary action among equal choices', async () => {
+    await pending(CLINIC_SELECTION);
+    await app.harness.navigateByUrl('/login/clinic');
+    app.harness.detectChanges();
+
+    expectDesignSystemScreen(app.page());
+    expect(primaryActions(app.page())).toEqual([]);
+    expect(app.page().querySelector('ul[aria-label="Clínicas"]')).not.toBeNull();
+    await expectNoAxeViolations(app.page());
+  });
+
+  it('has no accessibility violations with an error, and focuses the error', async () => {
+    await pending(BRANCH_SELECTION);
+    await app.harness.navigateByUrl('/login/branch');
+    app.harness.detectChanges();
+
+    allByTestId(app.page(), 'choice')[0].click();
+    const { body, init } = problem(403, 'BRANCH_NOT_ASSIGNED');
+    app.backend.expectOne('/api/v1/auth/login/branch').flush(body, init);
+    await app.settle();
+
+    expect(document.activeElement).toBe(byTestId(app.page(), 'form-error'));
+    expectDesignSystemScreen(app.page());
+    await expectNoAxeViolations(app.page());
   });
 
   it('starts the session in the chosen branch and follows the return URL', async () => {

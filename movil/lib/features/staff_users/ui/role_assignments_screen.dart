@@ -6,6 +6,7 @@ import '../../../core/api/error_messages.dart';
 import '../../../core/connectivity/connectivity_widgets.dart';
 import '../../../core/session/session_models.dart';
 import '../../../core/ui/module_widgets.dart';
+import '../../../design_system/tokens.g.dart';
 import '../../auth/ui/auth_widgets.dart';
 import '../../roles/data/role_models.dart';
 import '../data/staff_models.dart';
@@ -121,7 +122,7 @@ class _RoleAssignmentsScreenState extends State<RoleAssignmentsScreen> {
                   _fieldError = null;
                 }),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: KdConstants.space6),
               OnlineSubmitButton(
                 label: 'Guardar roles',
                 busy: _busy,

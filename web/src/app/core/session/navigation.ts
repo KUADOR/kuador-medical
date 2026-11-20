@@ -1,3 +1,4 @@
+import type { IconName } from '../../design-system';
 import type { AccountKind, CurrentSession, PermissionCode } from '../api/api-types';
 import { AuthRoutes } from './auth-routes';
 
@@ -45,27 +46,46 @@ export interface AccessRequirement {
 export interface MenuItem extends AccessRequirement {
   label: string;
   link: string;
+  icon: IconName;
 }
 
-/** Menu entries of authenticated accounts, filtered by the permissions and modules of GET /me. */
+/**
+ * Menu entries of authenticated accounts, filtered by the permissions and modules of GET /me.
+ * The order is the order of the menu, and the first allowed entry is the landing page: the
+ * patient search goes first so the staff reach it without extra steps (MEDK-42, FR-007).
+ */
 export const MENU_ITEMS: readonly MenuItem[] = [
+  {
+    label: 'Pacientes',
+    link: AppRoutes.patients,
+    icon: 'search',
+    permissions: ['patients.read'],
+    module: Modules.patients,
+  },
   {
     label: 'Personal',
     link: AppRoutes.staff,
+    icon: 'users',
     permissions: ['identity.users.read'],
     module: Modules.identity,
   },
   {
-    label: 'Pacientes',
-    link: AppRoutes.patients,
-    permissions: ['patients.read'],
-    module: Modules.patients,
+    label: 'Roles',
+    link: AppRoutes.roles,
+    icon: 'lock',
+    permissions: ['roles.read'],
+    module: Modules.identity,
   },
-  { label: 'Roles', link: AppRoutes.roles, permissions: ['roles.read'], module: Modules.identity },
-  { label: 'Mis contactos autorizados', link: AppRoutes.myGuardianLinks, kinds: ['PATIENT'] },
+  {
+    label: 'Mis contactos autorizados',
+    link: AppRoutes.myGuardianLinks,
+    icon: 'user-plus',
+    kinds: ['PATIENT'],
+  },
   {
     label: 'Catálogo de permisos',
     link: AppRoutes.platformPermissions,
+    icon: 'clipboard-list',
     permissions: ['platform.permissions.read'],
   },
 ];

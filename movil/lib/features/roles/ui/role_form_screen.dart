@@ -7,6 +7,7 @@ import '../../../core/connectivity/connectivity_widgets.dart';
 import '../../../core/ui/module_widgets.dart';
 import '../../../core/util/idempotent_creation.dart';
 import '../../../design_system/tokens.g.dart';
+import '../../../design_system/widgets/widgets.dart';
 import '../../auth/ui/auth_widgets.dart';
 import '../data/role_models.dart';
 
@@ -185,7 +186,7 @@ class _RoleFormScreenState extends State<RoleFormScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const SizedBox(height: 8),
+                    const SizedBox(height: KdConstants.space2),
                     TextFormField(
                       controller: _name,
                       readOnly: readOnly,
@@ -194,7 +195,7 @@ class _RoleFormScreenState extends State<RoleFormScreen> {
                           FormRules.requiredMax(80)(v) ?? _fieldErrors['name'],
                       decoration: fieldDecoration('Nombre del rol'),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: KdConstants.space4),
                     TextFormField(
                       controller: _description,
                       readOnly: readOnly,
@@ -257,7 +258,7 @@ class _RoleFormScreenState extends State<RoleFormScreen> {
                         : null,
                   ),
               ],
-              const SizedBox(height: 24),
+              const SizedBox(height: KdConstants.space6),
               if (!readOnly)
                 OnlineSubmitButton(
                   label: _isNew ? 'Crear rol' : 'Guardar cambios',
@@ -265,14 +266,12 @@ class _RoleFormScreenState extends State<RoleFormScreen> {
                   onPressed: _save,
                 ),
               if (canDelete) ...[
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
+                const SizedBox(height: KdConstants.space3),
+                KdButton.secondary(
+                  label: 'Eliminar rol',
+                  icon: KdIcons.trash,
+                  expand: true,
                   onPressed: _busy ? null : _delete,
-                  icon: const Icon(Icons.delete_outline),
-                  label: const Text('Eliminar rol'),
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(48),
-                  ),
                 ),
               ],
             ],

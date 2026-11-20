@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { KdAlert, KdField, KdIcon, KdInput } from '../../../design-system';
 import { GENERIC_ERROR_MESSAGE, errorMessage } from '../../../core/errors/error-messages';
 import { AuthService } from '../../../core/session/auth.service';
 import { landingUrl } from '../../../core/session/navigation';
@@ -13,30 +14,35 @@ import { SessionStore } from '../../../core/session/session.store';
 @Component({
   selector: 'mk-branch-switcher',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [KdField, KdInput, KdAlert, KdIcon],
   template: `
     @if (activeBranch(); as active) {
       <div class="branch-switcher">
         @if (branches().length > 1) {
-          <label for="branch-switcher">Sucursal</label>
-          <select
-            id="branch-switcher"
-            data-testid="branch-switcher"
-            [value]="active.id"
-            [disabled]="switching()"
-            [attr.aria-describedby]="failure() ? 'branch-switcher-error' : null"
-            (change)="switchTo($event)"
-          >
-            @for (branch of branches(); track branch.id) {
-              <option [value]="branch.id" [selected]="branch.id === active.id">
-                {{ branch.name }}
-              </option>
-            }
-          </select>
+          <kd-field label="Sucursal">
+            <select
+              kdInput
+              id="branch-switcher"
+              data-testid="branch-switcher"
+              [value]="active.id"
+              [disabled]="switching()"
+              (change)="switchTo($event)"
+            >
+              @for (branch of branches(); track branch.id) {
+                <option [value]="branch.id" [selected]="branch.id === active.id">
+                  {{ branch.name }}
+                </option>
+              }
+            </select>
+          </kd-field>
         } @else {
-          <span data-testid="active-branch">Sucursal: {{ active.name }}</span>
+          <p class="branch-switcher__active" data-testid="active-branch">
+            <kd-icon name="map-pin" [size]="20" />
+            <span>Sucursal: {{ active.name }}</span>
+          </p>
         }
         @if (failure(); as message) {
-          <span id="branch-switcher-error" class="field__error" role="alert">{{ message }}</span>
+          <kd-alert tone="error">{{ message }}</kd-alert>
         }
         @if (switching()) {
           <span class="visually-hidden" role="status">Cambiando de sucursal…</span>
@@ -44,6 +50,7 @@ import { SessionStore } from '../../../core/session/session.store';
       </div>
     }
   `,
+  styleUrl: './branch-switcher.scss',
 })
 export class BranchSwitcher {
   private readonly session = inject(SessionStore);

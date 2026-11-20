@@ -17,16 +17,37 @@ describe('navigation', () => {
     expect(menuFor(null)).toEqual([]);
   });
 
-  it('shows the staff entry first with identity.users.read and lands there', () => {
+  it('puts the patient search first for quick access and lands there (MEDK-42)', () => {
     expect(menuFor(STAFF_ADMIN_ACCOUNT).map((item) => item.label)).toEqual([
-      'Personal',
       'Pacientes',
+      'Personal',
       'Roles',
     ]);
-    expect(landingUrl(STAFF_ADMIN_ACCOUNT)).toBe('/staff');
+    expect(landingUrl(STAFF_ADMIN_ACCOUNT)).toBe('/patients');
+    expect(
+      menuFor({ ...STAFF_ADMIN_ACCOUNT, enabledModules: ['identity'] }).map((item) => item.label),
+    ).toEqual(['Personal', 'Roles']);
+    expect(landingUrl({ ...STAFF_ADMIN_ACCOUNT, enabledModules: ['identity'] })).toBe('/staff');
     expect(
       menuFor({ ...STAFF_ADMIN_ACCOUNT, enabledModules: ['patients'] }).map((item) => item.label),
     ).toEqual(['Pacientes']);
+  });
+
+  it('hides the patient search without patients.read even with the module (R9)', () => {
+    const withoutPermission = {
+      ...STAFF_ADMIN_ACCOUNT,
+      permissions: STAFF_ADMIN_ACCOUNT.permissions.filter((code) => code !== 'patients.read'),
+    };
+    expect(menuFor(withoutPermission).map((item) => item.link)).not.toContain('/patients');
+    expect(landingUrl(withoutPermission)).toBe('/staff');
+  });
+
+  it('gives every menu entry an icon of the design system', () => {
+    for (const account of [STAFF_ADMIN_ACCOUNT, SUPER_ADMIN, PATIENT_ACCOUNT]) {
+      for (const item of menuFor(account)) {
+        expect(item.icon, item.label).toBeTruthy();
+      }
+    }
   });
 
   it('knows when the active assignment is OWNER', () => {

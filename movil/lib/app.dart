@@ -6,8 +6,10 @@ import 'app_scope.dart';
 import 'core/connectivity/connectivity_monitor.dart';
 import 'core/connectivity/connectivity_widgets.dart';
 import 'core/session/session_controller.dart';
+import 'design_system/layout.dart';
 import 'design_system/theme.dart';
 import 'design_system/tokens.g.dart';
+import 'design_system/widgets/widgets.dart';
 import 'features/auth/deep_links/deep_link.dart';
 import 'features/auth/ui/email_verification_screen.dart';
 import 'features/auth/ui/invitation_screen.dart';
@@ -165,13 +167,15 @@ class _SessionUnavailable extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.all(KdConstants.space6),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 480),
+              constraints: const BoxConstraints(
+                maxWidth: KdLayout.formMaxWidth,
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const OfflineBanner(),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: KdConstants.space4),
                   Semantics(
                     liveRegion: true,
                     child: const Text(
@@ -179,14 +183,18 @@ class _SessionUnavailable extends StatelessWidget {
                       textAlign: TextAlign.center,
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  FilledButton(
+                  const SizedBox(height: KdConstants.space6),
+                  KdButton(
+                    label: 'Reintentar',
+                    icon: KdIcons.refresh,
+                    expand: true,
                     onPressed: session.reload,
-                    child: const Text('Reintentar'),
                   ),
-                  TextButton(
+                  const SizedBox(height: KdConstants.space2),
+                  KdButton.text(
+                    label: 'Cerrar sesión',
+                    expand: true,
                     onPressed: session.logout,
-                    child: const Text('Cerrar sesión'),
                   ),
                 ],
               ),

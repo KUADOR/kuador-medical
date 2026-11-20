@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../design_system/layout.dart';
 import '../../design_system/tokens.g.dart';
+import '../../design_system/widgets/widgets.dart';
 import '../api/result_page.dart';
 import 'module_widgets.dart';
 
@@ -115,22 +116,19 @@ class _PagedSearchListState<T> extends State<PagedSearchList<T>> {
           KdLayout.fabClearance,
         ),
         children: [
-          TextField(
+          KdTextField(
+            label: widget.searchLabel,
             controller: _search,
             onChanged: _onSearch,
             onSubmitted: (_) => _load(reset: true),
             textInputAction: TextInputAction.search,
-            decoration: InputDecoration(
-              labelText: widget.searchLabel,
-              prefixIcon: const Icon(Icons.search),
-              border: const OutlineInputBorder(),
-            ),
+            prefixIcon: KdIcons.search,
           ),
           if (widget.header != null) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: KdConstants.space3),
             widget.header!,
           ],
-          const SizedBox(height: 12),
+          const SizedBox(height: KdConstants.space3),
           Semantics(
             liveRegion: true,
             child: Text(
@@ -140,7 +138,7 @@ class _PagedSearchListState<T> extends State<PagedSearchList<T>> {
               style: Theme.of(context).textTheme.labelMedium,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: KdConstants.space2),
           for (final item in _items) widget.itemBuilder(context, item),
           if (!_loading && error == null && _items.isEmpty)
             Padding(

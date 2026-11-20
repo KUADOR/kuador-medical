@@ -20,6 +20,7 @@ import { NoticeService } from '../../../core/notice/notice.service';
 import { AuthRoutes } from '../../../core/session/auth-routes';
 import { AuthService, LoginStep, LoginStepExpiredError } from '../../../core/session/auth.service';
 import { nextUrlAfterLogin } from '../../../core/session/login-navigation';
+import { KdAlert, KdButton } from '../../../design-system';
 
 export const LOGIN_STEP_EXPIRED_MESSAGE =
   'Tu inicio de sesión venció. Vuelve a ingresar con tu correo y contraseña.';
@@ -31,8 +32,9 @@ export const LOGIN_STEP_EXPIRED_MESSAGE =
 @Component({
   selector: 'mk-login-selection-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink],
+  imports: [RouterLink, KdAlert, KdButton],
   templateUrl: './login-selection.page.html',
+  styleUrl: '../shared/auth-panel.scss',
 })
 export class LoginSelectionPage {
   private readonly auth = inject(AuthService);

@@ -79,6 +79,54 @@ void main() {
       expect(rules('const r = Radius.elliptical(4, 8);'), ['radius-literal']);
     });
 
+    test('rejects numeric sizes and gaps in widget arguments', () {
+      expect(rules('const g = SizedBox(height: 16);'), ['dimension-literal']);
+      expect(rules('const g = SizedBox(width: 12.5);'), ['dimension-literal']);
+      expect(rules('final w = Wrap(spacing: 8, runSpacing: 4);'), [
+        'dimension-literal',
+        'dimension-literal',
+      ]);
+      expect(rules('final i = Icon(Icons.add, size: 48);'), [
+        'dimension-literal',
+      ]);
+      expect(rules('const d = Divider(height: 1, thickness: 1);'), [
+        'dimension-literal',
+        'dimension-literal',
+      ]);
+      expect(rules('final s = TextStyle(fontSize: 14);'), [
+        'dimension-literal',
+      ]);
+      expect(rules('final c = Card(elevation: 2);'), ['dimension-literal']);
+      expect(rules('const c = BoxConstraints(maxWidth: 480);'), [
+        'dimension-literal',
+      ]);
+      expect(rules('const s = SizedBox.square(dimension: 20);'), [
+        'dimension-literal',
+      ]);
+      expect(rules('const s = Size.fromHeight(48);'), ['dimension-literal']);
+      expect(rules('const s = Size(44, 44);'), ['dimension-literal']);
+    });
+
+    test('accepts sizes and gaps that come from the tokens', () {
+      expect(rules('const g = SizedBox(height: KdConstants.space4);'), isEmpty);
+      expect(rules('final g = SizedBox(width: t.space3);'), isEmpty);
+      expect(rules('final w = Wrap(spacing: KdConstants.space2);'), isEmpty);
+      expect(rules('const g = SizedBox(width: double.infinity);'), isEmpty);
+      expect(rules('final c = Card(elevation: 0);'), isEmpty);
+      expect(
+        rules('const c = BoxConstraints(maxWidth: KdLayout.formMaxWidth);'),
+        isEmpty,
+      );
+      expect(
+        rules('final s = Size(t.sizeTargetMin, t.sizeTargetMin);'),
+        isEmpty,
+      );
+      expect(rules('const g = SizedBox(height: 0.0);'), isEmpty);
+      expect(rules('final s = page.size;'), isEmpty);
+      expect(rules('final s = api.list(size: pageSize);'), isEmpty);
+      expect(rules("final s = Text('height: 16');"), isEmpty);
+    });
+
     test('accepts values that come from the tokens', () {
       expect(rules('const p = EdgeInsets.all(KdConstants.space4);'), isEmpty);
       expect(

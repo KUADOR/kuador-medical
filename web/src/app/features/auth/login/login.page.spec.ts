@@ -8,6 +8,7 @@ import {
   FULL_ACCOUNT,
   LOGIN,
   PLATFORM_LOGIN,
+  STAFF_ADMIN_ACCOUNT,
   SUPER_ADMIN,
   problem,
 } from '../../../../testing/fixtures';
@@ -19,6 +20,7 @@ import {
   type,
 } from '../../../../testing/app-harness';
 import { expectNoAxeViolations } from '../../../../testing/axe';
+import { expectDesignSystemScreen, primaryActions } from '../../../../testing/screen-rules';
 
 describe('LoginPage', () => {
   let app: AppHarness;
@@ -52,6 +54,40 @@ describe('LoginPage', () => {
     await app.settle();
     await expectNoAxeViolations(app.page());
     app.backend.expectNone('/api/v1/auth/login');
+    expectDesignSystemScreen(app.page());
+  });
+
+  it('is built with the design system and has one primary action: Ingresar', async () => {
+    await open();
+    expectDesignSystemScreen(app.page());
+    expect(primaryActions(app.page()).map((b) => b.textContent?.trim())).toEqual(['Ingresar']);
+    expect(app.page().querySelectorAll('kd-field')).toHaveLength(2);
+  });
+
+  it('keeps the flow in 3 actions (baseline F1): email, password and Ingresar', async () => {
+    await open();
+    // Every interactive step of the flow is counted; the audit baseline (F1) is 3.
+    let actions = 0;
+    type(app.page(), '#login-email', 'owner@example.com');
+    actions++;
+    type(app.page(), '#login-password', 'a-long-example-passphrase');
+    actions++;
+    submit(app.page());
+    actions++;
+    app.backend.expectOne('/api/v1/auth/login').flush(LOGIN);
+    await app.settle();
+    app.backend.expectOne('/api/v1/me').flush(STAFF_ADMIN_ACCOUNT);
+    await app.settle();
+
+    expect(actions).toBeLessThanOrEqual(3);
+    // Staff who may read patients land on the search itself (baseline F4: 1 action, now 0).
+    expect(app.router.url).toBe('/patients');
+    app.backend.expectOne('/api/v1/patients?page=0&size=20').flush({
+      items: [],
+      page: 0,
+      size: 20,
+      totalItems: 0,
+    });
   });
 
   it('shows Spanish validation messages and sends nothing when the form is empty', async () => {

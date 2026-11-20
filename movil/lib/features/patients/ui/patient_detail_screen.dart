@@ -191,9 +191,9 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: KdConstants.space2),
               Wrap(
-                spacing: 8,
+                spacing: KdConstants.space2,
                 children: [
                   Chip(label: Text(p.minor ? 'Menor de edad' : 'Adulto')),
                   Chip(label: Text('Cuenta: ${p.accountStatus.label}')),
@@ -208,7 +208,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
               if (p.adultSince != null)
                 InfoRow('Mayor de edad desde', formatDate(p.adultSince!)),
               if (can('patients.edit')) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: KdConstants.space2),
                 OutlinedButton.icon(
                   onPressed: () => _edit(p),
                   icon: const Icon(Icons.edit_outlined),
@@ -223,7 +223,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
                           'el ${formatDateTime(consent.grantedAt)} (versión ${consent.textVersion}).',
               ),
               if (consentMissing && can('patients.register')) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: KdConstants.space2),
                 OutlinedButton.icon(
                   onPressed: () => _recordConsent(p),
                   icon: const Icon(Icons.fact_check_outlined),
@@ -237,7 +237,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
                     : 'Estado de la cuenta: ${p.accountStatus.label}.',
               ),
               if (p.canBeInvited && can('patients.register')) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: KdConstants.space2),
                 OutlinedButton.icon(
                   onPressed: () => _invite(p),
                   icon: const Icon(Icons.forward_to_inbox_outlined),
@@ -263,7 +263,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
                       : null,
                 ),
               if (p.minor && can('patients.guardians.manage')) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: KdConstants.space2),
                 OutlinedButton.icon(
                   onPressed: () => _addGuardian(p),
                   icon: const Icon(Icons.person_add_alt_outlined),

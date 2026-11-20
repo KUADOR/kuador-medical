@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../app_scope.dart';
 import '../../../core/ui/module_widgets.dart';
+import '../../../design_system/tokens.g.dart';
 import '../data/patient_models.dart';
 
 /// Enables or disables the patient self-registration of the clinic
@@ -74,7 +75,7 @@ class _SelfRegistrationSettingsScreenState
                 'desde la web o la app con el código de la clínica. Se exigen los mismos '
                 'datos y el consentimiento, y debe verificar su correo.',
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: KdConstants.space4),
               SwitchListTile(
                 value: settings.selfRegistrationEnabled,
                 contentPadding: EdgeInsets.zero,

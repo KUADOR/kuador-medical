@@ -6,6 +6,8 @@ import '../../../core/api/error_messages.dart';
 import '../../../core/connectivity/connectivity_widgets.dart';
 import '../../../core/ui/module_widgets.dart';
 import '../../../core/util/idempotent_creation.dart';
+import '../../../design_system/tokens.g.dart';
+import '../../../design_system/widgets/widgets.dart';
 import '../../auth/ui/auth_widgets.dart';
 import '../data/patient_models.dart';
 import 'patient_widgets.dart';
@@ -187,13 +189,13 @@ class _MyGuardianLinksScreenState extends State<MyGuardianLinksScreen> {
                       ),
                     ),
                     if (choice == _newPerson) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: KdConstants.space2),
                       GuardianPersonFields(
                         controller: _person,
                         errors: nestedErrors(_fieldErrors, 'person'),
                       ),
                     ],
-                    const SizedBox(height: 16),
+                    const SizedBox(height: KdConstants.space4),
                     Semantics(
                       header: true,
                       child: Text(
@@ -220,18 +222,19 @@ class _MyGuardianLinksScreenState extends State<MyGuardianLinksScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    TextFormField(
+                    const SizedBox(height: KdConstants.space2),
+                    KdTextField(
+                      label: 'Parentesco o relación',
                       controller: _relationship,
+                      textInputAction: TextInputAction.done,
                       validator: (v) =>
                           FormRules.requiredMax(60)(v) ??
                           _fieldErrors['relationship'],
-                      decoration: fieldDecoration('Parentesco o relación'),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: KdConstants.space6),
               OnlineSubmitButton(
                 label: 'Autorizar',
                 busy: _busy,

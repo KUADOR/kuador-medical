@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../design_system/layout.dart';
 import '../design_system/tokens.g.dart';
+import '../design_system/widgets/widgets.dart';
 import 'system_info.dart';
 import 'system_info_client.dart';
 
@@ -52,7 +54,9 @@ class _SystemStatusScreenState extends State<SystemStatusScreen> {
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(KdConstants.space6),
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 480),
+                  constraints: const BoxConstraints(
+                    maxWidth: KdLayout.formMaxWidth,
+                  ),
                   child: content,
                 ),
               ),
@@ -72,13 +76,8 @@ class _Loading extends StatelessWidget {
     return Semantics(
       liveRegion: true,
       label: 'Consultando el estado del sistema',
-      child: const Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CircularProgressIndicator(),
-          SizedBox(height: 16),
-          ExcludeSemantics(child: Text('Consultando el estado del sistema…')),
-        ],
+      child: const ExcludeSemantics(
+        child: KdLoadingState(title: 'Consultando el estado del sistema…'),
       ),
     );
   }
@@ -94,7 +93,7 @@ class _InfoView extends StatelessWidget {
   Widget build(BuildContext context) {
     final allUp =
         info.status == HealthStatus.up && info.database == HealthStatus.up;
-    final theme = Theme.of(context);
+    final t = KdTokens.of(context);
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -106,30 +105,31 @@ class _InfoView extends StatelessWidget {
             allUp
                 ? 'El sistema funciona correctamente'
                 : 'El sistema tiene fallas',
-            style: theme.textTheme.headlineSmall,
+            style: t.typeTitle.copyWith(color: t.textDefault),
             textAlign: TextAlign.center,
           ),
         ),
-        const SizedBox(height: 24),
-        Card(
-          child: Column(
-            children: [
-              _StatusTile(label: 'Aplicación', status: info.status),
-              const Divider(height: 1),
-              _StatusTile(label: 'Base de datos', status: info.database),
-              const Divider(height: 1),
-              ListTile(
-                title: const Text('Versión'),
-                trailing: Text(info.version, style: theme.textTheme.bodyLarge),
+        const SizedBox(height: KdConstants.space6),
+        KdListSection(
+          children: [
+            _StatusTile(label: 'Aplicación', status: info.status),
+            _StatusTile(label: 'Base de datos', status: info.database),
+            KdListTile(
+              leadingIcon: KdIcons.info,
+              title: 'Versión',
+              trailing: Text(
+                info.version,
+                style: t.typeBody.copyWith(color: t.textDefault),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-        const SizedBox(height: 24),
-        OutlinedButton.icon(
+        const SizedBox(height: KdConstants.space6),
+        KdButton.secondary(
+          label: 'Actualizar',
+          icon: KdIcons.refresh,
+          expand: true,
           onPressed: onRefresh,
-          icon: const Icon(Icons.refresh),
-          label: const Text('Actualizar'),
         ),
       ],
     );
@@ -144,23 +144,20 @@ class _StatusTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final t = KdTokens.of(context);
     final up = status == HealthStatus.up;
     final text = up ? 'Disponible' : 'No disponible';
     return MergeSemantics(
-      child: ListTile(
-        // Icon and text: the status never depends on color alone.
-        leading: Icon(
-          up ? Icons.check_circle : Icons.error,
-          color: up ? scheme.primary : scheme.error,
+      child: KdListTile(
+        // Icon and text: the status never depends on color alone (R-08).
+        leading: KdIcon(
+          up ? KdIcons.circleCheck : KdIcons.circleAlert,
+          color: up ? t.colorOk : t.colorError,
         ),
-        title: Text(label),
+        title: label,
         trailing: Text(
           text,
-          style: TextStyle(
-            color: up ? scheme.onSurface : scheme.error,
-            fontWeight: FontWeight.w600,
-          ),
+          style: t.typeLabel.copyWith(color: up ? t.textDefault : t.colorError),
         ),
       ),
     );
@@ -188,26 +185,31 @@ class _ErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final t = KdTokens.of(context);
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Icon(Icons.cloud_off, size: 48, color: theme.colorScheme.error),
-        const SizedBox(height: 16),
+        KdIcon(
+          KdIcons.circleAlert,
+          size: KdLayout.statusIconSize,
+          color: t.colorError,
+        ),
+        const SizedBox(height: KdConstants.space4),
         Semantics(
           liveRegion: true,
           child: Text(
             _message,
-            style: theme.textTheme.titleMedium,
+            style: t.typeSubtitle.copyWith(color: t.textDefault),
             textAlign: TextAlign.center,
           ),
         ),
-        const SizedBox(height: 24),
-        FilledButton.icon(
+        const SizedBox(height: KdConstants.space6),
+        KdButton(
+          label: 'Reintentar',
+          icon: KdIcons.refresh,
+          expand: true,
           onPressed: onRetry,
-          icon: const Icon(Icons.refresh),
-          label: const Text('Reintentar'),
         ),
       ],
     );
