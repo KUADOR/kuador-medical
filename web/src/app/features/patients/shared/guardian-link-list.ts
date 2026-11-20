@@ -6,6 +6,7 @@ import {
   formatDate,
   fullName,
 } from '../../../core/patients/patient-labels';
+import { KdButton, KdEmptyState, KdList, KdListItem } from '../../../design-system';
 
 /** Current links first, then the history, each newest first. */
 export function splitLinks(links: readonly GuardianLink[]): {
@@ -19,84 +20,13 @@ export function splitLinks(links: readonly GuardianLink[]): {
   };
 }
 
-/** Current and historical guardian links, with start and end dates (FR-028). */
+/** Current and historical guardian links, with start and end dates (FR-028). Design system list. */
 @Component({
   selector: 'mk-guardian-link-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    @if (links().length === 0) {
-      <p class="hint" data-testid="links-empty">{{ emptyMessage() }}</p>
-    } @else {
-      <h3>Vigentes</h3>
-      @if (groups().current.length === 0) {
-        <p class="hint" data-testid="no-current">No hay vínculos vigentes.</p>
-      } @else {
-        <ul class="card-list" aria-label="Vínculos vigentes">
-          @for (link of groups().current; track link.id) {
-            <li class="card" data-testid="current-link">
-              <div class="card__title">
-                <strong>{{ fullName(link.guardian) }}</strong>
-                <span class="badge">{{ linkTypeLabels[link.linkType] }}</span>
-              </div>
-              <p>{{ link.relationship }} · desde {{ formatDate(link.validFrom) }}</p>
-              @if (link.authorizedBy) {
-                <p class="hint">Autorizado por el paciente.</p>
-              }
-              @if (canEnd()) {
-                <div class="actions">
-                  <button
-                    type="button"
-                    class="button button--danger"
-                    [attr.data-end-link]="link.id"
-                    (click)="end.emit(link)"
-                  >
-                    Terminar vínculo<span class="visually-hidden">
-                      con {{ fullName(link.guardian) }}</span
-                    >
-                  </button>
-                </div>
-              }
-            </li>
-          }
-        </ul>
-      }
-
-      <h3>Historial</h3>
-      @if (groups().history.length === 0) {
-        <p class="hint" data-testid="no-history">No hay vínculos terminados.</p>
-      } @else {
-        <div class="table-wrapper">
-          <table class="table" data-testid="link-history">
-            <caption class="visually-hidden">
-              Historial de vínculos
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">Persona</th>
-                <th scope="col">Tipo</th>
-                <th scope="col">Relación</th>
-                <th scope="col">Desde</th>
-                <th scope="col">Hasta</th>
-                <th scope="col">Motivo</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (link of groups().history; track link.id) {
-                <tr data-testid="past-link">
-                  <th scope="row">{{ fullName(link.guardian) }}</th>
-                  <td>{{ linkTypeLabels[link.linkType] }}</td>
-                  <td>{{ link.relationship }}</td>
-                  <td>{{ formatDate(link.validFrom) }}</td>
-                  <td>{{ formatDate(link.validTo) }}</td>
-                  <td>{{ link.endReason ? endReasonLabels[link.endReason] : '—' }}</td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      }
-    }
-  `,
+  imports: [KdButton, KdEmptyState, KdList, KdListItem],
+  templateUrl: './guardian-link-list.html',
+  styleUrl: './guardian-link-list.scss',
 })
 export class GuardianLinkList {
   readonly links = input.required<readonly GuardianLink[]>();
@@ -109,4 +39,13 @@ export class GuardianLinkList {
   protected readonly endReasonLabels = END_REASON_LABELS;
   protected readonly formatDate = formatDate;
   protected readonly fullName = fullName;
+
+  /** Relationship, start date and, for links of an adult, who authorized it. */
+  protected describe(link: GuardianLink): string {
+    const parts = [link.relationship, `desde ${formatDate(link.validFrom)}`];
+    if (link.authorizedBy) {
+      parts.push('Autorizado por el paciente.');
+    }
+    return parts.join(' · ');
+  }
 }

@@ -1,5 +1,6 @@
 import { ERROR_MESSAGES } from '../../../core/errors/error-messages';
 import {
+  ACCOUNT,
   ADULT_PATIENT,
   CURRENT_GUARDIAN_LINK,
   ENDED_AT_ADULTHOOD_LINK,
@@ -18,10 +19,17 @@ import {
   submit,
   type,
 } from '../../../../testing/app-harness';
-import type { GuardianLink, Patient } from '../../../core/api/api-types';
+import { expectNoAxeViolations } from '../../../../testing/axe';
+import { polyfillDialog } from '../../../../testing/design-system';
+import type { CurrentSession, GuardianLink, Patient } from '../../../core/api/api-types';
+
+/** Legacy global classes replaced by the design system (MEDK-43). */
+const LEGACY_CLASSES = ['button', 'alert', 'card', 'card-list'];
 
 describe('PatientDetailPage', () => {
   let app: AppHarness;
+
+  beforeAll(() => polyfillDialog());
 
   beforeEach(async () => {
     app = await createAppHarness();
@@ -32,7 +40,7 @@ describe('PatientDetailPage', () => {
   async function open(
     patient: Patient = MINOR_PATIENT,
     links: GuardianLink[] = [CURRENT_GUARDIAN_LINK],
-    account = RECEPTION_ACCOUNT,
+    account: CurrentSession = RECEPTION_ACCOUNT,
   ) {
     await signIn(app, account);
     await app.harness.navigateByUrl(`/patients/${patient.id}`);
@@ -40,6 +48,17 @@ describe('PatientDetailPage', () => {
     await app.settle();
     app.backend.expectOne(`/api/v1/patients/${patient.id}/guardian-links`).flush(links);
     await app.settle();
+  }
+
+  function withPermissions(...permissions: string[]): CurrentSession {
+    return { ...ACCOUNT, roles: ['Prueba'], permissions } as CurrentSession;
+  }
+
+  /** Buttons and links filled with the accent (R-02: at most one per view). */
+  function primaryActions(): string[] {
+    return Array.from(app.page().querySelectorAll('.kd-button--primary'))
+      .filter((element) => !element.closest('dialog'))
+      .map((element) => element.textContent?.trim() ?? '');
   }
 
   it('shows the data, the consent and the current and historical links', async () => {
@@ -58,6 +77,70 @@ describe('PatientDetailPage', () => {
     expect(past[0].textContent).toContain('Terminado por la clínica');
     expect(byTestId(app.page(), 'account')?.textContent).toContain('no tienen cuenta propia');
     expect(byTestId(app.page(), 'invite')).toBeNull();
+  });
+
+  it('shows the same personal data fields as before the redesign', async () => {
+    await open(ADULT_PATIENT, []);
+    const terms = Array.from(byTestId(app.page(), 'personal-data')!.querySelectorAll('dt'), (dt) =>
+      dt.textContent?.trim(),
+    );
+    expect(terms).toEqual([
+      'Documento',
+      'Fecha de nacimiento',
+      'Sexo',
+      'Correo',
+      'Teléfono',
+      'Dirección',
+      'Origen',
+      'Registrado',
+    ]);
+  });
+
+  it('builds the page only with design system components', async () => {
+    await open(MINOR_PATIENT, [CURRENT_GUARDIAN_LINK, ENDED_AT_ADULTHOOD_LINK]);
+    for (const name of LEGACY_CLASSES) {
+      expect(app.page().querySelectorAll(`.${name}`), `.${name}`).toHaveLength(0);
+    }
+    expect(app.page().querySelectorAll('kd-card').length).toBeGreaterThanOrEqual(4);
+    expect(app.page().querySelector('kd-list[label="Vínculos vigentes"]')).not.toBeNull();
+  });
+
+  it('shows a loading state while the patient loads', async () => {
+    await signIn(app, RECEPTION_ACCOUNT);
+    await app.harness.navigateByUrl(`/patients/${ADULT_PATIENT.id}`);
+    await app.settle();
+    expect(app.page().querySelector('kd-loading-state')?.textContent).toContain(
+      'Cargando la ficha del paciente…',
+    );
+    app.backend.expectOne(`/api/v1/patients/${ADULT_PATIENT.id}`).flush(ADULT_PATIENT);
+    await app.settle();
+    app.backend.expectOne(`/api/v1/patients/${ADULT_PATIENT.id}/guardian-links`).flush([]);
+    await app.settle();
+    expect(app.page().querySelector('kd-loading-state')).toBeNull();
+  });
+
+  it('shows an error state with retry when the patient cannot be loaded', async () => {
+    await signIn(app, RECEPTION_ACCOUNT);
+    await app.harness.navigateByUrl(`/patients/${ADULT_PATIENT.id}`);
+    const { body, init } = problem(503, 'SERVICE_UNAVAILABLE');
+    app.backend.expectOne(`/api/v1/patients/${ADULT_PATIENT.id}`).flush(body, init);
+    await app.settle();
+
+    const error = byTestId(app.page(), 'load-error')!;
+    expect(error.getAttribute('role')).toBe('alert');
+    buttonByText(error, 'Volver a intentar').click();
+    app.backend.expectOne(`/api/v1/patients/${ADULT_PATIENT.id}`).flush(ADULT_PATIENT);
+    await app.settle();
+    app.backend.expectOne(`/api/v1/patients/${ADULT_PATIENT.id}/guardian-links`).flush([]);
+    await app.settle();
+    expect(app.page().querySelector('h1')?.textContent).toContain('Alex Poe');
+  });
+
+  it('shows an empty state when the patient has no guardian links', async () => {
+    await open(ADULT_PATIENT, []);
+    expect(byTestId(app.page(), 'links-empty')?.textContent).toContain(
+      'El paciente no tiene representantes ni contactos registrados.',
+    );
   });
 
   it('adds a legal guardian to a minor with an Idempotency-Key', async () => {
@@ -107,14 +190,41 @@ describe('PatientDetailPage', () => {
     expect(allByTestId(app.page(), 'current-link')).toHaveLength(2);
   });
 
+  it('shows the relationship error once the form is submitted empty', async () => {
+    await open();
+    (byTestId(app.page(), 'add-guardian') as HTMLButtonElement).click();
+    await app.settle();
+    submit(byTestId(app.page(), 'guardian-links') as HTMLElement);
+    await app.settle();
+
+    const relationship = app.page().querySelector('#link-relationship')!;
+    expect(relationship.getAttribute('aria-invalid')).toBe('true');
+    expect(app.page().textContent).toContain('Este campo es obligatorio.');
+  });
+
+  it('asks for confirmation in a dialog before ending a link', async () => {
+    await open();
+    buttonByText(app.page(), 'Terminar vínculo').click();
+    await app.settle();
+
+    const dialog = app.page().querySelector('dialog')!;
+    expect(dialog.hasAttribute('open')).toBe(true);
+    expect(dialog.textContent).toContain('¿Terminar el vínculo con Mary Roe?');
+    expect(dialog.querySelector('.kd-button--danger')?.textContent).toContain(
+      'Sí, terminar el vínculo',
+    );
+    expect(document.activeElement).toBe(byTestId(app.page(), 'confirm-end'));
+
+    buttonByText(dialog, 'Cancelar').click();
+    await app.settle();
+    expect(dialog.hasAttribute('open')).toBe(false);
+    expect(document.activeElement?.getAttribute('data-end-link')).toBe(CURRENT_GUARDIAN_LINK.id);
+  });
+
   it('ends a link after confirmation and explains the last legal guardian rule', async () => {
     await open();
     buttonByText(app.page(), 'Terminar vínculo').click();
     await app.settle();
-    expect(app.page().querySelector('[role="alertdialog"]')?.textContent).toContain(
-      '¿Terminar el vínculo con Mary Roe?',
-    );
-    expect(document.activeElement).toBe(byTestId(app.page(), 'confirm-end'));
     (byTestId(app.page(), 'confirm-end') as HTMLButtonElement).click();
 
     const { body, init } = problem(409, 'LAST_LEGAL_GUARDIAN');
@@ -129,6 +239,7 @@ describe('PatientDetailPage', () => {
     expect(byTestId(app.page(), 'links-error')?.textContent?.trim()).toBe(
       ERROR_MESSAGES.LAST_LEGAL_GUARDIAN,
     );
+    expect(app.page().querySelector('dialog')?.hasAttribute('open')).toBe(false);
   });
 
   it('ends a link and reloads the history', async () => {
@@ -172,7 +283,7 @@ describe('PatientDetailPage', () => {
     await app.settle();
 
     expect(byTestId(app.page(), 'notice')?.textContent).toContain('correo registrado');
-    expect(byTestId(app.page(), 'account-status')?.textContent).toBe('Invitación enviada');
+    expect(byTestId(app.page(), 'account-status')?.textContent?.trim()).toBe('Invitación enviada');
   });
 
   it('explains when the invitation channel is unavailable', async () => {
@@ -211,11 +322,101 @@ describe('PatientDetailPage', () => {
     expect(byTestId(app.page(), 'notice')?.textContent).toContain('Se registró el consentimiento');
   });
 
-  it('only shows read actions without the management permissions', async () => {
-    await open(MINOR_PATIENT, [CURRENT_GUARDIAN_LINK], PATIENTS_READER_ACCOUNT);
-    expect(byTestId(app.page(), 'edit-link')).toBeNull();
-    expect(byTestId(app.page(), 'add-guardian')).toBeNull();
-    expect(app.page().textContent).not.toContain('Terminar vínculo');
+  describe('one primary action per view (R-02)', () => {
+    it('is the consent when it is missing', async () => {
+      await open({ ...ADULT_PATIENT, currentConsent: null }, []);
+      expect(primaryActions()).toEqual(['Registrar consentimiento (versión 2026-01)']);
+    });
+
+    it('is the invitation when the consent is current', async () => {
+      await open(ADULT_PATIENT, []);
+      expect(primaryActions()).toEqual(['Enviar invitación']);
+    });
+
+    it('is none when nothing is pending', async () => {
+      await open(MINOR_PATIENT, [CURRENT_GUARDIAN_LINK]);
+      expect(primaryActions()).toEqual([]);
+    });
+
+    it('is none while the add guardian form is closed, and its submit once open', async () => {
+      await open(MINOR_PATIENT, [CURRENT_GUARDIAN_LINK]);
+      (byTestId(app.page(), 'add-guardian') as HTMLButtonElement).click();
+      await app.settle();
+      expect(primaryActions()).toEqual(['Agregar representante']);
+    });
+  });
+
+  describe('visibility by permission', () => {
+    it('only shows read actions without the management permissions', async () => {
+      await open(MINOR_PATIENT, [CURRENT_GUARDIAN_LINK], PATIENTS_READER_ACCOUNT);
+      expect(byTestId(app.page(), 'edit-link')).toBeNull();
+      expect(byTestId(app.page(), 'add-guardian')).toBeNull();
+      expect(app.page().textContent).not.toContain('Terminar vínculo');
+    });
+
+    it('hides consent and invitation without patients.register', async () => {
+      await open(
+        { ...ADULT_PATIENT, currentConsent: null },
+        [],
+        withPermissions('patients.read', 'patients.edit', 'patients.guardians.manage'),
+      );
+      expect(byTestId(app.page(), 'edit-link')).not.toBeNull();
+      expect(app.page().textContent).not.toContain('Registrar consentimiento');
+      expect(byTestId(app.page(), 'invite')).toBeNull();
+    });
+
+    it('shows consent and invitation with patients.register, without edit or links', async () => {
+      await open(
+        { ...ADULT_PATIENT, currentConsent: null },
+        [],
+        withPermissions('patients.read', 'patients.register'),
+      );
+      expect(byTestId(app.page(), 'edit-link')).toBeNull();
+      expect(app.page().textContent).toContain('Registrar consentimiento');
+      expect(byTestId(app.page(), 'invite')).not.toBeNull();
+      expect(byTestId(app.page(), 'adult-hint')).toBeNull();
+    });
+
+    it('manages guardian links only with patients.guardians.manage', async () => {
+      await open(
+        MINOR_PATIENT,
+        [CURRENT_GUARDIAN_LINK],
+        withPermissions('patients.read', 'patients.guardians.manage'),
+      );
+      expect(byTestId(app.page(), 'edit-link')).toBeNull();
+      expect(byTestId(app.page(), 'add-guardian')).not.toBeNull();
+      expect(app.page().textContent).toContain('Terminar vínculo');
+    });
+  });
+
+  describe('accessibility (axe)', () => {
+    it('minor patient with links and the management actions', async () => {
+      await open(MINOR_PATIENT, [CURRENT_GUARDIAN_LINK, ENDED_AT_ADULTHOOD_LINK]);
+      await expectNoAxeViolations(app.page());
+    });
+
+    it('adult patient with consent and invitation pending', async () => {
+      await open({ ...ADULT_PATIENT, currentConsent: null }, []);
+      await expectNoAxeViolations(app.page());
+    });
+
+    it('add guardian form and end link dialog', async () => {
+      await open();
+      (byTestId(app.page(), 'add-guardian') as HTMLButtonElement).click();
+      await app.settle();
+      buttonByText(app.page(), 'Terminar vínculo').click();
+      await app.settle();
+      await expectNoAxeViolations(app.page());
+    });
+
+    it('error state', async () => {
+      await signIn(app, RECEPTION_ACCOUNT);
+      await app.harness.navigateByUrl('/patients/unknown');
+      const { body, init } = problem(404, 'NOT_FOUND');
+      app.backend.expectOne('/api/v1/patients/unknown').flush(body, init);
+      await app.settle();
+      await expectNoAxeViolations(app.page());
+    });
   });
 
   it('says so when the patient does not exist in the clinic', async () => {
@@ -224,7 +425,7 @@ describe('PatientDetailPage', () => {
     const { body, init } = problem(404, 'NOT_FOUND');
     app.backend.expectOne('/api/v1/patients/unknown').flush(body, init);
     await app.settle();
-    expect(byTestId(app.page(), 'load-error')?.textContent?.trim()).toBe(ERROR_MESSAGES.NOT_FOUND);
+    expect(byTestId(app.page(), 'load-error')?.textContent).toContain(ERROR_MESSAGES.NOT_FOUND);
     expect(app.page().textContent).not.toContain('Volver a intentar');
   });
 });

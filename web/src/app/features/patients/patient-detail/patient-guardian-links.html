@@ -1,0 +1,112 @@
+<kd-card heading="Representantes y vínculos" data-testid="guardian-links">
+  <div class="guardian-links">
+    <div aria-live="polite">
+      @if (notice(); as message) {
+        <kd-alert tone="ok" data-testid="links-notice" dismissible (dismissed)="notice.set(null)">
+          {{ message }}
+        </kd-alert>
+      }
+    </div>
+    @if (actionFailure(); as message) {
+      <kd-alert tone="error" data-testid="links-error">{{ message }}</kd-alert>
+    }
+
+    <div [attr.aria-busy]="state().kind === 'loading'">
+      @switch (state().kind) {
+        @case ('loading') {
+          <kd-loading-state label="Cargando vínculos…" />
+        }
+        @case ('failed') {
+          <kd-error-state
+            data-testid="links-load-error"
+            heading="No pudimos cargar los vínculos"
+            [description]="loadFailure() ?? ''"
+            [headingLevel]="3"
+            retryLabel="Volver a intentar"
+            (retry)="load()"
+          />
+        }
+        @default {
+          <mk-guardian-link-list
+            [links]="links()"
+            [canEnd]="canManage()"
+            emptyMessage="El paciente no tiene representantes ni contactos registrados."
+            (end)="askEnd($event)"
+          />
+        }
+      }
+    </div>
+
+    @if (canManage()) {
+      @if (patient().minor) {
+        @if (adding()) {
+          <form class="guardian-links__form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+            <fieldset class="guardian-links__fieldset">
+              <legend class="guardian-links__legend">Agregar representante legal</legend>
+              @if (formFailure(); as message) {
+                <kd-alert tone="error" data-testid="add-error">{{ message }}</kd-alert>
+              }
+              <kd-field label="Parentesco o relación">
+                <input
+                  kdInput
+                  id="link-relationship"
+                  type="text"
+                  formControlName="relationship"
+                  autocomplete="off"
+                />
+              </kd-field>
+              <mk-guardian-person-fields [group]="form.controls.person" idPrefix="link" />
+              <div class="guardian-links__actions">
+                <button kdButton variant="primary" type="submit" [disabled]="saving()">
+                  {{ saving() ? 'Guardando…' : 'Agregar representante' }}
+                </button>
+                <button kdButton variant="tertiary" type="button" (click)="closeForm()">
+                  Cancelar
+                </button>
+              </div>
+            </fieldset>
+          </form>
+        } @else {
+          <div class="guardian-links__actions">
+            <button
+              kdButton
+              type="button"
+              icon="user-plus"
+              data-testid="add-guardian"
+              (click)="openForm()"
+            >
+              Agregar representante legal
+            </button>
+          </div>
+        }
+      } @else {
+        <p class="guardian-links__muted" data-testid="adult-hint">
+          El paciente es mayor de edad: solo él puede autorizar un contacto de emergencia o un
+          acceso delegado desde su cuenta.
+        </p>
+      }
+    }
+  </div>
+</kd-card>
+
+<kd-dialog
+  [heading]="confirmHeading()"
+  description="Quedará en el historial con la fecha de hoy y dejará de dar acceso."
+  closeLabel="Cerrar sin terminar el vínculo"
+  [(open)]="dialogOpen"
+  (closed)="onDialogClosed()"
+>
+  <div kdDialogActions class="guardian-links__actions">
+    <button
+      kdButton
+      variant="danger"
+      type="button"
+      data-testid="confirm-end"
+      [disabled]="ending()"
+      (click)="confirmEnd()"
+    >
+      {{ ending() ? 'Terminando…' : 'Sí, terminar el vínculo' }}
+    </button>
+    <button kdButton variant="tertiary" type="button" (click)="cancelEnd()">Cancelar</button>
+  </div>
+</kd-dialog>

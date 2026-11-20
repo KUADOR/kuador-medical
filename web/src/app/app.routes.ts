@@ -19,7 +19,6 @@ import { VerifyEmailPage } from './features/auth/verify-email/verify-email.page'
 import { ChangePasswordPage } from './features/change-password/change-password.page';
 import { MessagePage } from './features/message/message.page';
 import { MyGuardianLinksPage } from './features/patients/my-guardian-links/my-guardian-links.page';
-import { PatientDetailPage } from './features/patients/patient-detail/patient-detail.page';
 import { PatientFormPage } from './features/patients/patient-form/patient-form.page';
 import { PatientsListPage } from './features/patients/patients-list/patients-list.page';
 import { SelfRegistrationSettingsPage } from './features/patients/self-registration-settings/self-registration-settings.page';
@@ -165,7 +164,11 @@ export const routes: Routes = [
   },
   {
     path: 'patients/:id',
-    component: PatientDetailPage,
+    // Lazy: the record pulls the dialog and list components out of the initial bundle.
+    loadComponent: () =>
+      import('./features/patients/patient-detail/patient-detail.page').then(
+        (m) => m.PatientDetailPage,
+      ),
     canActivate: [requireAccess({ permissions: ['patients.read'], module: Modules.patients })],
     title: `Paciente · ${APP_TITLE}`,
   },

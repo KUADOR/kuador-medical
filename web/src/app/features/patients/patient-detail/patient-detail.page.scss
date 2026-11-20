@@ -1,0 +1,125 @@
+// Patient record (MEDK-43): layout only; every value comes from the --kd-* tokens.
+:host {
+  display: block;
+}
+
+.patient-record {
+  display: grid;
+  gap: var(--kd-space-4);
+  max-width: 72rem;
+  margin: 0 auto;
+}
+
+.patient-record__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--kd-space-3);
+}
+
+.patient-record__identity {
+  display: grid;
+  gap: var(--kd-space-2);
+  min-width: 0;
+}
+
+.patient-record__title {
+  margin: 0;
+  font: var(--kd-type-display);
+  overflow-wrap: anywhere;
+}
+
+.patient-record__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kd-space-2);
+  margin: 0;
+}
+
+.patient-record__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--kd-space-1);
+  padding: var(--kd-space-1) var(--kd-space-3);
+  border: var(--kd-border-hairline);
+  border-radius: var(--kd-radius-full);
+  background: var(--kd-surface-sunken);
+  color: var(--kd-text-default);
+  font: var(--kd-type-body-sm);
+}
+
+// One column on narrow screens; data on the left and consent + account on the right from 64rem.
+.patient-record__grid {
+  display: grid;
+  gap: var(--kd-space-4);
+  align-items: start;
+
+  @media (min-width: 64rem) {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  }
+}
+
+.patient-record__side {
+  display: grid;
+  gap: var(--kd-space-4);
+}
+
+.patient-record__fields {
+  display: grid;
+  gap: var(--kd-space-3) var(--kd-space-4);
+  margin: 0;
+
+  @media (min-width: 40rem) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.patient-record__field {
+  display: grid;
+  gap: var(--kd-space-1);
+
+  dt {
+    color: var(--kd-text-muted);
+    font: var(--kd-type-label);
+  }
+
+  dd {
+    margin: 0;
+    font: var(--kd-type-body);
+    overflow-wrap: anywhere;
+  }
+}
+
+.patient-record__status {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--kd-space-2);
+  margin: 0;
+}
+
+.patient-record__muted {
+  margin: 0;
+  color: var(--kd-text-muted);
+  font: var(--kd-type-body-sm);
+}
+
+.patient-record__form {
+  display: grid;
+  gap: var(--kd-space-3);
+}
+
+.patient-record__fieldset {
+  display: grid;
+  gap: var(--kd-space-2);
+  margin: 0;
+  padding: 0;
+  border: none;
+  min-width: 0;
+}
+
+.patient-record__legend {
+  margin-bottom: var(--kd-space-2);
+  padding: 0;
+  font: var(--kd-type-label);
+}
