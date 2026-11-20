@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../app_scope.dart';
 import '../../../core/ui/module_widgets.dart';
 import '../../../core/util/idempotent_creation.dart';
+import '../../../design_system/tokens.g.dart';
 import '../../auth/data/registration_catalog.dart';
 import '../data/patient_models.dart';
 import 'add_guardian_screen.dart';
@@ -271,7 +272,7 @@ class _PatientDetailScreenState extends State<PatientDetailScreen> {
               ],
               if (!p.minor)
                 const Padding(
-                  padding: EdgeInsets.only(top: 8),
+                  padding: EdgeInsets.only(top: KdConstants.space2),
                   child: Text(
                     'Un paciente adulto autoriza a sus contactos desde su propia cuenta.',
                   ),

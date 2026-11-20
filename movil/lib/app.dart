@@ -6,6 +6,8 @@ import 'app_scope.dart';
 import 'core/connectivity/connectivity_monitor.dart';
 import 'core/connectivity/connectivity_widgets.dart';
 import 'core/session/session_controller.dart';
+import 'design_system/theme.dart';
+import 'design_system/tokens.g.dart';
 import 'features/auth/deep_links/deep_link.dart';
 import 'features/auth/ui/email_verification_screen.dart';
 import 'features/auth/ui/invitation_screen.dart';
@@ -106,7 +108,6 @@ class _MedicalKuadorAppState extends State<MedicalKuadorApp> {
 
   @override
   Widget build(BuildContext context) {
-    const seed = Color(0xFF00695C);
     return AppScope(
       services: widget.services,
       child: ConnectivityScope(
@@ -115,13 +116,10 @@ class _MedicalKuadorAppState extends State<MedicalKuadorApp> {
           navigatorKey: _navigatorKey,
           title: 'Medical Kuador',
           debugShowCheckedModeBanner: false,
-          theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: seed)),
-          darkTheme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: seed,
-              brightness: Brightness.dark,
-            ),
-          ),
+          theme: KdTheme.light,
+          darkTheme: KdTheme.dark,
+          themeMode: KdTheme.mode,
+          builder: KdTheme.builder,
           home: ListenableBuilder(
             listenable: _session,
             builder: (context, _) => switch (_session.status) {
@@ -165,7 +163,7 @@ class _SessionUnavailable extends StatelessWidget {
       body: SafeArea(
         child: Center(
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(KdConstants.space6),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 480),
               child: Column(

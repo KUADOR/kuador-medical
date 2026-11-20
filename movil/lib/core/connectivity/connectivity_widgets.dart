@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../design_system/tokens.g.dart';
 import 'connectivity_monitor.dart';
 
 /// Makes the [ConnectivityMonitor] available to the widget tree.
@@ -36,9 +37,9 @@ class OfflineBanner extends StatelessWidget {
       container: true,
       child: Material(
         color: scheme.errorContainer,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(KdConstants.radiusLg),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(KdConstants.space3),
           child: Row(
             children: [
               Icon(Icons.wifi_off, color: scheme.onErrorContainer),
