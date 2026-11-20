@@ -8,12 +8,12 @@ Datos: solo los usuarios semilla del perfil `local` y pacientes ficticios creado
 
 | Tema | Resultado | Efecto en la épica |
 |---|---|---|
-| Pantallas principales | Existen **3 de 5** en web y **1 de 5** en móvil. No existen ni tienen API: agenda del día, gestión de citas, agendar cita, mis citas, resultados e historial, y perfil del paciente. | Se cumple **R2**: según la spec, estas pantallas quedan fuera de la épica. Las tareas 9, 10, 12, 13 y 14 se reducen. |
+| Pantallas principales | Existen **4 de 6** en web y **1 de 5** en móvil. No existen ni tienen API: agenda del día, gestión de citas, agendar cita, mis citas, resultados e historial, y perfil del paciente. | Se cumple **R2**: según la spec, estas pantallas quedan fuera de la épica. Las tareas 9, 10, 12, 13 y 14 se reducen. |
 | Estilos sueltos web | Las pantallas no tienen estilos propios: todo sale de clases globales. Los valores literales están en 4 archivos (`styles.scss` concentra casi todos). | La migración web es barata: se reemplaza `styles.scss` por los tokens y casi no se tocan plantillas. |
 | Estilos sueltos móvil | 1 color literal (semilla del tema), 20 `EdgeInsets`, 1 radio y 74 `SizedBox` con números, repartidos en 26 archivos. No se usa `Colors.*`. | La migración Flutter es mecánica (espaciados). Riesgo **R8** bajo. |
 | Línea base de flujos | Ingreso: 3 acciones. Buscar y abrir ficha: 3 acciones. Registrar paciente: 8 acciones. Agendar, cancelar y reprogramar no se pueden medir porque no existen. | SC-006 y SC-007 no se pueden medir en esta épica. Hay que ajustar la spec (**R7**). |
 | LCP web | Imagen de producción (nginx): **3,7 s** en perfil móvil y **0,7 s** en escritorio. El mismo build servido con compresión: **1,8 s** en móvil. | **SC-010 no se cumple hoy en móvil**. La causa es que nginx no comprime el JS (519 KB sin comprimir), no la interfaz. |
-| Arranque Flutter | **Pendiente**: no hubo un dispositivo físico de referencia conectado. El protocolo y los dispositivos quedan fijados (§ 4.2). | SC-011 sigue con su umbral; hay que medirlo antes de la tarea 12. |
+| Arranque Flutter | **Condición aceptada por el Equipo Kuador (MEDK-34)**: se mide antes de la tarea 12, porque no hubo un dispositivo físico de referencia conectado. El protocolo y los dispositivos quedan fijados (§ 4.2). | SC-011 sigue con su umbral. |
 | Pruebas existentes (SC-005) | Web: 37 archivos y 293 pruebas en verde. Flutter: 114 pruebas en verde. | Es la línea base de no regresión. |
 
 ## 1. Inventario de pantallas
@@ -80,7 +80,7 @@ Cómo se contó (reproducible desde la raíz del repo, rama de esta tarea):
 
 | Archivo | Hex | Colores con nombre | px | rem/em | `border-radius` | Nota |
 |---|---|---|---|---|---|---|
-| `src/styles.scss` (global, 518 líneas) | 13 | 0 | 21 | 37 | 11 | Los 13 hex están en `:root` (`--color-*`). Ya hay variables de color, espacio (`--space-1…8`) y radio (`--radius`), pero fuera de `:root` quedan unos 60 literales: bordes de 1–4 px, alturas de 2,75rem, tamaños de letra y `999px`/`50%`. |
+| `src/styles.scss` (global, 518 líneas) | 13 | 0 | 21 | 37 | 11 | Los 13 hex están en `:root` (`--color-*`). Ya hay variables de color, espacio (`--space-1…8`) y radio (`--radius`), pero fuera de `:root` quedan **51 longitudes literales** (21 en px y 30 en rem/em): bordes de 1–4 px, alturas de 2,75rem, tamaños de letra y los dos radios `999px`. A eso se suma 1 radio `50%`. De las 11 declaraciones `border-radius`, 8 usan `var(--radius)`. Dentro de `:root` hay 13 hex y 7 rem, que son las variables actuales. |
 | `src/app/app.scss` (marco) | 0 | 1 | 1 | 4 | 2 | |
 | `src/app/features/status/status.page.scss` | 0 | 0 | 3 | 3 | 3 | Única pantalla con hoja propia. |
 | `src/app/features/message/message.page.ts` (estilo en línea) | 0 | 0 | 0 | 1 | 0 | `max-width: 40rem`. |
@@ -124,14 +124,14 @@ Uso de clases por pantalla principal: ingreso 11, selección de clínica o sucur
 
 El tema actual es `ColorScheme.fromSeed` con un solo color semilla en `app.dart`, en claro y oscuro. Las pantallas ya leen `Theme.of(context).colorScheme`. No hay tamaños de letra escritos a mano.
 
-Las pantallas principales del paciente que existen (ingreso, registro y sus pasos) suman 22 literales numéricos y ningún color.
+Las pantallas principales del paciente que existen (ingreso, registro y sus pasos) suman **21 literales numéricos** y ningún color: `login_screen` 4, `clinic_selection_screen` 1, `self_registration_screen` 3, `invitation_screen` 5, `email_verification_screen` 2, `password_reset_confirm_screen` 3 y `password_reset_request_screen` 3. `branch_selection_screen.dart` y `login_flow.dart` dan 0. Si se incluye `auth_widgets.dart` (4), que comparten esas pantallas, son **25**.
 
 ### 2.3 Lectura para R8
 
 La migración visual de las no principales es **acotada**:
 
 - En web es sobre todo reescribir `styles.scss` contra tokens y extraer componentes de las clases globales.
-- En Flutter son unas 95 sustituciones mecánicas de espaciado.
+- En Flutter son 95 sustituciones (20 `EdgeInsets` + 1 radio + 74 `SizedBox`) mecánicas de espaciado.
 
 No veo motivo para partir las tareas 11 y 14.
 
@@ -200,7 +200,7 @@ Protocolo de medición:
 3. Leer `timeToFirstFrameMicros` de `build/start_up_info.json`.
 4. Para la fluidez: en `integration_test`, `traceAction` sobre el desplazamiento de la lista de contactos, con `FrameTiming`. Se reportan los cuadros > 16 ms.
 
-**Estado: pendiente.** En esta sesión no había ningún dispositivo físico disponible:
+**Estado: condición aceptada por el Equipo Kuador en MEDK-34, se mide antes de la tarea 12.** En esta sesión no había ningún dispositivo físico disponible:
 
 - `flutter devices` no encontró ninguno conectado.
 - No hay un AVD Android creado.
@@ -223,9 +223,9 @@ Queda como **condición previa a la tarea 12**: una persona con el dispositivo d
 
 ## 6. Umbrales de los SC: confirmados o ajustados
 
-Según R7, cambiar un SC es cambiar la spec: lo que sigue es una **propuesta** que una persona aprueba en la spec. La tarea 15 mide contra la versión acordada.
+Según R7, cambiar un SC es cambiar la spec. Los ajustes de esta sección (incluidos SC-006 y SC-007 «no aplica en esta épica» y el alcance de SC-008) **fueron aprobados por el Equipo Kuador en MEDK-34**, tal como están. Falta reflejarlos en la spec de MEDK-33. La tarea 15 mide contra esta versión.
 
-| SC | Umbral actual | Propuesta | Motivo |
+| SC | Umbral actual | Decisión (aprobada) | Motivo |
 |---|---|---|---|
 | SC-001 | 100 % de las principales sin literales | **Confirmar**, aplicado a las principales que existen (§ 1) | Es medible con las guardas de las tareas 4 y 5. |
 | SC-002 | AA en claro y oscuro | **Confirmar** | — |
@@ -234,13 +234,13 @@ Según R7, cambiar un SC es cambiar la spec: lo que sigue es una **propuesta** q
 | SC-005 | Pruebas existentes en verde | **Confirmar**, con la base de § 5 (293 + 114) | — |
 | SC-006 | Agendar en ≤ 4 pasos y < 60 s | **Ajustar: «no aplica en esta épica»** | Agendar cita no existe ni tiene API (R2). Queda como meta para la épica que cree el módulo de citas. |
 | SC-007 | Cancelar o reprogramar en ≤ 3 pasos | **Ajustar: «no aplica en esta épica»** | Mismo motivo. |
-| SC-008 | −20 % de tiempo frente a la línea base en los demás flujos principales | **Ajustar el alcance** a F1, F2 y F4 (§ 3). Proponer como medida: el tiempo de la sesión moderada (−20 %) y, como apoyo, que no suban las acciones (F1 ≤ 3, F2 ≤ 3, F4 ≤ 1). | El tiempo guionado ya es de 0,2–0,4 s y una mejora visual no lo baja. El tiempo humano se mide en el cierre, con la base que se tome al inicio de la tarea 9. |
+| SC-008 | −20 % de tiempo frente a la línea base en los demás flujos principales | **Ajustar el alcance** a F1, F2 y F4 (§ 3). Medida: el tiempo de la sesión moderada (−20 %) y, como apoyo, que no suban las acciones (F1 ≤ 3, F2 ≤ 3, F4 ≤ 1). | El tiempo guionado ya es de 0,2–0,4 s y una mejora visual no lo baja. El tiempo humano se mide en el cierre, con la base que se tome al inicio de la tarea 9. |
 | SC-009 | 90 % sin ayuda | **Confirmar**, sobre F1, F2, F5 y F6 | — |
 | SC-010 | LCP < 2,5 s | **Confirmar 2,5 s**, medido con el perfil móvil de Lighthouse sobre la imagen de producción | Hoy da 3,7 s por la falta de compresión en nginx (§ 4.1). Corregirlo **antes** de la tarea 9 permite atribuir bien el resultado. |
 | SC-011 | Arranque < 2 s y sin tirones | **Confirmar**, en los dispositivos de referencia de § 4.2 | Base pendiente de medir en un dispositivo físico. |
 | SC-012 | Aprobación formal | **Confirmar** | — |
 
-Otras propuestas que salen de la auditoría:
+Otras propuestas que salen de la auditoría (no forman parte de la aprobación de los SC):
 
 1. **Lista de pantallas principales (spec, decisiones de negocio).**
    - Web: ingreso (con la selección de clínica y sucursal), búsqueda de pacientes, ficha del paciente y navegación.
