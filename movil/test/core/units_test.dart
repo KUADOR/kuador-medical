@@ -246,7 +246,7 @@ void main() {
 
   test('AppConfig defaults', () {
     final config = AppConfig.fromEnvironment();
-    expect(config.apiBaseUrl, AppConfig.defaultApiBaseUrl);
+    expect(config.apiBaseUrl, 'http://10.0.2.2:8080/api/v1');
     expect(config.appLinkHost, '');
     expect(config.consentTextVersion, AppConfig.defaultConsentTextVersion);
   });

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds only (src/debug): allows plain HTTP to reach the local api from the
+     emulator (10.0.2.2), the simulator host (localhost) or a physical device on the
+     same network (http://<LAN-IP>:8080). Release and profile builds do not include
+     this file and keep the platform default (HTTPS only). -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

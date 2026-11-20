@@ -36,13 +36,36 @@ Rules shared with the web (same contract, same Spanish messages):
 
 | Variable | How | Default | Example |
 |---|---|---|---|
-| `API_BASE_URL` | `--dart-define` at build/run time | `http://localhost:8080/api/v1` | `http://10.0.2.2:8080/api/v1` (Android emulator against a local API) |
+| `API_BASE_URL` | `--dart-define` at build/run time (`lib/core/config/api_config.dart`) | `http://10.0.2.2:8080` (local api from the Android emulator) | iOS simulator `http://localhost:8080`; physical device `http://<LAN-IP>:8080`; other environments `https://<api-host>` |
 | `APP_LINK_HOST` | `--dart-define` (Dart and Android manifest); iOS: `ios/Flutter/AppLinks.local.xcconfig` | empty in Dart (any `https` host is accepted, local only); `localhost` in the manifest and entitlements | `links.example.com` |
 | `CONSENT_TEXT_VERSION` | `--dart-define` | `2026-01` | `2026-01` |
 
-- `API_BASE_URL` includes the `/api/v1` prefix. Plain HTTP is only allowed in
-  Android debug builds and for local networking on iOS; other environments must
-  use HTTPS.
+- `API_BASE_URL` is the api origin; the app appends `/api/v1`. A value that
+  already ends in `/api/v1` is accepted too. A value that is not an `http` or
+  `https` URL stops the app at start-up with an error that names the variable.
+- Plain HTTP is only allowed in debug builds: on Android through
+  `android/app/src/debug/res/xml/network_security_config.xml` (only merged into
+  debug builds); on iOS through `NSAllowsLocalNetworking` in `Info.plist`, which
+  the "Strip Local Networking" build phase
+  (`ios/scripts/strip_local_networking.sh`) removes from Release and Profile
+  builds. Other environments must use HTTPS.
+- When the api cannot be reached (refused connection, no network or a 15 s
+  timeout) the screens say so in Spanish; requests, tokens and personal data
+  are never printed or logged (`test/features/local_api_connection_test.dart`
+  checks it).
+
+### Local api
+
+Start the api as described in `docs/deployment.md` («Entorno local»), then:
+
+```bash
+flutter run                                                        # Android emulator (default http://10.0.2.2:8080)
+flutter run --dart-define=API_BASE_URL=http://localhost:8080       # iOS simulator
+flutter run --dart-define=API_BASE_URL=http://192.168.1.50:8080    # physical device: use your machine's LAN IP
+```
+
+A physical device must be on the same network as the machine, the api must
+listen on all interfaces and the firewall must allow port 8080.
 - `APP_LINK_HOST` is the host of `KUADOR_APP_LINK_BASE_URL` of the api, without
   scheme. On Android, Gradle reads it from the `--dart-define` values and sets
   the `autoVerify` intent filter of `AndroidManifest.xml`. On iOS, Associated
@@ -85,9 +108,9 @@ xcrun simctl openurl booted "https://localhost/invitation#t=<token>"
 flutter pub get
 flutter analyze
 flutter test
-flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8080/api/v1
-flutter build apk --dart-define=API_BASE_URL=https://<api-host>/api/v1 --dart-define=APP_LINK_HOST=<deep-link-host>
-flutter build ios --dart-define=API_BASE_URL=https://<api-host>/api/v1 --dart-define=APP_LINK_HOST=<deep-link-host>
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8080
+flutter build apk --dart-define=API_BASE_URL=https://<api-host> --dart-define=APP_LINK_HOST=<deep-link-host>
+flutter build ios --dart-define=API_BASE_URL=https://<api-host> --dart-define=APP_LINK_HOST=<deep-link-host>
 ```
 
 Requires Flutter stable (Dart >= 3.10) and, for Android builds, JDK 17+.
@@ -100,6 +123,7 @@ lib/
   app.dart, app_scope.dart  # Root widget, session-driven navigation, services
   config.dart               # AppConfig (API_BASE_URL, APP_LINK_HOST, CONSENT_TEXT_VERSION)
   core/
+    config/                 # ApiConfig: reads and validates API_BASE_URL
     api/                    # HTTP client with bearer token, refresh, API errors, Spanish messages, pages
     ui/                     # Module page, paged search list, shared form helpers
     session/                # Session controller, token store, /me models

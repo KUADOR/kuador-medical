@@ -108,7 +108,7 @@ Solo nombres: los valores nunca van en este documento ni en el repo. En local vi
 | API_PORT | api | local | `.env` | no | Puerto del host para la api en el perfil `full` |
 | WEB_PORT | web | local | `.env` | no | Puerto del host para la web en el perfil `full` |
 | API_PROXY_TARGET | web (servidor de desarrollo, `proxy.conf.mjs`) | local | variable del shell al correr `npm start` | no | Destino del proxy de desarrollo de `/api` y `/actuator`. Por defecto `http://localhost:8080`; debe ser una URL `http(s)` (si no, `npm start` no arranca). La web escucha en `http://localhost:4200` (`ng serve`) |
-| API_BASE_URL | web (`config.json`), movil (`--dart-define`) | todos | web: `public/config.json` (por defecto `/api/v1`, mismo origen) o variable del contenedor web, que reescribe `config.json` al arrancar; movil: `--dart-define` | no | URL de la api (`…/api/v1`). En la web, una URL de otro origen exige incluir el origen de la web en `KUADOR_CORS_ALLOWED_ORIGINS` |
+| API_BASE_URL | web (`config.json`), movil (`--dart-define`) | todos | web: `public/config.json` (por defecto `/api/v1`, mismo origen) o variable del contenedor web, que reescribe `config.json` al arrancar; movil: `--dart-define` al compilar o ejecutar | no | URL de la api. En la web, `…/api/v1`; una URL de otro origen exige incluir el origen de la web en `KUADOR_CORS_ALLOWED_ORIGINS`. En movil, el origen de la api (la app agrega `/api/v1`; también acepta un valor que ya termine en `/api/v1`); por defecto `http://10.0.2.2:8080` (emulador Android contra la api local). Valores locales en «App móvil contra la api local». Fuera de local, siempre `https://` |
 | APP_LINK_HOST | movil (`--dart-define`; iOS: `ios/Flutter/AppLinks.local.xcconfig`, no se versiona) | pruebas, producción | build de la app | no | Host de `KUADOR_APP_LINK_BASE_URL` sin esquema [POR DEFINIR: dominio]. Android lo pone en el `intent-filter` con `autoVerify` y iOS en `applinks:` de Associated Domains; la app solo acepta enlaces `https` de ese host. Sin valor: `localhost` en el manifiesto y los entitlements, y la app acepta cualquier host (solo para builds locales) |
 | [POR DEFINIR: credenciales de proveedores de pagos y facturación] | api | pruebas, producción | [POR DEFINIR] | sí | — |
 
@@ -178,6 +178,21 @@ Prerrequisitos: JDK 25 y la base local levantada (subsección anterior).
 8. Detener: `docker compose down` (con `-v` se borran los datos locales).
 
 Si el puerto 5432 del equipo ya está ocupado, cambiar `DB_PORT` y el puerto de `DB_URL` en `.env` (por ejemplo 55432).
+
+#### App móvil contra la api local
+
+Con la api levantada en el puerto 8080 (pasos anteriores), desde `movil/`:
+
+| Dónde corre la app | `API_BASE_URL` | Comando |
+|---|---|---|
+| Emulador Android | `http://10.0.2.2:8080` (valor por defecto) | `flutter run` |
+| Simulador iOS | `http://localhost:8080` | `flutter run --dart-define=API_BASE_URL=http://localhost:8080` |
+| Dispositivo físico (Android o iOS) | `http://<IP-LAN-del-equipo>:8080` | `flutter run --dart-define=API_BASE_URL=http://<IP-LAN-del-equipo>:8080` |
+
+- IP LAN del equipo: `ipconfig getifaddr en0` en macOS, `hostname -I` en Linux, `ipconfig` en Windows. El teléfono debe estar en la misma red (sin aislamiento de clientes en el wifi), la api debe escuchar en todas las interfaces (`SERVER_ADDRESS`, por defecto `0.0.0.0` en el perfil `local`) y el firewall del equipo debe permitir conexiones entrantes al puerto 8080.
+- HTTP en claro solo en builds debug: en Android, `android/app/src/debug/res/xml/network_security_config.xml` (solo se incluye en debug); en iOS, `NSAllowsLocalNetworking` en `Info.plist`, que la fase de build «Strip Local Networking» (`ios/scripts/strip_local_networking.sh`) quita en Release y Profile. Las builds release y profile solo permiten HTTPS.
+- Si la api no responde (apagada, rechazo de conexión o 15 s sin respuesta), la app muestra «No pudimos conectarnos con el servidor. Revisa tu conexión e inténtalo de nuevo.». La app no registra tokens, contraseñas ni datos personales en consola.
+- Un valor de `API_BASE_URL` que no sea una URL `http`/`https` detiene la app al iniciar con un error que nombra la variable, sin mostrar el valor.
 
 ### Primera vez (pruebas y producción)
 
@@ -282,3 +297,4 @@ Resultado de MEDK-11 (2026-11-19, perfil `full` en macOS con Docker 29): 45 paso
 | 2026-11-19 | Transición a la mayoría de edad y `/me/guardian-links`: job programado `AdulthoodJob` con lock distribuido ShedLock (dependencias `shedlock-spring` y `shedlock-provider-jdbc-template` 7.11.0), migración `V6__patients_adulthood_transition.sql` (tabla `shedlock`, índice de candidatos y acciones de auditoría nuevas), variables opcionales `KUADOR_ADULTHOOD_CRON` y `KUADOR_ADULTHOOD_LOCK_AT_MOST_FOR`. La invitación por SMS sigue inactiva hasta definir el proveedor. Sin secretos, puertos ni servicios nuevos | MEDK-18 |
 | 2026-11-19 | Perfil `local` de la api solo con referencias a variables y `api/.env.example` (importa `api/.env` si existe); la api no arranca en `local` si falta `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `KUADOR_JWT_SECRET` o `LOCAL_SEED_PASSWORD` (nombra la variable, sin valores). Variables nuevas: `LOCAL_SEED_PASSWORD` (secreto, solo local), `SERVER_PORT` y `SERVER_ADDRESS` (por defecto `0.0.0.0:8080` en local; el perfil `full` fija 8080). Semilla local con clínicas A y B (ubicación Flyway `db/localseed`, solo perfil `local`). Dependencia `spring-boot-starter-actuator`: solo `GET /actuator/health`, público y sin detalles | MEDK-29 |
 | 2026-11-19 | Web conectada a la api local por proxy: `web/proxy.conf.mjs` reemplaza a `proxy.conf.json` y reenvía `/api` y `/actuator` a la variable nueva `API_PROXY_TARGET` (por defecto `http://localhost:8080`); el proxy se aplica solo a la configuración `development` de `ng serve` (puerto 4200). `src/environments/environment.development.ts` con `apiBaseUrl` relativo (`/api/v1`); `config.json` sigue mandando en tiempo de ejecución. Sin secretos, servicios ni dependencias nuevas | MEDK-30 |
+| 2026-11-19 | App movil contra la api local: `API_BASE_URL` pasa a ser el origen de la api (la app agrega `/api/v1`; se sigue aceptando el valor con `/api/v1`) y su valor por defecto cambia de `http://localhost:8080/api/v1` a `http://10.0.2.2:8080` (emulador Android); valores para simulador iOS y dispositivo físico en «App móvil contra la api local». HTTP en claro solo en debug: `network_security_config` en `android/app/src/debug` (reemplaza `usesCleartextTraffic`) y `NSAllowsLocalNetworking` quitado de las builds Release y Profile de iOS por una fase de build. Sin secretos, puertos ni servicios nuevos | MEDK-31 |

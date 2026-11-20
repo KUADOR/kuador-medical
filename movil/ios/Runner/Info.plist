@@ -6,6 +6,9 @@
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<!-- Development only: plain HTTP to the local api (simulator and physical device on the
+	     same network). Removed from Release and Profile builds by the "Strip Local Networking"
+	     build phase (ios/scripts/strip_local_networking.sh). -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>
