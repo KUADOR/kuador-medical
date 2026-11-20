@@ -6,6 +6,7 @@ import '../../../core/api/error_messages.dart';
 import '../../../core/connectivity/connectivity_widgets.dart';
 import '../../../core/ui/module_widgets.dart';
 import '../../../core/util/idempotent_creation.dart';
+import '../../../design_system/tokens.g.dart';
 import '../../auth/ui/auth_widgets.dart';
 import '../data/role_models.dart';
 
@@ -227,7 +228,7 @@ class _RoleFormScreenState extends State<RoleFormScreen> {
                 ErrorMessage(_fieldErrors['permissions']),
               for (final entry in modules.entries) ...[
                 Padding(
-                  padding: const EdgeInsets.only(top: 12),
+                  padding: const EdgeInsets.only(top: KdConstants.space3),
                   child: Semantics(
                     header: true,
                     child: Text(

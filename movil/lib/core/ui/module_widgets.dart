@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../design_system/layout.dart';
+import '../../design_system/tokens.g.dart';
 import '../api/error_messages.dart';
 import '../connectivity/connectivity_widgets.dart';
 
@@ -32,7 +34,12 @@ class ModulePage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const Padding(
-                  padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  padding: EdgeInsets.fromLTRB(
+                    KdConstants.space4,
+                    KdConstants.space2,
+                    KdConstants.space4,
+                    KdConstants.space0,
+                  ),
                   child: OfflineBanner(),
                 ),
                 Expanded(child: body),
@@ -54,7 +61,12 @@ class ModuleListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+      padding: const EdgeInsets.fromLTRB(
+        KdConstants.space4,
+        KdConstants.space4,
+        KdConstants.space4,
+        KdLayout.fabClearance,
+      ),
       children: children,
     );
   }
@@ -87,7 +99,7 @@ class LoadErrorView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(KdConstants.space6),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -116,7 +128,10 @@ class SectionTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 16, bottom: 8),
+      padding: const EdgeInsets.only(
+        top: KdConstants.space4,
+        bottom: KdConstants.space2,
+      ),
       child: Semantics(
         header: true,
         child: Text(text, style: Theme.of(context).textTheme.titleMedium),
@@ -136,7 +151,7 @@ class InfoRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return MergeSemantics(
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.symmetric(vertical: KdConstants.space1),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -160,7 +175,7 @@ class NoticeCard extends StatelessWidget {
     return Card(
       color: Theme.of(context).colorScheme.secondaryContainer,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(KdConstants.space4),
         child: Row(
           children: [
             const Icon(Icons.info_outline),

@@ -102,6 +102,32 @@ xcrun simctl openurl booted "https://localhost/invitation#t=<token>"
 - Without a connection, forms do not send anything and nothing is stored to be
   sent later.
 
+## Design system
+
+- `lib/design_system/tokens.g.dart` is **generated** from `design/tokens/` (see
+  `design/README.md`); never edit it by hand.
+- `lib/design_system/theme.dart`: `KdTheme.light` / `KdTheme.dark` with
+  `KdTheme.mode` (`ThemeMode.system`). `KdTheme.builder` removes page
+  transitions when the platform disables animations
+  (`MediaQuery.disableAnimations`); use `KdTheme.duration(context, …)` for any
+  other animation.
+- Screens read colors, spacing and radii from `KdTokens.of(context)` or
+  `KdConstants`. `test/design_system/style_guard_test.dart` fails on
+  `Color(0x…)`, `Colors.*`, or `EdgeInsets` / `BorderRadius` / `Radius` with
+  numeric literals anywhere in `lib/` except `lib/design_system/` (ADR-007).
+- Test helpers in `test/support/design_system_harness.dart`: `testGoldens`
+  (light and dark goldens, synthetic data only) and `expectMeetsA11yGuidelines` /
+  `testA11yGuidelines` (Android and iOS tap targets, labeled targets, text
+  contrast).
+- Goldens carry the tag `golden` (`dart_test.yaml`) and compare exactly. The
+  baselines are rendered on Linux with Flutter `3.47.9`, like the CI job
+  `movil`; macOS renders text and antialiasing slightly differently, so
+  `flutter test` skips them outside Linux. To update them, render them on
+  Linux (CI or a Linux container) with `flutter test --tags golden
+  --update-goldens` and commit the PNG files in the same PR.
+- Assets: icons (SVG, drawn with `flutter_svg`) in `assets/icons/`,
+  self-hosted fonts in `assets/fonts/`.
+
 ## Commands
 
 ```bash
@@ -114,6 +140,20 @@ flutter build ios --dart-define=API_BASE_URL=https://<api-host> --dart-define=AP
 ```
 
 Requires Flutter stable (Dart >= 3.10) and, for Android builds, JDK 17+.
+
+### Goldens
+
+Golden tests carry the tag `golden` (`dart_test.yaml`) and live in `test/goldens/`. CI runs them
+on Linux with Flutter `3.47.9` (job `movil`), so the baselines are the Linux renderings; macOS
+renders text and antialiasing slightly differently, so `flutter test` skips the goldens outside Linux. When the job fails, it renders the goldens
+again on the runner and uploads them, with the diffs, as the artifact `movil-goldens-linux`:
+after reviewing them, copy the new PNG files into `test/goldens/` and commit them in the same PR.
+With Docker, the same can be done locally (there is no published Flutter image for `3.47.9`, so
+the script clones the SDK at that tag into a Docker volume the first time):
+
+```bash
+scripts/update-goldens.sh
+```
 
 ## Structure
 

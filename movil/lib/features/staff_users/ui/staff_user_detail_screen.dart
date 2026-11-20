@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../app_scope.dart';
 import '../../../core/ui/module_widgets.dart';
+import '../../../design_system/tokens.g.dart';
 import '../data/staff_models.dart';
 import 'role_assignments_screen.dart';
 import 'staff_user_form_screen.dart';
@@ -130,7 +131,7 @@ class _StaffUserDetailScreenState extends State<StaffUserDetailScreen> {
               Text(describeAssignments(user.roleAssignments)),
               if (self)
                 const Padding(
-                  padding: EdgeInsets.only(top: 16),
+                  padding: EdgeInsets.only(top: KdConstants.space4),
                   child: NoticeCard(
                     'Esta es tu cuenta. Nadie puede cambiar sus propios datos, roles ni acceso.',
                   ),
@@ -186,7 +187,7 @@ class _Action extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: KdConstants.space3),
       child: OutlinedButton.icon(
         onPressed: onPressed,
         icon: Icon(icon),

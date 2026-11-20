@@ -5,6 +5,7 @@ import '../../core/api/api_exception.dart';
 import '../../core/connectivity/connectivity_widgets.dart';
 import '../../core/menu/app_menu.dart';
 import '../../core/session/session_models.dart';
+import '../../design_system/tokens.g.dart';
 import '../../system_status/system_status_screen.dart';
 import '../auth/ui/auth_messages.dart';
 import '../patients/ui/my_guardian_links_screen.dart';
@@ -63,7 +64,7 @@ class HomeScreen extends StatelessWidget {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 600),
             child: ListView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(KdConstants.space4),
               children: [
                 const OfflineBanner(),
                 Semantics(
@@ -186,7 +187,7 @@ class _Notice extends StatelessWidget {
     return Card(
       color: Theme.of(context).colorScheme.secondaryContainer,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(KdConstants.space4),
         child: Row(
           children: [
             const Icon(Icons.info_outline),

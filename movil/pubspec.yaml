@@ -12,6 +12,7 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_secure_storage: ^11.2.0
+  flutter_svg: ^2.3.4
   http: ^1.6.0
 
 dev_dependencies:
@@ -22,7 +23,14 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  # Figtree (SIL OFL 1.1, assets/fonts/OFL.txt): base family of the identity guide (DESIGN.md).
+  # Design system assets (ADR-006). Icons: the single SVG set from
+  # design/icons/, drawn with flutter_svg. Fonts: self-hosted, never from a CDN.
+  assets:
+    - assets/icons/
+    - assets/fonts/
+
+  # Figtree (SIL OFL 1.1, assets/fonts/OFL.txt): base family of the identity guide (DESIGN.md),
+  # same name as the type.family.base token.
   fonts:
     - family: Figtree
       fonts:

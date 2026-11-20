@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../design_system/tokens.g.dart';
 import 'system_info.dart';
 import 'system_info_client.dart';
 
@@ -49,7 +50,7 @@ class _SystemStatusScreenState extends State<SystemStatusScreen> {
             }
             return Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(KdConstants.space6),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 480),
                   child: content,
