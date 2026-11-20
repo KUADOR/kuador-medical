@@ -10,7 +10,7 @@ export const EMAIL_VERIFIED_MESSAGE =
 
 type State = 'verifying' | 'verified' | 'invalid' | 'error';
 
-/** Target of the self-registration email (/verify-email#t=<token>): activates the account. */
+/** Target of the self-registration email (/email-verification#t=<token>): activates the account. */
 @Component({
   selector: 'mk-verify-email-page',
   changeDetection: ChangeDetectionStrategy.OnPush,

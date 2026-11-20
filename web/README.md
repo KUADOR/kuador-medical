@@ -3,14 +3,11 @@
 Angular (standalone components, signals, zoneless) client of the Medical Kuador API.
 It is built contract-first (ADR-011): types come from `contracts/identity.openapi.yaml` (status, clinic
 signup, password change, platform catalog) and `contracts/user-registration.openapi.yaml` (MEDK-12:
-authentication and session, staff users, branch role assignments and roles) and, while the API is not ready,
-it runs against Prism mocks of both.
+authentication and session, staff users, branch role assignments, roles, patients and self-registration).
 
-> Authentication and session already follow `user-registration.openapi.yaml` (MEDK-20): multi-clinic login,
-> refresh tokens, `GET /me` with branches and plan modules. Until the api implements it (MEDK-14 to MEDK-16),
-> log in with `npm run dev:mock`; `npm start` against the current api only serves the identity operations.
-> Staff users, assignments and roles (MEDK-21) also follow the target contract (`Role.clinical`, `systemKey`,
-> `PermissionInfo.module`); against the current api roles still list, but saving needs MEDK-14.
+> Since MEDK-25 the api implements the whole `user-registration.openapi.yaml`: `npm start` against the real api
+> is the normal mode. The Prism mocks (`npm run dev:mock`) stay for working without an api. The end-to-end
+> scenarios of the epic run with `scripts/e2e-user-registration.sh` (see `docs/deployment.md`).
 
 | Build | Test | Run |
 |---|---|---|
@@ -102,8 +99,8 @@ src/testing/    Test-only fixtures and app harness (real routes, guards and inte
 - `requireAccess({ permissions, module })` guards a route: no session → `/login?returnUrl=…`, pending password
   change → `/change-password`, missing permission or plan module → `/forbidden`. `requirePermissions(...codes)`
   is the shorthand without module; `authenticatedGuard` only needs a session.
-- Email links carry the one-time token in the fragment (`/invitation#t=…`, `/reset-password#t=…`,
-  `/verify-email#t=…`, ADR-014). The page reads it and removes it from the address bar and the history entry.
+- Email links carry the one-time token in the fragment (`/invitation#t=…`, `/password-reset#t=…`,
+  `/email-verification#t=…`, ADR-014; the same paths as the api links and `.well-known`). The page reads it and removes it from the address bar and the history entry.
 - `pendingPasswordChangeGuard` opens `/change-password` only while the change is pending.
 - The API enforces every permission (ADR-008); guards only shape navigation.
 
@@ -114,7 +111,7 @@ src/testing/    Test-only fixtures and app harness (real routes, guards and inte
 | `/` | `homeGuard` | Visitors → `/status`; accounts → their landing page (pending change → `/change-password`, then first menu entry). |
 | `/signup`, `/login`, `/forgot-password` | `guestGuard` | Only without a session. |
 | `/login/clinic`, `/login/branch` | `loginStepGuard` | Only while that login step is pending; a reload goes back to `/login`. |
-| `/reset-password#t=…`, `/invitation#t=…`, `/verify-email#t=…` | — | Targets of the email links. |
+| `/password-reset#t=…`, `/invitation#t=…`, `/email-verification#t=…` | — | Targets of the email links. |
 | `/clinics/:publicCode/register` | `guestGuard` | Patient self-registration; 404 from the API means disabled. |
 | `/change-password` | `pendingPasswordChangeGuard` | Only while `mustChangePassword` is true. |
 | `/staff` | `identity.users.read` + module `identity` | "Invitar persona" needs `identity.users.manage` + `roles.read`. |
