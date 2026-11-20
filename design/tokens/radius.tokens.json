@@ -1,0 +1,9 @@
+{
+  "radius": {
+    "$type": "dimension",
+    "sm": { "$value": "4px", "$description": "Badges, small controls." },
+    "md": { "$value": "8px", "$description": "Buttons, fields, cards." },
+    "lg": { "$value": "12px", "$description": "Dialogs, sheets." },
+    "full": { "$value": "9999px", "$description": "Pills and circular elements." }
+  }
+}

@@ -1,0 +1,109 @@
+{
+  "type": {
+    "family": {
+      "$type": "fontFamily",
+      "base": {
+        "$value": ["system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
+        "$description": "Interface text.",
+        "$extensions": { "com.kuador.dart": { "fontFamily": null } }
+      },
+      "mono": {
+        "$value": ["ui-monospace", "SFMono-Regular", "Menlo", "Consolas", "monospace"],
+        "$description": "Codes and identifiers.",
+        "$extensions": { "com.kuador.dart": { "fontFamily": "monospace" } }
+      }
+    },
+    "weight": {
+      "$type": "fontWeight",
+      "regular": { "$value": 400 },
+      "medium": { "$value": 500 },
+      "bold": { "$value": 600 }
+    },
+    "size": {
+      "$type": "dimension",
+      "xs": { "$value": "12px" },
+      "sm": { "$value": "14px" },
+      "md": { "$value": "16px" },
+      "lg": { "$value": "18px" },
+      "xl": { "$value": "20px" },
+      "2xl": { "$value": "24px" },
+      "3xl": { "$value": "30px" }
+    },
+    "line-height": {
+      "$type": "number",
+      "tight": { "$value": 1.2 },
+      "snug": { "$value": 1.35 },
+      "normal": { "$value": 1.5 }
+    },
+    "display": {
+      "$type": "typography",
+      "$description": "Page title.",
+      "$value": {
+        "fontFamily": "{type.family.base}",
+        "fontSize": "{type.size.3xl}",
+        "fontWeight": "{type.weight.bold}",
+        "lineHeight": "{type.line-height.tight}"
+      }
+    },
+    "title": {
+      "$type": "typography",
+      "$description": "Section and card titles.",
+      "$value": {
+        "fontFamily": "{type.family.base}",
+        "fontSize": "{type.size.xl}",
+        "fontWeight": "{type.weight.bold}",
+        "lineHeight": "{type.line-height.snug}"
+      }
+    },
+    "subtitle": {
+      "$type": "typography",
+      "$description": "Secondary headings.",
+      "$value": {
+        "fontFamily": "{type.family.base}",
+        "fontSize": "{type.size.lg}",
+        "fontWeight": "{type.weight.medium}",
+        "lineHeight": "{type.line-height.snug}"
+      }
+    },
+    "body": {
+      "$type": "typography",
+      "$description": "Running text.",
+      "$value": {
+        "fontFamily": "{type.family.base}",
+        "fontSize": "{type.size.md}",
+        "fontWeight": "{type.weight.regular}",
+        "lineHeight": "{type.line-height.normal}"
+      }
+    },
+    "body-sm": {
+      "$type": "typography",
+      "$description": "Dense text: tables, hints.",
+      "$value": {
+        "fontFamily": "{type.family.base}",
+        "fontSize": "{type.size.sm}",
+        "fontWeight": "{type.weight.regular}",
+        "lineHeight": "{type.line-height.normal}"
+      }
+    },
+    "label": {
+      "$type": "typography",
+      "$description": "Buttons, field labels and tabs.",
+      "$value": {
+        "fontFamily": "{type.family.base}",
+        "fontSize": "{type.size.sm}",
+        "fontWeight": "{type.weight.bold}",
+        "lineHeight": "{type.line-height.snug}"
+      }
+    },
+    "caption": {
+      "$type": "typography",
+      "$description": "Small print: timestamps, footnotes.",
+      "$value": {
+        "fontFamily": "{type.family.base}",
+        "fontSize": "{type.size.xs}",
+        "fontWeight": "{type.weight.regular}",
+        "lineHeight": "{type.line-height.snug}"
+      }
+    }
+  }
+}

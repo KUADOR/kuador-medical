@@ -1,0 +1,81 @@
+{
+  "color": {
+    "$type": "color",
+    "accent": {
+      "$value": "#3d4a5c",
+      "$description": "Primary action and brand accent.",
+      "$extensions": { "com.kuador.modes": { "dark": "#b9c4d2" } }
+    },
+    "on-accent": {
+      "$value": "#ffffff",
+      "$description": "Text and icons placed on the accent.",
+      "$extensions": { "com.kuador.modes": { "dark": "#14171a" } }
+    },
+    "focus": {
+      "$value": "#2f4a6e",
+      "$description": "Focus ring around interactive elements.",
+      "$extensions": { "com.kuador.modes": { "dark": "#a9c1e0" } }
+    },
+    "ok": {
+      "$value": "#1f6b3a",
+      "$description": "Success state (text and icons).",
+      "$extensions": { "com.kuador.modes": { "dark": "#7bd19a" } }
+    },
+    "error": {
+      "$value": "#b3261e",
+      "$description": "Error state (text, icons and destructive actions).",
+      "$extensions": { "com.kuador.modes": { "dark": "#f2b8b5" } }
+    },
+    "on-error": {
+      "$value": "#ffffff",
+      "$description": "Text and icons placed on the error color.",
+      "$extensions": { "com.kuador.modes": { "dark": "#3d0d0a" } }
+    },
+    "warning": {
+      "$value": "#7a4f00",
+      "$description": "Warning state (text and icons).",
+      "$extensions": { "com.kuador.modes": { "dark": "#e8bf6a" } }
+    },
+    "info": {
+      "$value": "#2b5285",
+      "$description": "Informative state (text and icons).",
+      "$extensions": { "com.kuador.modes": { "dark": "#a3c4ee" } }
+    }
+  },
+  "surface": {
+    "$type": "color",
+    "base": {
+      "$value": "#f4f5f7",
+      "$description": "Page background (lowest layer).",
+      "$extensions": { "com.kuador.modes": { "dark": "#121417" } }
+    },
+    "sunken": {
+      "$value": "#eaecef",
+      "$description": "Recessed areas: table headers, disabled fields, wells.",
+      "$extensions": { "com.kuador.modes": { "dark": "#0c0d0f" } }
+    },
+    "raised": {
+      "$value": "#ffffff",
+      "$description": "Cards, forms and panels above the base.",
+      "$extensions": { "com.kuador.modes": { "dark": "#1b1e22" } }
+    },
+    "overlay": {
+      "$value": "#ffffff",
+      "$description": "Dialogs, menus and sheets above everything else.",
+      "$extensions": { "com.kuador.modes": { "dark": "#24282d" } }
+    }
+  },
+  "text": {
+    "$type": "color",
+    "default": {
+      "$value": "#1b1e22",
+      "$description": "Main text.",
+      "$extensions": { "com.kuador.modes": { "dark": "#e8eaed" } }
+    },
+    "muted": {
+      "$value": "#4f5761",
+      "$description": "Secondary text: hints, metadata.",
+      "$extensions": { "com.kuador.modes": { "dark": "#a9b0b8" } }
+    }
+  }
+}
