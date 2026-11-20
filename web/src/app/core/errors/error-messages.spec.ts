@@ -68,9 +68,27 @@ describe('error messages', () => {
     expect(errorMessage(new HttpErrorResponse({ status: 0 }))).toBe(NETWORK_ERROR_MESSAGE);
   });
 
+  it('uses the network message when a proxy or gateway cannot reach the api', () => {
+    // The dev server proxy answers an empty 502; nginx answers 502/504 with an HTML page.
+    for (const status of [502, 503, 504]) {
+      expect(errorMessage(new HttpErrorResponse({ status, error: '' }))).toBe(
+        NETWORK_ERROR_MESSAGE,
+      );
+      expect(errorMessage(new HttpErrorResponse({ status, error: '<html>' }))).toBe(
+        NETWORK_ERROR_MESSAGE,
+      );
+    }
+  });
+
+  it('keeps the api message when a 503 carries a Problem Details code', () => {
+    expect(errorMessage(problemResponse(503, 'INTERNAL_ERROR'))).toBe(
+      ERROR_MESSAGES.INTERNAL_ERROR,
+    );
+  });
+
   it('falls back to the generic message for unknown codes or non-HTTP errors', () => {
     expect(errorMessage(problemResponse(500, 'SOMETHING_NEW'))).toBe(GENERIC_ERROR_MESSAGE);
-    expect(errorMessage(new HttpErrorResponse({ status: 502, error: '<html>' }))).toBe(
+    expect(errorMessage(new HttpErrorResponse({ status: 500, error: '<html>' }))).toBe(
       GENERIC_ERROR_MESSAGE,
     );
     expect(errorMessage(new Error('boom'))).toBe(GENERIC_ERROR_MESSAGE);

@@ -19,3 +19,7 @@ kuador:
     web-base-url: https://app.example.test
   mail:
     from: no-reply@example.test
+  patients:
+    adulthood:
+      # Tests run the adulthood job explicitly (AdulthoodJob.runOnce).
+      cron: "-"

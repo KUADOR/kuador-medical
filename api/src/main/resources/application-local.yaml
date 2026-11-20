@@ -1,8 +1,21 @@
-# Local development against the "db" service of compose.yaml (values from .env).
+# Local development (MEDK-26 plan, decision 2). Only references to environment variables: no
+# secret is written here. Values come from the environment or from api/.env (optional import below;
+# copy api/.env.example). Variables already set in the environment win over the file.
+# LocalEnvironmentValidator stops the start-up, naming the variable, when DB_URL, DB_USERNAME,
+# DB_PASSWORD, KUADOR_JWT_SECRET or LOCAL_SEED_PASSWORD is missing or blank.
 spring:
+  config:
+    import: optional:file:.env[.properties]
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/medical}
-    username: ${DB_USERNAME:medical}
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  flyway:
+    # db/localseed: fictitious clinics A and B with one test user each (db.localseed.LocalSeedMigration).
+    # Only this profile adds it; the password of the test users is LOCAL_SEED_PASSWORD.
+    locations: classpath:db/migration,classpath:db/localseed
+    placeholders:
+      localSeedPassword: ${LOCAL_SEED_PASSWORD}
   # Mailpit (compose.yaml): catches every email, web UI on http://localhost:8025. No credentials.
   mail:
     host: ${KUADOR_SMTP_HOST:localhost}
@@ -12,8 +25,17 @@ spring:
       mail.smtp.starttls.enable: ${KUADOR_SMTP_STARTTLS:false}
       mail.smtp.starttls.required: ${KUADOR_SMTP_STARTTLS:false}
 
+server:
+  port: ${SERVER_PORT:8080}
+  # 0.0.0.0 so a physical device on the same network reaches the api through the machine's LAN IP.
+  address: ${SERVER_ADDRESS:0.0.0.0}
+
 kuador:
+  jwt:
+    secret: ${KUADOR_JWT_SECRET}
   cors:
+    # Optional. Empty value: no CORS (the web development proxy needs none). The default keeps the
+    # web dev server (http://localhost:4200) working when it calls the api directly.
     allowed-origins: ${KUADOR_CORS_ALLOWED_ORIGINS:http://localhost:4200}
   links:
     web-base-url: ${KUADOR_WEB_BASE_URL:http://localhost:4200}

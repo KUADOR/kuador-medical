@@ -1,6 +1,7 @@
 package com.kuador.medical.platform.tenant;
 
 import com.kuador.medical.identity.TenantDirectory;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
@@ -20,5 +21,11 @@ class PlatformTenantDirectory implements TenantDirectory {
     @Transactional(readOnly = true)
     public Optional<TenantInfo> find(UUID tenantId) {
         return tenants.findById(tenantId).map(tenant -> new TenantInfo(tenant.getId(), tenant.getName(), tenant.isActive()));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UUID> activeTenantIds() {
+        return tenants.findIdsByStatus(TenantStatus.ACTIVE);
     }
 }

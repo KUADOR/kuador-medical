@@ -22,7 +22,7 @@ Requires Node.js `^22.22.3` or `^24.15.0`.
 
 | Script | What it does |
 |---|---|
-| `npm start` | Dev server on `http://localhost:4200`, proxying `/api` to the real API on `http://localhost:8080` (`proxy.conf.json`). |
+| `npm start` | Dev server on `http://localhost:4200`, proxying `/api` and `/actuator` (paths unchanged) to the real API at `API_PROXY_TARGET`, default `http://localhost:8080` (`proxy.conf.mjs`, development configuration only). E.g. `API_PROXY_TARGET=http://localhost:9090 npm start`. |
 | `npm run mock` | Prism mocks: `identity.openapi.yaml` on `http://localhost:4010` and `user-registration.openapi.yaml` on `http://localhost:4011`. |
 | `npm run start:mock` | Dev server proxying `/api/v1` to the mocks, stripping the prefix (`proxy.mock.conf.json`): `/auth/*` (except `/auth/password`), `/me`, `/public/*`, `/patients`, `/patient-registration-settings`, `/staff-users`, `/roles` and `/permissions` go to 4011, the rest to 4010. |
 | `npm run dev:mock` | `mock` and `start:mock` together. |
@@ -41,6 +41,8 @@ Prism is pinned to 5.14.2, the last version that runs on Node 22.
 ```
 
 The default is same-origin: the dev server proxy and the nginx image (`nginx.conf`) forward `/api/` to the API.
+Until `config.json` loads (or if it is missing) the base comes from `src/environments/environment*.ts`
+(`apiBaseUrl`, relative `/api/v1`; `environment.development.ts` replaces it in the development build).
 In the container, setting the `API_BASE_URL` environment variable rewrites `config.json` at start
 (`docker-entrypoint.d/40-runtime-config.sh`). A cross-origin URL also needs that origin in the API's
 `KUADOR_CORS_ALLOWED_ORIGINS`.
@@ -160,4 +162,7 @@ server answers.
 
 Use `errorMessage(error)` to show any HTTP error to people: it maps the Problem Details `code` through
 `ERROR_MESSAGES` (typed as `Record<ErrorCode, string>`, so a new contract code breaks the build until mapped),
-handles network failures and never shows server details. `fieldErrorMessage()` covers `errors[].code`.
+handles network failures and never shows server details. A request that never reached the API (status 0, or a
+502/503/504 without a Problem Details code, as the dev proxy and nginx answer when the API is down) shows
+`NETWORK_ERROR_MESSAGE` (`isServerUnreachable()`). `src/app/local-integration.spec.ts` covers login, 401, server
+down and the bearer token against the examples of `contracts/local-integration.openapi.yaml`. `fieldErrorMessage()` covers `errors[].code`.
