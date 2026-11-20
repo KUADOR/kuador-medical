@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../app_scope.dart';
 import '../../../core/api/api_exception.dart';
 import '../../../core/connectivity/connectivity_widgets.dart';
+import '../../../design_system/widgets/widgets.dart';
 import 'auth_messages.dart';
 import 'auth_widgets.dart';
 
@@ -47,41 +48,54 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       return AuthPage(
         title: title,
         showOfflineBanner: false,
-        children: [
-          const SuccessMessage(
+        primaryAction: KdButton(
+          label: 'Ir a iniciar sesión',
+          expand: true,
+          onPressed: _toLogin,
+        ),
+        children: const [
+          SuccessMessage(
             'Tu correo quedó verificado. Ya puedes iniciar sesión.',
-          ),
-          const SizedBox(height: 24),
-          FilledButton(
-            onPressed: _toLogin,
-            child: const Text('Ir a iniciar sesión'),
+            title: 'Correo verificado',
           ),
         ],
       );
     }
-    final invalid = _error?.code == 'ONE_TIME_TOKEN_INVALID';
-    return AuthPage(
-      title: title,
-      children: [
-        ErrorMessage(
-          _error == null
-              ? null
-              : invalid
-              ? 'El enlace de verificación expiró o ya se usó.'
-              : authErrorMessage(_error!),
+    final error = _error;
+    final invalid = error?.code == 'ONE_TIME_TOKEN_INVALID';
+    if (invalid) {
+      return AuthPage(
+        title: title,
+        primaryAction: KdButton(
+          label: 'Ir a iniciar sesión',
+          expand: true,
+          onPressed: _toLogin,
         ),
-        if (!invalid) ...[
-          const Text('Confirma tu correo para activar tu cuenta de paciente.'),
-          const SizedBox(height: 24),
-          OnlineSubmitButton(
-            label: 'Confirmar mi correo',
-            busy: _busy,
-            onPressed: _confirm,
+        children: const [
+          KdInlineMessage.error(
+            'El enlace de verificación expiró o ya se usó.',
           ),
         ],
-        TextButton(
-          onPressed: _toLogin,
-          child: const Text('Ir a iniciar sesión'),
+      );
+    }
+    return AuthPage(
+      title: title,
+      primaryAction: OnlineSubmitButton(
+        label: 'Confirmar mi correo',
+        busy: _busy,
+        onPressed: _confirm,
+      ),
+      children: [
+        const AuthHeader(
+          title: 'Confirma tu correo',
+          message: 'Así activamos tu cuenta de paciente.',
+        ),
+        if (error != null) KdInlineMessage.error(authErrorMessage(error)),
+        Center(
+          child: KdButton.text(
+            label: 'Ir a iniciar sesión',
+            onPressed: _toLogin,
+          ),
         ),
       ],
     );

@@ -4,6 +4,8 @@ import '../../../app_scope.dart';
 import '../../../core/api/api_exception.dart';
 import '../../../core/connectivity/connectivity_widgets.dart';
 import '../../../core/session/session_controller.dart';
+import '../../../design_system/tokens.g.dart';
+import '../../../design_system/widgets/widgets.dart';
 import '../../../system_status/system_status_screen.dart';
 import 'auth_messages.dart';
 import 'auth_widgets.dart';
@@ -12,6 +14,9 @@ import 'password_reset_request_screen.dart';
 import 'self_registration_screen.dart';
 
 /// Email and password login (FR-004). Errors are generic (FR-006).
+///
+/// One main action, «Ingresar», pinned above the keyboard; «next» on the
+/// email moves to the password and «done» there signs in (MEDK-45).
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -59,50 +64,53 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = KdTokens.of(context);
     final services = AppScope.of(context);
     final expired =
         services.session.signOutReason == SignOutReason.expired &&
         _error == null;
+    final error = expired
+        ? 'Tu sesión terminó. Inicia sesión de nuevo.'
+        : _error;
     return AuthPage(
       title: 'Iniciar sesión',
+      primaryAction: OnlineSubmitButton(
+        label: 'Ingresar',
+        busy: _busy,
+        onPressed: _submit,
+      ),
       children: [
-        Semantics(
-          header: true,
-          child: Text(
-            'Medical Kuador',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
+        const AuthHeader(
+          title: 'Medical Kuador',
+          message: 'Ingresa con el correo y la contraseña de tu clínica.',
+          display: true,
         ),
-        const SizedBox(height: 24),
-        ErrorMessage(
-          expired ? 'Tu sesión terminó. Inicia sesión de nuevo.' : _error,
-        ),
+        if (error != null) KdInlineMessage.error(error),
         Form(
           key: _formKey,
           child: AutofillGroup(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                TextFormField(
+                KdTextField(
+                  label: 'Correo',
                   controller: _email,
+                  prefixIcon: KdIcons.mail,
                   keyboardType: TextInputType.emailAddress,
-                  autocorrect: false,
                   autofillHints: const [
                     AutofillHints.username,
                     AutofillHints.email,
                   ],
-                  textInputAction: TextInputAction.next,
                   validator: emailValidator,
-                  decoration: const InputDecoration(
-                    labelText: 'Correo',
-                    border: OutlineInputBorder(),
-                  ),
                 ),
-                const SizedBox(height: 16),
-                PasswordField(
-                  controller: _password,
+                SizedBox(height: t.space4),
+                KdTextField(
                   label: 'Contraseña',
+                  controller: _password,
+                  prefixIcon: KdIcons.lock,
+                  obscureText: true,
+                  autofillHints: const [AutofillHints.password],
+                  textInputAction: TextInputAction.done,
                   validator: (v) => (v == null || v.isEmpty)
                       ? 'Ingresa tu contraseña.'
                       : null,
@@ -110,29 +118,29 @@ class _LoginScreenState extends State<LoginScreen> {
                     if (ConnectivityScope.of(context).isOnline) _submit();
                   },
                 ),
-                const SizedBox(height: 24),
-                OnlineSubmitButton(
-                  label: 'Ingresar',
-                  busy: _busy,
-                  onPressed: _submit,
-                ),
               ],
             ),
           ),
         ),
-        const SizedBox(height: 8),
-        TextButton(
-          onPressed: () => _open(const PasswordResetRequestScreen()),
-          child: const Text('¿Olvidaste tu contraseña?'),
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: KdButton.text(
+            label: '¿Olvidaste tu contraseña?',
+            onPressed: () => _open(const PasswordResetRequestScreen()),
+          ),
         ),
-        TextButton(
+        KdButton.secondary(
+          label: 'Soy paciente y quiero registrarme',
+          icon: KdIcons.userPlus,
+          expand: true,
           onPressed: () => _open(const SelfRegistrationScreen()),
-          child: const Text('Soy paciente y quiero registrarme'),
         ),
-        TextButton(
-          onPressed: () =>
-              _open(SystemStatusScreen(client: services.systemInfoClient)),
-          child: const Text('Estado del sistema'),
+        Center(
+          child: KdButton.text(
+            label: 'Estado del sistema',
+            onPressed: () =>
+                _open(SystemStatusScreen(client: services.systemInfoClient)),
+          ),
         ),
       ],
     );

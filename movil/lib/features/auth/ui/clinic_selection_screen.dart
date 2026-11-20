@@ -4,6 +4,9 @@ import '../../../app_scope.dart';
 import '../../../core/api/api_exception.dart';
 import '../../../core/connectivity/connectivity_widgets.dart';
 import '../../../core/session/session_models.dart';
+import '../../../design_system/theme.dart';
+import '../../../design_system/tokens.g.dart';
+import '../../../design_system/widgets/widgets.dart';
 import '../data/auth_models.dart';
 import 'auth_messages.dart';
 import 'auth_widgets.dart';
@@ -52,7 +55,7 @@ class _ClinicSelectionScreenState extends State<ClinicSelectionScreen> {
       intro:
           'Tu correo y contraseña coinciden en varias clínicas. Cada una tiene una cuenta independiente.',
       items: widget.step.clinics,
-      icon: Icons.local_hospital_outlined,
+      icon: KdIcons.building,
       busyId: _busyId,
       error: _error,
       onSelect: _select,
@@ -61,6 +64,9 @@ class _ClinicSelectionScreenState extends State<ClinicSelectionScreen> {
 }
 
 /// List of clinics or branches to choose from, shared by the login steps.
+///
+/// Each row is the action (no extra confirm button): a tap chooses it and
+/// shows its progress in place. Rows are disabled while offline or busy.
 class SelectionList extends StatelessWidget {
   const SelectionList({
     super.key,
@@ -76,48 +82,68 @@ class SelectionList extends StatelessWidget {
   final String title;
   final String intro;
   final List<NamedRef> items;
-  final IconData icon;
+  final KdIconData icon;
   final String? busyId;
   final ApiException? error;
   final ValueChanged<NamedRef> onSelect;
 
   @override
   Widget build(BuildContext context) {
+    final t = KdTokens.of(context);
     final online = ConnectivityScope.of(context).isOnline;
-    final expired = error?.code == 'INVALID_SESSION_TOKEN';
+    final failure = error;
+    final expired = failure?.code == 'INVALID_SESSION_TOKEN';
+    final enabled = online && busyId == null;
     return AuthPage(
       title: title,
+      primaryAction: expired
+          ? KdButton(
+              label: 'Volver a iniciar sesión',
+              expand: true,
+              onPressed: () =>
+                  Navigator.of(context).popUntil((route) => route.isFirst),
+            )
+          : null,
       children: [
-        Text(intro, style: Theme.of(context).textTheme.bodyLarge),
-        const SizedBox(height: 16),
-        ErrorMessage(error == null ? null : authErrorMessage(error!)),
-        if (expired)
-          FilledButton(
-            onPressed: () =>
-                Navigator.of(context).popUntil((route) => route.isFirst),
-            child: const Text('Volver a iniciar sesión'),
-          )
-        else
-          Card(
-            child: Column(
-              children: [
-                for (final item in items)
-                  ListTile(
-                    leading: Icon(icon),
-                    title: Text(item.name),
-                    trailing: busyId == item.id
-                        ? const SizedBox.square(
-                            dimension: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.chevron_right),
-                    enabled: online && busyId == null,
-                    onTap: () => onSelect(item),
-                  ),
-              ],
-            ),
+        Text(intro, style: t.typeBody.copyWith(color: t.textMuted)),
+        if (failure != null) KdInlineMessage.error(authErrorMessage(failure)),
+        if (!expired)
+          KdListSection(
+            children: [
+              for (final item in items)
+                KdListTile(
+                  title: item.name,
+                  leadingIcon: icon,
+                  trailing: busyId == item.id
+                      ? _Progress(color: t.colorAccent, size: t.space6)
+                      : null,
+                  onTap: enabled ? () => onSelect(item) : null,
+                ),
+            ],
           ),
       ],
+    );
+  }
+}
+
+/// Progress of the chosen row; a static clock when the platform reduces
+/// motion (DESIGN.md, R-13).
+class _Progress extends StatelessWidget {
+  const _Progress({required this.color, required this.size});
+
+  final Color color;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: 'Ingresando',
+      child: KdTheme.reduceMotion(context)
+          ? KdIcon(KdIcons.clock, color: color, size: size)
+          : SizedBox.square(
+              dimension: size,
+              child: CircularProgressIndicator(color: color),
+            ),
     );
   }
 }

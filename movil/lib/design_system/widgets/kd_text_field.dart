@@ -16,6 +16,10 @@ import 'kd_style.dart';
 ///
 /// With [obscureText] it shows a «Mostrar» / «Ocultar» toggle with a 48 tap
 /// area.
+///
+/// With [readOnly] and [onTap] it is a picker (a date, an option of a
+/// [KdSelectField]): a tap runs [onTap] and the keyboard never opens.
+/// [suffixIcon] is a decorative icon at the end (a calendar, a chevron).
 class KdTextField extends StatefulWidget {
   const KdTextField({
     super.key,
@@ -38,6 +42,9 @@ class KdTextField extends StatefulWidget {
     this.onSubmitted,
     this.validator,
     this.prefixIcon,
+    this.readOnly = false,
+    this.onTap,
+    this.suffixIcon,
   });
 
   final String label;
@@ -64,6 +71,13 @@ class KdTextField extends StatefulWidget {
   final FormFieldValidator<String>? validator;
   final KdIconData? prefixIcon;
 
+  /// The text cannot be typed; pair it with [onTap] for a picker.
+  final bool readOnly;
+  final VoidCallback? onTap;
+
+  /// Decorative icon at the end; ignored with [obscureText].
+  final KdIconData? suffixIcon;
+
   @override
   State<KdTextField> createState() => _KdTextFieldState();
 }
@@ -80,6 +94,9 @@ class _KdTextFieldState extends State<KdTextField> {
       focusNode: widget.focusNode,
       enabled: widget.enabled,
       autofocus: widget.autofocus,
+      readOnly: widget.readOnly,
+      onTap: widget.onTap,
+      enableInteractiveSelection: !widget.readOnly,
       obscureText: _hidden,
       enableSuggestions: !widget.obscureText,
       autocorrect: !widget.obscureText,
@@ -112,6 +129,7 @@ class _KdTextFieldState extends State<KdTextField> {
     );
     final errorSide = BorderSide(color: t.colorError);
     final prefix = widget.prefixIcon;
+    final suffix = widget.suffixIcon;
 
     return InputDecoration(
       labelText: widget.label,
@@ -143,7 +161,11 @@ class _KdTextFieldState extends State<KdTextField> {
       prefixIcon: prefix == null
           ? null
           : KdIcon(prefix, color: t.textMuted, size: KdStyle.inlineIconSize),
-      suffixIcon: widget.obscureText ? _visibilityToggle(t) : null,
+      suffixIcon: widget.obscureText
+          ? _visibilityToggle(t)
+          : suffix == null
+          ? null
+          : KdIcon(suffix, color: t.textMuted, size: KdStyle.inlineIconSize),
       border: outline(t.borderStrong),
       enabledBorder: outline(t.borderStrong),
       disabledBorder: outline(t.borderHairline),

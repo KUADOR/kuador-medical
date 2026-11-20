@@ -138,7 +138,12 @@ xcrun simctl openurl booted "https://localhost/invitation#t=<token>"
     `expand`): 44 visual height, 48 tap area, focus ring.
   - `KdTextField` and `KdFormScrollView`: visible label, helper and error text,
     password toggle, «next» moves to the next field, fields scroll above the
-    keyboard and dragging hides it.
+    keyboard and dragging hides it. With `readOnly` + `onTap` it is a picker
+    (a date) and never opens the keyboard.
+  - `KdSelectField` + `KdSelectOption` (MEDK-45): looks like a field, a tap
+    opens a bottom sheet with the options; the validator gets the value.
+  - `KdInlineMessage` (`.error`, `.warning`, `.success`, `.info`): icon and
+    text on surface.raised, announced to screen readers.
   - `KdListSection` / `KdListTile` (selection with accent bar) and `KdCard`.
   - `showKdBottomSheet` + `KdSheet`, `showKdDialog` + `KdDialog`.
   - `KdBottomNavBar` with `KdNavDestination` (labels always visible).
@@ -147,6 +152,13 @@ xcrun simctl openurl booted "https://localhost/invitation#t=<token>"
     `KdErrorState` (with «Reintentar»).
   - Tests and goldens: `test/design_system/widgets/` (gallery of synthetic
     screens in `gallery.dart`).
+- Sign-in and sign-up screens (MEDK-45, `lib/features/auth/ui/`) use
+  `AuthPage`: scrollable content with a readable width and **one** main action
+  pinned at the bottom, above the keyboard. Their tests (one main action,
+  design system widgets only, keyboard, 200 % text, a11y in light and dark)
+  and goldens are in `test/features/auth_screens_test.dart`, with the helpers
+  of `test/support/screen_harness.dart` (`pumpScreen`, `ScreenCase`,
+  `testScreenGoldens`).
 
 ## Commands
 

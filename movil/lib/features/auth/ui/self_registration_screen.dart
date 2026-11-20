@@ -4,6 +4,8 @@ import '../../../app_scope.dart';
 import '../../../core/api/api_exception.dart';
 import '../../../core/connectivity/connectivity_widgets.dart';
 import '../../../core/util/client_id.dart';
+import '../../../design_system/tokens.g.dart';
+import '../../../design_system/widgets/widgets.dart';
 import '../data/auth_models.dart';
 import '../data/registration_catalog.dart';
 import 'auth_messages.dart';
@@ -148,14 +150,6 @@ class _SelfRegistrationScreenState extends State<SelfRegistrationScreen> {
     return _fieldErrors['birthDate'];
   }
 
-  InputDecoration _decoration(String label, {String? helper}) =>
-      InputDecoration(
-        labelText: label,
-        helperText: helper,
-        helperMaxLines: 2,
-        border: const OutlineInputBorder(),
-      );
-
   @override
   Widget build(BuildContext context) {
     const title = 'Registro de paciente';
@@ -163,176 +157,183 @@ class _SelfRegistrationScreenState extends State<SelfRegistrationScreen> {
       return AuthPage(
         title: title,
         showOfflineBanner: false,
-        children: [
-          const SuccessMessage(
+        primaryAction: KdButton(
+          label: 'Volver a iniciar sesión',
+          expand: true,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        children: const [
+          SuccessMessage(
             'Recibimos tu registro. Te enviamos un correo para verificar tu cuenta; '
             'ábrelo en este teléfono para activarla.',
-          ),
-          const SizedBox(height: 24),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Volver a iniciar sesión'),
+            title: 'Revisa tu correo',
           ),
         ],
       );
     }
-    const gap = SizedBox(height: 16);
+    final t = KdTokens.of(context);
+    final gap = SizedBox(height: t.space4);
+    final consentError = _fieldErrors['consent'];
     return AuthPage(
       title: title,
+      primaryAction: OnlineSubmitButton(
+        label: 'Registrarme',
+        busy: _busy,
+        onPressed: _submit,
+      ),
       children: [
-        const Text(
-          'Regístrate si tu clínica tiene habilitado el autorregistro. '
-          'Los menores de edad se registran en la clínica con su representante.',
+        const AuthHeader(
+          title: 'Crea tu cuenta de paciente',
+          message:
+              'Regístrate si tu clínica tiene habilitado el autorregistro. '
+              'Los menores de edad se registran en la clínica con su representante.',
         ),
-        gap,
-        ErrorMessage(_error),
+        if (_error != null) KdInlineMessage.error(_error!),
         Form(
           key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextFormField(
-                controller: _clinicCode,
-                autocorrect: false,
-                textInputAction: TextInputAction.next,
-                validator: _validator('publicCode', (v) {
-                  final code = v?.trim().toLowerCase() ?? '';
-                  if (code.isEmpty) return 'Ingresa el código de tu clínica.';
-                  if (!RegExp(r'^[a-z0-9-]{3,60}$').hasMatch(code)) {
-                    return 'Usa solo letras, números y guiones (3 a 60).';
-                  }
-                  return null;
-                }),
-                decoration: _decoration(
-                  'Código de la clínica',
-                  helper: 'Te lo entrega la clínica.',
+          child: AutofillGroup(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const _SectionTitle('Tu clínica'),
+                KdTextField(
+                  label: 'Código de la clínica',
+                  controller: _clinicCode,
+                  prefixIcon: KdIcons.building,
+                  helperText: 'Te lo entrega la clínica.',
+                  validator: _validator('publicCode', (v) {
+                    final code = v?.trim().toLowerCase() ?? '';
+                    if (code.isEmpty) return 'Ingresa el código de tu clínica.';
+                    if (!RegExp(r'^[a-z0-9-]{3,60}$').hasMatch(code)) {
+                      return 'Usa solo letras, números y guiones (3 a 60).';
+                    }
+                    return null;
+                  }),
                 ),
-              ),
-              gap,
-              DropdownButtonFormField<String>(
-                initialValue: _documentType,
-                items: [
-                  for (final o in RegistrationCatalog.documentTypes)
-                    DropdownMenuItem(value: o.code, child: Text(o.label)),
-                ],
-                onChanged: (v) => setState(() => _documentType = v),
-                validator: (v) => v == null
-                    ? 'Elige el tipo de documento.'
-                    : _fieldErrors['documentType'],
-                decoration: _decoration('Tipo de documento'),
-              ),
-              gap,
-              TextFormField(
-                controller: _documentNumber,
-                textInputAction: TextInputAction.next,
-                validator: _validator('documentNumber', (v) {
-                  final t = v?.trim() ?? '';
-                  if (t.isEmpty) return 'Este dato es obligatorio.';
-                  if (t.length > 30) return 'Usa como máximo 30 caracteres.';
-                  return null;
-                }),
-                decoration: _decoration('Número de documento'),
-              ),
-              gap,
-              TextFormField(
-                controller: _firstNames,
-                textCapitalization: TextCapitalization.words,
-                autofillHints: const [AutofillHints.givenName],
-                textInputAction: TextInputAction.next,
-                validator: _validator('firstNames', _name),
-                decoration: _decoration('Nombres'),
-              ),
-              gap,
-              TextFormField(
-                controller: _lastNames,
-                textCapitalization: TextCapitalization.words,
-                autofillHints: const [AutofillHints.familyName],
-                textInputAction: TextInputAction.next,
-                validator: _validator('lastNames', _name),
-                decoration: _decoration('Apellidos'),
-              ),
-              gap,
-              TextFormField(
-                controller: _birthDateText,
-                readOnly: true,
-                onTap: _pickBirthDate,
-                validator: _birthDateValidator,
-                decoration: _decoration('Fecha de nacimiento').copyWith(
-                  suffixIcon: IconButton(
-                    tooltip: 'Elegir fecha de nacimiento',
-                    icon: const Icon(Icons.calendar_today),
-                    onPressed: _pickBirthDate,
+                const _SectionTitle('Tus datos'),
+                KdSelectField<String>(
+                  label: 'Tipo de documento',
+                  value: _documentType,
+                  options: [
+                    for (final o in RegistrationCatalog.documentTypes)
+                      KdSelectOption(o.code, o.label),
+                  ],
+                  onChanged: (v) => setState(() => _documentType = v),
+                  validator: (v) => v == null
+                      ? 'Elige el tipo de documento.'
+                      : _fieldErrors['documentType'],
+                ),
+                gap,
+                KdTextField(
+                  label: 'Número de documento',
+                  controller: _documentNumber,
+                  validator: _validator('documentNumber', (v) {
+                    final text = v?.trim() ?? '';
+                    if (text.isEmpty) return 'Este dato es obligatorio.';
+                    if (text.length > 30) {
+                      return 'Usa como máximo 30 caracteres.';
+                    }
+                    return null;
+                  }),
+                ),
+                gap,
+                KdTextField(
+                  label: 'Nombres',
+                  controller: _firstNames,
+                  textCapitalization: TextCapitalization.words,
+                  autofillHints: const [AutofillHints.givenName],
+                  validator: _validator('firstNames', _name),
+                ),
+                gap,
+                KdTextField(
+                  label: 'Apellidos',
+                  controller: _lastNames,
+                  textCapitalization: TextCapitalization.words,
+                  autofillHints: const [AutofillHints.familyName],
+                  validator: _validator('lastNames', _name),
+                ),
+                gap,
+                KdTextField(
+                  label: 'Fecha de nacimiento',
+                  controller: _birthDateText,
+                  readOnly: true,
+                  onTap: _pickBirthDate,
+                  suffixIcon: KdIcons.calendar,
+                  validator: _birthDateValidator,
+                ),
+                gap,
+                KdSelectField<String>(
+                  label: 'Sexo',
+                  value: _sex,
+                  options: [
+                    for (final o in RegistrationCatalog.sexes)
+                      KdSelectOption(o.code, o.label),
+                  ],
+                  onChanged: (v) => setState(() => _sex = v),
+                  validator: (v) =>
+                      v == null ? 'Elige el sexo.' : _fieldErrors['sex'],
+                ),
+                const _SectionTitle('Tu cuenta'),
+                KdTextField(
+                  label: 'Correo',
+                  controller: _email,
+                  prefixIcon: KdIcons.mail,
+                  keyboardType: TextInputType.emailAddress,
+                  autofillHints: const [AutofillHints.email],
+                  validator: _validator('email', emailValidator),
+                ),
+                gap,
+                KdTextField(
+                  label: 'Teléfono (opcional)',
+                  controller: _phone,
+                  prefixIcon: KdIcons.phone,
+                  keyboardType: TextInputType.phone,
+                  autofillHints: const [AutofillHints.telephoneNumber],
+                  validator: _validator('phone', (v) {
+                    final text = v?.trim() ?? '';
+                    if (text.isEmpty) return null;
+                    if (!RegExp(r'^\+[1-9][0-9]{6,14}$').hasMatch(text)) {
+                      return 'Usa el formato internacional, por ejemplo +593…';
+                    }
+                    return null;
+                  }),
+                ),
+                gap,
+                KdTextField(
+                  label: 'Contraseña',
+                  controller: _password,
+                  obscureText: true,
+                  helperText: 'Usa al menos $minPasswordLength caracteres.',
+                  autofillHints: const [AutofillHints.newPassword],
+                  textInputAction: TextInputAction.done,
+                  validator: _validator('password', newPasswordValidator),
+                ),
+                gap,
+                KdCard(
+                  padding: EdgeInsets.zero,
+                  child: CheckboxListTile(
+                    value: _consent,
+                    onChanged: (v) => setState(() => _consent = v ?? false),
+                    controlAffinity: ListTileControlAffinity.leading,
+                    contentPadding: EdgeInsets.symmetric(horizontal: t.space2),
+                    title: Text(
+                      'Acepto el tratamiento de mis datos personales por la clínica.',
+                      style: t.typeBody.copyWith(color: t.textDefault),
+                    ),
+                    subtitle: Text(
+                      consentError ??
+                          'Versión del texto: ${AppScope.of(context).config.consentTextVersion}',
+                      style: t.typeBodySm.copyWith(
+                        color: consentError == null
+                            ? t.textMuted
+                            : t.colorError,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-              gap,
-              DropdownButtonFormField<String>(
-                initialValue: _sex,
-                items: [
-                  for (final o in RegistrationCatalog.sexes)
-                    DropdownMenuItem(value: o.code, child: Text(o.label)),
-                ],
-                onChanged: (v) => setState(() => _sex = v),
-                validator: (v) =>
-                    v == null ? 'Elige el sexo.' : _fieldErrors['sex'],
-                decoration: _decoration('Sexo'),
-              ),
-              gap,
-              TextFormField(
-                controller: _email,
-                keyboardType: TextInputType.emailAddress,
-                autocorrect: false,
-                autofillHints: const [AutofillHints.email],
-                textInputAction: TextInputAction.next,
-                validator: _validator('email', emailValidator),
-                decoration: _decoration('Correo'),
-              ),
-              gap,
-              TextFormField(
-                controller: _phone,
-                keyboardType: TextInputType.phone,
-                autofillHints: const [AutofillHints.telephoneNumber],
-                textInputAction: TextInputAction.next,
-                validator: _validator('phone', (v) {
-                  final t = v?.trim() ?? '';
-                  if (t.isEmpty) return null;
-                  if (!RegExp(r'^\+[1-9][0-9]{6,14}$').hasMatch(t)) {
-                    return 'Usa el formato internacional, por ejemplo +593…';
-                  }
-                  return null;
-                }),
-                decoration: _decoration('Teléfono (opcional)'),
-              ),
-              gap,
-              PasswordField(
-                controller: _password,
-                label: 'Contraseña',
-                helperText: 'Usa al menos $minPasswordLength caracteres.',
-                autofillHints: const [AutofillHints.newPassword],
-                validator: _validator('password', newPasswordValidator),
-              ),
-              gap,
-              CheckboxListTile(
-                value: _consent,
-                onChanged: (v) => setState(() => _consent = v ?? false),
-                controlAffinity: ListTileControlAffinity.leading,
-                contentPadding: EdgeInsets.zero,
-                title: const Text(
-                  'Acepto el tratamiento de mis datos personales por la clínica.',
-                ),
-                subtitle: Text(
-                  _fieldErrors['consent'] ??
-                      'Versión del texto: ${AppScope.of(context).config.consentTextVersion}',
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 24),
-        OnlineSubmitButton(
-          label: 'Registrarme',
-          busy: _busy,
-          onPressed: _submit,
         ),
       ],
     );
@@ -343,5 +344,24 @@ class _SelfRegistrationScreenState extends State<SelfRegistrationScreen> {
     if (t.isEmpty) return 'Este dato es obligatorio.';
     if (t.length > 120) return 'Usa como máximo 120 caracteres.';
     return null;
+  }
+}
+
+/// Heading of a group of fields, announced as a header.
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = KdTokens.of(context);
+    return Padding(
+      padding: EdgeInsets.only(top: t.space2, bottom: t.space3),
+      child: Semantics(
+        header: true,
+        child: Text(text, style: t.typeSubtitle.copyWith(color: t.textDefault)),
+      ),
+    );
   }
 }
