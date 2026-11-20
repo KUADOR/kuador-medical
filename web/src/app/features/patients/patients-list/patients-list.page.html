@@ -1,28 +1,33 @@
-<section class="page" aria-labelledby="patients-title">
-  <div class="page__header">
-    <h1 id="patients-title">Pacientes</h1>
-    <div class="actions">
-      <a class="button button--secondary" [routerLink]="settingsLink" data-testid="settings-link"
+<section class="patients" aria-labelledby="patients-title">
+  <header class="patients__header">
+    <h1 id="patients-title" class="patients__title">Pacientes</h1>
+    <div class="patients__actions">
+      <a
+        kdButton
+        variant="tertiary"
+        icon="settings"
+        [routerLink]="settingsLink"
+        data-testid="settings-link"
         >Autorregistro</a
       >
       @if (canRegister()) {
-        <a class="button" [routerLink]="newPatientLink" data-testid="new-patient"
+        <a kdButton icon="user-plus" [routerLink]="newPatientLink" data-testid="new-patient"
           >Registrar paciente</a
         >
       }
     </div>
-  </div>
+  </header>
 
-  <div aria-live="polite">
-    @if (notice(); as message) {
-      <p class="alert alert--success" role="status" data-testid="notice">{{ message }}</p>
-    }
-  </div>
+  @if (notice(); as message) {
+    <kd-alert tone="ok" dismissible data-testid="notice" (dismissed)="notice.set(null)">{{
+      message
+    }}</kd-alert>
+  }
 
-  <form class="search" role="search" (ngSubmit)="search()">
-    <label for="patients-q">Buscar por nombre o número de documento</label>
-    <div class="search__row">
+  <form class="patients__search" role="search" aria-label="Pacientes" (ngSubmit)="search()">
+    <kd-field class="patients__query" label="Buscar por nombre o número de documento">
       <input
+        kdInput
         id="patients-q"
         type="search"
         name="q"
@@ -31,77 +36,65 @@
         [ngModel]="query()"
         (ngModelChange)="query.set($event)"
       />
-      <button type="submit" class="button">Buscar</button>
-    </div>
+    </kd-field>
+    <button kdButton variant="primary" icon="search" type="submit">Buscar</button>
   </form>
 
-  <div [attr.aria-busy]="state().kind === 'loading'">
+  <div class="patients__results" [attr.aria-busy]="state().kind === 'loading'">
     @switch (state().kind) {
       @case ('loading') {
-        <p class="hint">Cargando pacientes…</p>
+        <kd-loading-state label="Buscando pacientes…" />
       }
       @case ('failed') {
-        <p class="alert" role="alert" data-testid="load-error">{{ loadFailure() }}</p>
-        <div class="actions">
-          <button type="button" class="button" (click)="load()">Volver a intentar</button>
-        </div>
+        <kd-error-state
+          data-testid="load-error"
+          heading="No pudimos cargar los pacientes"
+          [description]="loadFailure() ?? ''"
+          (retry)="load()"
+        />
       }
       @default {
         @if (result(); as page) {
           @if (page.items.length === 0) {
-            <p class="hint" data-testid="empty">{{ emptyMessage() }}</p>
+            <kd-empty-state
+              data-testid="empty"
+              [icon]="searchedTerm() ? 'search' : 'users'"
+              [heading]="searchedTerm() ? 'Sin resultados' : 'Sin pacientes registrados'"
+              [description]="emptyMessage()"
+            />
           } @else {
-            <p class="hint" aria-live="polite" data-testid="total">
+            <p class="patients__total" aria-live="polite" data-testid="total">
               {{ page.totalItems }} {{ page.totalItems === 1 ? 'paciente' : 'pacientes' }}
             </p>
-            <div class="table-wrapper">
-              <table class="table">
-                <caption class="visually-hidden">
-                  Pacientes de la clínica
-                </caption>
-                <thead>
-                  <tr>
-                    <th scope="col">Paciente</th>
-                    <th scope="col">Documento</th>
-                    <th scope="col">Fecha de nacimiento</th>
-                    <th scope="col">Cuenta</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (patient of page.items; track patient.id) {
-                    <tr data-testid="patient">
-                      <th scope="row">
-                        <a [routerLink]="patientUrl(patient.id)">{{ fullName(patient) }}</a>
-                        @if (patient.minor) {
-                          <span class="badge" data-testid="minor-badge">Menor de edad</span>
-                        }
-                      </th>
-                      <td>
-                        {{ documentTypeLabel(patient.documentType) }} {{ patient.documentNumber }}
-                      </td>
-                      <td>{{ formatDate(patient.birthDate) }}</td>
-                      <td>{{ accountStatusLabels[patient.accountStatus] }}</td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
+            <kd-list label="Pacientes de la clínica">
+              @for (patient of page.items; track patient.id) {
+                <kd-list-item
+                  data-testid="patient"
+                  icon="user"
+                  [heading]="fullName(patient)"
+                  [description]="summary(patient)"
+                  [meta]="accountStatusLabels[patient.accountStatus]"
+                  [link]="patientUrl(patient.id)"
+                />
+              }
+            </kd-list>
             @if (totalPages() > 1) {
-              <nav class="actions" aria-label="Páginas de pacientes">
+              <nav class="patients__pages" aria-label="Páginas de pacientes">
                 <button
+                  kdButton
                   type="button"
-                  class="button button--secondary"
+                  icon="chevron-left"
                   [disabled]="pageIndex() === 0"
                   (click)="goTo(pageIndex() - 1)"
                 >
                   Anterior
                 </button>
-                <span data-testid="page-label"
+                <span class="patients__page-label" data-testid="page-label"
                   >Página {{ pageIndex() + 1 }} de {{ totalPages() }}</span
                 >
                 <button
+                  kdButton
                   type="button"
-                  class="button button--secondary"
                   [disabled]="pageIndex() + 1 >= totalPages()"
                   (click)="goTo(pageIndex() + 1)"
                 >

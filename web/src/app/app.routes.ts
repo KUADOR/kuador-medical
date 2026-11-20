@@ -207,7 +207,9 @@ export const routes: Routes = [
           title: `Sistema de diseño · ${APP_TITLE}`,
         },
         {
+          // The demo draws its own shell: the app frame is left out (see App.bareLayout).
           path: 'design-system/shell',
+          data: { bareLayout: true },
           loadComponent: () =>
             import('./design-system/catalog/shell-demo.page').then((m) => m.ShellDemoPage),
           title: `Sistema de diseño · Shell · ${APP_TITLE}`,

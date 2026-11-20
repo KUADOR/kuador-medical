@@ -1,0 +1,14 @@
+// Branch of the session in the navigation column (MEDK-42). Tokens only (ADR-007).
+.branch-switcher {
+  display: grid;
+  gap: var(--kd-space-2);
+}
+
+.branch-switcher__active {
+  display: flex;
+  align-items: center;
+  gap: var(--kd-space-2);
+  margin: 0;
+  font: var(--kd-type-body-sm);
+  color: var(--kd-text-muted);
+}

@@ -1,54 +1,55 @@
-<section class="page page--narrow" aria-labelledby="login-title">
-  <h1 id="login-title">Ingresar</h1>
-  <p class="hint">Ingresa con el correo y la contraseña de tu cuenta.</p>
+<section class="auth-panel" aria-labelledby="login-title">
+  <h1 id="login-title" class="auth-panel__title">Ingresar</h1>
+  <p class="auth-panel__lead">Ingresa con el correo y la contraseña de tu cuenta.</p>
 
   @if (notice) {
-    <p class="alert alert--success" role="status" data-testid="notice">{{ notice }}</p>
+    <kd-alert tone="ok" data-testid="notice">{{ notice }}</kd-alert>
   }
 
-  <form class="form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+  <form class="auth-panel__form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
     @if (failure(); as message) {
-      <p class="alert" role="alert" data-testid="form-error">{{ message }}</p>
+      <kd-alert tone="error" data-testid="form-error">{{ message }}</kd-alert>
     }
 
-    <div class="field">
-      <label for="login-email">Correo</label>
+    <kd-field label="Correo">
       <input
+        kdInput
         id="login-email"
         type="email"
         formControlName="email"
         autocomplete="username"
         inputmode="email"
-        [attr.aria-invalid]="error('email') ? 'true' : null"
-        [attr.aria-describedby]="error('email') ? 'login-email-error' : null"
       />
-      @if (error('email'); as message) {
-        <p id="login-email-error" class="field__error">{{ message }}</p>
-      }
-    </div>
+    </kd-field>
 
-    <div class="field">
-      <label for="login-password">Contraseña</label>
+    <kd-field label="Contraseña">
       <input
+        kdInput
         id="login-password"
         type="password"
         formControlName="password"
         autocomplete="current-password"
-        [attr.aria-invalid]="error('password') ? 'true' : null"
-        [attr.aria-describedby]="error('password') ? 'login-password-error' : null"
       />
-      @if (error('password'); as message) {
-        <p id="login-password-error" class="field__error">{{ message }}</p>
-      }
-    </div>
+    </kd-field>
 
-    <div class="actions">
-      <button type="submit" class="button" [disabled]="submitting()">
-        {{ submitting() ? 'Ingresando…' : 'Ingresar' }}
-      </button>
-    </div>
+    <button
+      kdButton
+      variant="primary"
+      icon="log-in"
+      type="submit"
+      class="auth-panel__submit"
+      [disabled]="submitting()"
+      [attr.aria-busy]="submitting() ? 'true' : null"
+    >
+      {{ submitting() ? 'Ingresando…' : 'Ingresar' }}
+    </button>
   </form>
 
-  <p><a [routerLink]="forgotPasswordLink">¿Olvidaste tu contraseña?</a></p>
-  <p>¿Tu clínica todavía no tiene cuenta? <a [routerLink]="signupLink">Registrar clínica</a></p>
+  <div class="auth-panel__links">
+    <a kdButton variant="tertiary" [routerLink]="forgotPasswordLink">¿Olvidaste tu contraseña?</a>
+    <p class="auth-panel__note">
+      ¿Tu clínica todavía no tiene cuenta?
+      <a kdButton variant="tertiary" [routerLink]="signupLink">Registrar clínica</a>
+    </p>
+  </div>
 </section>
