@@ -179,6 +179,7 @@ class GuardianPersonFields extends StatelessWidget {
           label: 'Correo del representante (opcional)',
           controller: controller.email,
           keyboardType: TextInputType.emailAddress,
+          autocorrect: false,
           validator: _v('email', FormRules.optionalEmail),
         ),
         gap,

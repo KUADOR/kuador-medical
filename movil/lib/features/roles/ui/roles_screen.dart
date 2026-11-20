@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../../app_scope.dart';
 import '../../../core/ui/module_widgets.dart';
+import '../../../design_system/tokens.g.dart';
 import '../data/role_models.dart';
 import 'role_form_screen.dart';
-import '../../../design_system/tokens.g.dart';
 
 /// Roles of the clinic (`GET /roles`), built over the fixed permission
 /// catalog of Kuador (FR-016).

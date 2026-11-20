@@ -93,7 +93,9 @@ void main() {
         'dimension-literal',
         'dimension-literal',
       ]);
-      expect(rules('final s = TextStyle(fontSize: 14);'), ['dimension-literal']);
+      expect(rules('final s = TextStyle(fontSize: 14);'), [
+        'dimension-literal',
+      ]);
       expect(rules('final c = Card(elevation: 2);'), ['dimension-literal']);
       expect(rules('const c = BoxConstraints(maxWidth: 480);'), [
         'dimension-literal',
@@ -106,10 +108,7 @@ void main() {
     });
 
     test('accepts sizes and gaps that come from the tokens', () {
-      expect(
-        rules('const g = SizedBox(height: KdConstants.space4);'),
-        isEmpty,
-      );
+      expect(rules('const g = SizedBox(height: KdConstants.space4);'), isEmpty);
       expect(rules('final g = SizedBox(width: t.space3);'), isEmpty);
       expect(rules('final w = Wrap(spacing: KdConstants.space2);'), isEmpty);
       expect(rules('const g = SizedBox(width: double.infinity);'), isEmpty);
@@ -118,7 +117,10 @@ void main() {
         rules('const c = BoxConstraints(maxWidth: KdLayout.formMaxWidth);'),
         isEmpty,
       );
-      expect(rules('final s = Size(t.sizeTargetMin, t.sizeTargetMin);'), isEmpty);
+      expect(
+        rules('final s = Size(t.sizeTargetMin, t.sizeTargetMin);'),
+        isEmpty,
+      );
       expect(rules('const g = SizedBox(height: 0.0);'), isEmpty);
       expect(rules('final s = page.size;'), isEmpty);
       expect(rules('final s = api.list(size: pageSize);'), isEmpty);

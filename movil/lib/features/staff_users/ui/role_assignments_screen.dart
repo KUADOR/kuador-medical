@@ -6,11 +6,11 @@ import '../../../core/api/error_messages.dart';
 import '../../../core/connectivity/connectivity_widgets.dart';
 import '../../../core/session/session_models.dart';
 import '../../../core/ui/module_widgets.dart';
+import '../../../design_system/tokens.g.dart';
 import '../../auth/ui/auth_widgets.dart';
 import '../../roles/data/role_models.dart';
 import '../data/staff_models.dart';
 import 'role_assignments_editor.dart';
-import '../../../design_system/tokens.g.dart';
 
 /// Replaces the branch role assignments of a staff user
 /// (`PUT /staff-users/{id}/role-assignments`). Pops the new assignments.

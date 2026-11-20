@@ -250,6 +250,30 @@ void main() {
       expect(find.text('Falta el teléfono.'), findsOneWidget);
     });
 
+    testWidgets('email and url fields do not autocorrect by default', (
+      tester,
+    ) async {
+      await pumpThemed(
+        tester,
+        const Column(
+          children: [
+            KdTextField(label: 'Nombre'),
+            KdTextField(
+              label: 'Correo',
+              keyboardType: TextInputType.emailAddress,
+            ),
+            KdTextField(label: 'Sitio', keyboardType: TextInputType.url),
+            KdTextField(label: 'Código', autocorrect: false),
+          ],
+        ),
+      );
+      List<bool> autocorrect() => tester
+          .widgetList<EditableText>(find.byType(EditableText))
+          .map((e) => e.autocorrect)
+          .toList();
+      expect(autocorrect(), [true, false, false, false]);
+    });
+
     testWidgets('the password toggle shows and hides the text', (tester) async {
       await pumpThemed(
         tester,
@@ -681,9 +705,7 @@ void main() {
   });
 
   group('KdProgressIndicator', () {
-    testWidgets('spins inline and is announced with its label', (
-      tester,
-    ) async {
+    testWidgets('spins inline and is announced with its label', (tester) async {
       final handle = tester.ensureSemantics();
       await tester.pumpWidget(
         themedApp(

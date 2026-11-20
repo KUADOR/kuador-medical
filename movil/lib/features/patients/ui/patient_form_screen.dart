@@ -6,11 +6,11 @@ import '../../../core/api/error_messages.dart';
 import '../../../core/connectivity/connectivity_widgets.dart';
 import '../../../core/ui/module_widgets.dart';
 import '../../../core/util/idempotent_creation.dart';
+import '../../../design_system/tokens.g.dart';
 import '../../auth/data/registration_catalog.dart';
 import '../../auth/ui/auth_widgets.dart';
 import '../data/patient_models.dart';
 import 'patient_widgets.dart';
-import '../../../design_system/tokens.g.dart';
 
 /// Registers a patient with the mandatory data and the personal data consent
 /// (FR-008, FR-009); a minor needs a legal guardian and gets no account

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/session/session_models.dart';
+import '../../../design_system/tokens.g.dart';
 import '../../roles/data/role_models.dart';
 import '../data/staff_models.dart';
-import '../../../design_system/tokens.g.dart';
 
 /// Chooses the roles of a staff user per branch (FR-026): the same role in
 /// every branch (default) or one role per branch, with "no access" allowed in

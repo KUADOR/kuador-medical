@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../app_scope.dart';
 import '../../../core/ui/module_widgets.dart';
-import '../data/patient_models.dart';
 import '../../../design_system/tokens.g.dart';
+import '../data/patient_models.dart';
 
 /// Enables or disables the patient self-registration of the clinic
 /// (FR-003). Disabled by default.

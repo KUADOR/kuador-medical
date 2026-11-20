@@ -6,11 +6,11 @@ import '../../../core/api/error_messages.dart';
 import '../../../core/connectivity/connectivity_widgets.dart';
 import '../../../core/ui/module_widgets.dart';
 import '../../../core/util/idempotent_creation.dart';
+import '../../../design_system/tokens.g.dart';
 import '../../auth/ui/auth_widgets.dart';
 import '../../roles/data/role_models.dart';
 import '../data/staff_models.dart';
 import 'role_assignments_editor.dart';
-import '../../../design_system/tokens.g.dart';
 
 /// Registers a staff member and sends the invitation (FR-002, FR-007), or
 /// edits the personal data of an existing one. Requires a connection
