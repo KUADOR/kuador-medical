@@ -130,11 +130,6 @@ jobs:
           cache: true
       - run: flutter pub get
       - run: flutter analyze
-      - run: flutter test --tags golden --update-goldens  # TEMP MEDK-38
-      - uses: actions/upload-artifact@v7  # TEMP MEDK-38
-        with:
-          name: medk38-goldens
-          path: movil/test/design_system/goldens/*.png
       - run: flutter test
 
   contract:
