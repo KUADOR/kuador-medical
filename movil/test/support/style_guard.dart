@@ -16,6 +16,9 @@ class StyleViolation {
 /// Folder whose files may hold literal styles: the tokens and the theme.
 const designSystemDir = 'lib/design_system/';
 
+/// [designSystemDir] relative to the scanned root.
+const _designSystemSubdir = 'design_system/';
+
 final _colorLiteral = RegExp(r'\bColor\s*\(\s*0x');
 final _colorFromArgb = RegExp(r'\bColor\.from(ARGB|RGBO)\s*\(');
 final _materialColors = RegExp(r'(?<![\w.])(Colors|CupertinoColors)\.');
@@ -23,12 +26,16 @@ final _geometryCall = RegExp(
   r'(?<![\w.])(EdgeInsetsDirectional|EdgeInsets|BorderRadiusDirectional|BorderRadius|Radius)\b\s*(\.\s*\w+\s*)?\(',
 );
 final _numberLiteral = RegExp(r'(?<![\w.$])\d+(\.\d+)?(?![\w.])');
+const _token = r'(KdConstants\.\w+|\w+\.(space|radius)\w*)';
+final _tokenArithmetic = RegExp('$_token\\s*[-+*/]\\s*$_token');
 
 /// Returns the violations of the style rules in one Dart [source] file.
 ///
 /// Rules: no `Color(0x…)` or `Color.fromARGB/RGBO`, no `Colors.*` /
 /// `CupertinoColors.*`, and no `EdgeInsets*`, `BorderRadius*` or `Radius`
-/// built with numeric literals. Comments and string literals are ignored.
+/// built with numeric literals or with arithmetic between tokens (a derived
+/// value gets a name in `lib/design_system/`). Comments and string literals
+/// are ignored.
 List<StyleViolation> scanSource(String path, String source) {
   final code = _blankCommentsAndStrings(source);
   final violations = <StyleViolation>[];
@@ -49,18 +56,21 @@ List<StyleViolation> scanSource(String path, String source) {
   }
   for (final m in _geometryCall.allMatches(code)) {
     final args = _balancedArgs(code, m.end - 1);
-    if (args != null && _numberLiteral.hasMatch(args)) {
-      final rule = m.group(1)!.contains('Radius')
-          ? 'radius-literal'
-          : 'spacing-literal';
+    if (args == null) continue;
+    final isRadius = m.group(1)!.contains('Radius');
+    if (_numberLiteral.hasMatch(args)) {
+      final rule = isRadius ? 'radius-literal' : 'spacing-literal';
       add(m.start, rule, _lineAt(source, m.start));
+    } else if (_tokenArithmetic.hasMatch(args)) {
+      add(m.start, 'token-arithmetic', _lineAt(source, m.start));
     }
   }
   violations.sort((a, b) => a.line.compareTo(b.line));
   return violations;
 }
 
-/// Scans every `.dart` file under `lib/` except [designSystemDir].
+/// Scans every `.dart` file under [root] except its `design_system/` folder
+/// ([designSystemDir] for the default root).
 ///
 /// Must run with the package root (`movil/`) as the working directory,
 /// which is what `flutter test` does.
@@ -75,7 +85,10 @@ List<StyleViolation> scanLib({String root = 'lib'}) {
         ..sort((a, b) => a.path.compareTo(b.path));
   for (final file in files) {
     final path = file.path.replaceAll(r'\', '/');
-    if (path.startsWith(designSystemDir)) continue;
+    final relative = path
+        .substring(root.length)
+        .replaceFirst(RegExp('^/+'), '');
+    if (relative.startsWith(_designSystemSubdir)) continue;
     violations.addAll(scanSource(path, file.readAsStringSync()));
   }
   return violations;

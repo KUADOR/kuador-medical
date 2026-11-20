@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../design_system/layout.dart';
 import '../../design_system/tokens.g.dart';
 import '../api/error_messages.dart';
 import '../connectivity/connectivity_widgets.dart';
@@ -64,7 +65,7 @@ class ModuleListView extends StatelessWidget {
         KdConstants.space4,
         KdConstants.space4,
         KdConstants.space4,
-        KdConstants.space12 + KdConstants.space12,
+        KdLayout.fabClearance,
       ),
       children: children,
     );

@@ -42,6 +42,34 @@ void main() {
       ]);
     });
 
+    test('rejects arithmetic between tokens: derived values get a name', () {
+      expect(
+        rules(
+          'const p = EdgeInsets.only(bottom: KdConstants.space12 + KdConstants.space12);',
+        ),
+        ['token-arithmetic'],
+      );
+      expect(rules('final p = EdgeInsets.all(t.space4 - t.space1);'), [
+        'token-arithmetic',
+      ]);
+      expect(
+        rules(
+          'final r = BorderRadius.circular(KdConstants.radiusMd / t.radiusSm);',
+        ),
+        ['token-arithmetic'],
+      );
+      expect(
+        rules('const p = EdgeInsets.only(bottom: KdLayout.fabClearance);'),
+        isEmpty,
+      );
+      expect(
+        rules(
+          'final p = EdgeInsets.only(bottom: t.space4 + MediaQuery.paddingOf(context).bottom);',
+        ),
+        isEmpty,
+      );
+    });
+
     test('rejects BorderRadius and Radius built with numeric literals', () {
       expect(rules('final r = BorderRadius.circular(12);'), ['radius-literal']);
       expect(rules('final r = BorderRadius.all(Radius.circular(8));'), [
@@ -96,13 +124,21 @@ void main() {
     );
   });
 
-  test('only lib/design_system/ may hold literal styles', () {
-    final tokens = File('${designSystemDir}tokens.g.dart');
-    expect(
-      scanSource(tokens.path, tokens.readAsStringSync()),
-      isNotEmpty,
-      reason: 'the generated tokens are literal by design',
-    );
-    expect(scanLib().where((v) => v.path.startsWith(designSystemDir)), isEmpty);
+  test('only the design_system/ folder may hold literal styles', () {
+    final root = Directory.systemTemp.createTempSync('style_guard_');
+    addTearDown(() => root.deleteSync(recursive: true));
+    void write(String path) => File('${root.path}/$path')
+      ..createSync(recursive: true)
+      ..writeAsStringSync('final c = Colors.red;\n');
+    write('design_system/theme.dart');
+    write('design_system/widgets/button.dart');
+    write('features/home_screen.dart');
+    write('design_system_extra.dart');
+
+    final paths = scanLib(root: root.path).map((v) => v.path).toList();
+    expect(paths, [
+      '${root.path}/design_system_extra.dart',
+      '${root.path}/features/home_screen.dart',
+    ]);
   });
 }

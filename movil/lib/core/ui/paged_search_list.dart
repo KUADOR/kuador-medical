@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../design_system/layout.dart';
 import '../../design_system/tokens.g.dart';
 import '../api/result_page.dart';
 import 'module_widgets.dart';
@@ -111,7 +112,7 @@ class _PagedSearchListState<T> extends State<PagedSearchList<T>> {
           KdConstants.space4,
           KdConstants.space4,
           KdConstants.space4,
-          KdConstants.space12 + KdConstants.space12,
+          KdLayout.fabClearance,
         ),
         children: [
           TextField(
