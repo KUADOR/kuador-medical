@@ -1,0 +1,3 @@
+tags:
+  # Golden (screenshot) tests. Baselines are rendered on Linux, like CI (movil/README.md, «Goldens»).
+  golden:
