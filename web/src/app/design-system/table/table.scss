@@ -1,0 +1,42 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.kd-table__scroll {
+  overflow-x: auto;
+  border: var(--kd-border-hairline);
+  border-radius: var(--kd-radius-lg);
+  background: var(--kd-surface-raised);
+}
+
+// The projected table lives in the page's DOM: ::ng-deep is scoped by :host.
+:host ::ng-deep table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--kd-text-default);
+  font: var(--kd-type-body-sm);
+}
+
+:host ::ng-deep caption {
+  padding: var(--kd-space-3) var(--kd-space-4);
+  font: var(--kd-type-label);
+  text-align: left;
+}
+
+:host ::ng-deep :is(th, td) {
+  padding: var(--kd-space-3) var(--kd-space-4);
+  border-bottom: var(--kd-border-hairline);
+  text-align: left;
+  vertical-align: top;
+}
+
+:host ::ng-deep th {
+  background: var(--kd-surface-sunken);
+  color: var(--kd-text-muted);
+  font: var(--kd-type-label);
+}
+
+:host ::ng-deep tbody tr:last-child :is(th, td) {
+  border-bottom: none;
+}

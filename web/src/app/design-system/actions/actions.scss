@@ -1,0 +1,10 @@
+:host {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--kd-space-2);
+}
+
+:host(.kd-actions--end) {
+  justify-content: flex-end;
+}

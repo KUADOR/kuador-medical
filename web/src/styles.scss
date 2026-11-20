@@ -288,18 +288,6 @@ a.button {
   }
 }
 
-.visually-hidden {
-  position: absolute;
-  width: 0.0625rem;
-  height: 0.0625rem;
-  padding: 0;
-  margin: -0.0625rem;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
 // Radio buttons stacked one per line (e.g. the assignment mode).
 .radio-group {
   display: grid;

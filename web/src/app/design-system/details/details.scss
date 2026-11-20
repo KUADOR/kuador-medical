@@ -1,0 +1,28 @@
+:host {
+  display: grid;
+  grid-template-columns: minmax(8rem, max-content) 1fr;
+  gap: var(--kd-space-2) var(--kd-space-4);
+  margin: 0;
+  font: var(--kd-type-body);
+}
+
+:host ::ng-deep dt {
+  font: var(--kd-type-label);
+  color: var(--kd-text-muted);
+}
+
+:host ::ng-deep dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 30rem) {
+  :host {
+    grid-template-columns: 1fr;
+    row-gap: var(--kd-space-1);
+  }
+
+  :host ::ng-deep dd + dt {
+    margin-top: var(--kd-space-2);
+  }
+}

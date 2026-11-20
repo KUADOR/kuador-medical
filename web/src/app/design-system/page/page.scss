@@ -1,0 +1,69 @@
+:host {
+  display: grid;
+  align-content: start;
+  gap: var(--kd-space-4);
+  width: 100%;
+  max-width: 48rem;
+  color: var(--kd-text-default);
+}
+
+:host(.kd-page--wide) {
+  max-width: 72rem;
+}
+
+// One short task: a centered raised panel, like the login steps (R-03, R-04).
+:host(.kd-page--narrow) {
+  max-width: 28rem;
+  margin-inline: auto;
+  padding: var(--kd-space-6);
+  border: var(--kd-border-hairline);
+  border-radius: var(--kd-radius-lg);
+  background: var(--kd-surface-raised);
+}
+
+.kd-page__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--kd-space-3);
+}
+
+.kd-page__titles {
+  display: grid;
+  gap: var(--kd-space-1);
+  min-width: 0;
+}
+
+.kd-page__heading {
+  margin: 0;
+  font: var(--kd-type-display);
+  overflow-wrap: anywhere;
+
+  &:focus {
+    outline: none;
+  }
+}
+
+.kd-page__description {
+  margin: 0;
+  font: var(--kd-type-body);
+  color: var(--kd-text-muted);
+}
+
+.kd-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--kd-space-2);
+
+  &:empty {
+    display: none;
+  }
+}
+
+@media (max-width: 30rem) {
+  :host(.kd-page--narrow) {
+    padding: var(--kd-space-4);
+  }
+}

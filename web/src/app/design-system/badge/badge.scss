@@ -1,0 +1,46 @@
+:host {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--kd-space-1);
+  max-width: 100%;
+  padding: 2px var(--kd-space-2);
+  border: var(--kd-border-hairline);
+  border-radius: var(--kd-radius-sm);
+  background: var(--kd-surface-sunken);
+  color: var(--kd-text-default);
+  font: var(--kd-type-caption);
+  font-weight: var(--kd-type-weight-medium);
+  overflow-wrap: anywhere;
+}
+
+:host(.kd-badge--info) {
+  border-color: var(--kd-color-info);
+}
+
+:host(.kd-badge--ok) {
+  border-color: var(--kd-color-ok);
+}
+
+:host(.kd-badge--warning) {
+  border-color: var(--kd-color-warning);
+}
+
+:host(.kd-badge--error) {
+  border-color: var(--kd-color-error);
+}
+
+:host(.kd-badge--info) kd-icon {
+  color: var(--kd-color-info);
+}
+
+:host(.kd-badge--ok) kd-icon {
+  color: var(--kd-color-ok);
+}
+
+:host(.kd-badge--warning) kd-icon {
+  color: var(--kd-color-warning);
+}
+
+:host(.kd-badge--error) kd-icon {
+  color: var(--kd-color-error);
+}

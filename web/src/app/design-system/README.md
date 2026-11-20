@@ -18,6 +18,16 @@ Pages import from `index.ts` only.
 | `KdDialog` | `kd-dialog` | Native modal `<dialog>`: `[(open)]`, `closed`, `[kdDialogActions]`. |
 | `KdAlert` | `kd-alert` | `tone` info, ok, warning, error: icon + text (R-08); error is `role="alert"`, the rest `role="status"`; optional `dismissible`. |
 | `KdEmptyState`, `KdLoadingState`, `KdErrorState` | `kd-empty-state`, `kd-loading-state`, `kd-error-state` | Empty (with action slot), loading (polite status) and error (alert with retry). |
+| `KdPage` | `kd-page` | Screen layout (MEDK-44): region named by its `h1` (`heading`), `description`, `width` `default` / `wide` / `narrow` (centered raised panel, like the login), slots `[kdPageBefore]` (back link), `[kdPageDescription]` and `[kdPageActions]`. |
+| `KdActions` | `kd-actions` | Wrapping row of buttons or links; `align="end"`. |
+| `KdBadge` | `kd-badge` | State or category label; `tone` neutral, info, ok, warning, error, optional decorative `icon`. The text says the state (R-08). |
+| `KdTable` | `kd-table` | Wraps a native `<table>`: look, and a named focusable scroll region (`label`) on narrow screens. |
+| `KdDetails` | `dl[kdDetails]` | Term / value pairs of a record. |
+| `KdFieldGroup` | `fieldset[kdFieldGroup]` | Legend, hint, projected controls and group error (`<groupId>-hint` / `<groupId>-error`, `aria-describedby`, `aria-invalid`); `boxed` frames a form section. |
+| `KdSwitch` | `button[kdSwitch]` | `role="switch"` with `aria-checked` from `checked`; the page keeps the click and the label. |
+
+Utility class: `.visually-hidden` (`src/styles/base.css`) hides text visually and keeps it for
+screen readers.
 
 ## Tests
 
