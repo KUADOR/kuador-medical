@@ -44,6 +44,28 @@ server:
     include-message: never
     include-stacktrace: never
 
+# Actuator (MEDK-29): only GET /actuator/health, public, with the status of each component and
+# no details. Every other endpoint is disabled and not exposed, over HTTP or JMX.
+management:
+  endpoints:
+    access:
+      default: none
+    web:
+      exposure:
+        include: health
+    jmx:
+      exposure:
+        exclude: "*"
+  endpoint:
+    health:
+      access: read-only
+      show-details: never
+      show-components: always
+  health:
+    # Email is an external service: a down SMTP server must not report the api as down.
+    mail:
+      enabled: false
+
 kuador:
   cors:
     allowed-origins: ${KUADOR_CORS_ALLOWED_ORIGINS:}
@@ -81,6 +103,13 @@ kuador:
   clinics:
     # Time zone used to compute minority of patients (under 18) [POR DEFINIR: zona horaria por clínica].
     time-zone: ${KUADOR_CLINIC_TIME_ZONE:UTC}
+  patients:
+    adulthood:
+      # Transition to adulthood (MEDK-18): hourly by default (cron in UTC) so every clinic is
+      # processed soon after its own midnight; idempotent. "-" disables it.
+      cron: ${KUADOR_ADULTHOOD_CRON:0 5 * * * *}
+      # Upper bound of the ShedLock lock if a replica dies while running the job.
+      lock-at-most-for: ${KUADOR_ADULTHOOD_LOCK_AT_MOST_FOR:PT1H}
   sms:
     # SMS provider [POR DEFINIR]. Empty provider: SMS invitations stay disabled.
     provider: ${KUADOR_SMS_PROVIDER:}

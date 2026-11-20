@@ -45,7 +45,7 @@ cd movil && flutter test         # probar
 Requisitos: Docker con Compose v2, JDK 25, Node.js LTS y Flutter estable. Detalle de variables, secretos y puertos en `docs/deployment.md`.
 
 ```bash
-cp .env.example .env                 # completar DB_PASSWORD, KUADOR_JWT_SECRET y la cuenta inicial (nunca commitear .env)
+cp .env.example .env                 # completar DB_PASSWORD, KUADOR_JWT_SECRET, LOCAL_SEED_PASSWORD y la cuenta inicial (nunca commitear .env)
 docker compose up -d db              # PostgreSQL 18 en 127.0.0.1:${DB_PORT:-5432}
 docker compose ps                    # db debe quedar «healthy»
 

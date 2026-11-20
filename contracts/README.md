@@ -6,7 +6,7 @@ HTTP contracts of Medical Kuador, written contract-first (ADR-011) in OpenAPI 3.
 |---|---|---|
 | `identity.openapi.yaml` | System status, clinic self-signup, password change, permission catalog, clinic roles and platform permissions. | Implemented by the api. |
 | `user-registration.openapi.yaml` | User registration epic (MEDK-12): multi-clinic login, branch selection and switching, refresh tokens, password reset, invitations, email verification, `/me`, staff users and branch role assignments, roles, patients, consent, guardians, adult patient links and patient self-registration. | Target contract; implemented by MEDK-14 to MEDK-18. |
-| `local-integration.openapi.yaml` | Local integration (MEDK-26): `POST /api/v1/auth/login`, `GET /api/v1/me`, `GET /api/v1/system/info` and `GET /actuator/health`, with full paths from the api origin. | Login, `/me` and system info implemented (schemas referenced from the files above, not redefined); `/actuator/health` planned (`x-implementation-status: planned`). |
+| `local-integration.openapi.yaml` | Local integration (MEDK-26): `POST /api/v1/auth/login`, `GET /api/v1/me`, `GET /api/v1/system/info` and `GET /actuator/health`, with full paths from the api origin. | Login, `/me` and system info implemented (schemas referenced from the files above, not redefined); `/actuator/health` implemented (MEDK-29). |
 
 ## Overlapping operations
 

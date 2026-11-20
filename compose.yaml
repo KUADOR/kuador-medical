@@ -48,6 +48,9 @@ services:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-local}
       # Inside the compose network the database host is "db", not localhost.
       DB_URL: jdbc:postgresql://db:5432/${DB_NAME:-medical}
+      # The container always listens on 8080; the host port is API_PORT.
+      SERVER_PORT: "8080"
+      SERVER_ADDRESS: 0.0.0.0
       KUADOR_SMTP_HOST: mailpit
       KUADOR_SMTP_PORT: "1025"
     ports:

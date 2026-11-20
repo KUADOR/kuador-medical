@@ -112,6 +112,14 @@ class Patient {
         this.updatedBy = actor;
     }
 
+    /** Marks the patient as adult since {@code date}; a patient already marked keeps its date. */
+    void markAdult(LocalDate date) {
+        if (adultSince == null) {
+            this.adultSince = Objects.requireNonNull(date, "date");
+            this.updatedAt = Instant.now();
+        }
+    }
+
     void linkAccount(UUID accountId) {
         this.accountRef = Objects.requireNonNull(accountId, "accountId");
     }
