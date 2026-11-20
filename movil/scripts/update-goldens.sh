@@ -22,6 +22,6 @@ docker run --rm --platform linux/amd64 \
     fi
     export PATH="/sdk/${FLUTTER_VERSION}/bin:${PATH}"
     git config --global --add safe.directory "*"
-    flutter pub get
+    flutter pub get --enforce-lockfile
     flutter test --tags golden --update-goldens
   '
