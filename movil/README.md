@@ -102,6 +102,27 @@ xcrun simctl openurl booted "https://localhost/invitation#t=<token>"
 - Without a connection, forms do not send anything and nothing is stored to be
   sent later.
 
+## Design system
+
+- `lib/design_system/tokens.g.dart` is **generated** from `design/tokens/` (see
+  `design/README.md`); never edit it by hand.
+- `lib/design_system/theme.dart`: `KdTheme.light` / `KdTheme.dark` with
+  `KdTheme.mode` (`ThemeMode.system`). `KdTheme.builder` removes page
+  transitions when the platform disables animations
+  (`MediaQuery.disableAnimations`); use `KdTheme.duration(context, …)` for any
+  other animation.
+- Screens read colors, spacing and radii from `KdTokens.of(context)` or
+  `KdConstants`. `test/design_system/style_guard_test.dart` fails on
+  `Color(0x…)`, `Colors.*`, or `EdgeInsets` / `BorderRadius` / `Radius` with
+  numeric literals anywhere in `lib/` except `lib/design_system/` (ADR-007).
+- Test helpers in `test/support/design_system_harness.dart`: `testGoldens`
+  (light and dark goldens, synthetic data only; accept changes with
+  `flutter test --update-goldens`) and `expectMeetsA11yGuidelines` /
+  `testA11yGuidelines` (Android and iOS tap targets, labeled targets, text
+  contrast).
+- Assets: icons (SVG, drawn with `flutter_svg`) in `assets/icons/`,
+  self-hosted fonts in `assets/fonts/`.
+
 ## Commands
 
 ```bash

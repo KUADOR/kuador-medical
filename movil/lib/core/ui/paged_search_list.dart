@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../design_system/tokens.g.dart';
 import '../api/result_page.dart';
 import 'module_widgets.dart';
 
@@ -106,7 +107,12 @@ class _PagedSearchListState<T> extends State<PagedSearchList<T>> {
     return RefreshIndicator(
       onRefresh: () => _load(reset: true),
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+        padding: const EdgeInsets.fromLTRB(
+          KdConstants.space4,
+          KdConstants.space4,
+          KdConstants.space4,
+          KdConstants.space12 + KdConstants.space12,
+        ),
         children: [
           TextField(
             controller: _search,
@@ -137,7 +143,7 @@ class _PagedSearchListState<T> extends State<PagedSearchList<T>> {
           for (final item in _items) widget.itemBuilder(context, item),
           if (!_loading && error == null && _items.isEmpty)
             Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(KdConstants.space6),
               child: Text(widget.emptyMessage, textAlign: TextAlign.center),
             ),
           if (error != null)
@@ -146,7 +152,10 @@ class _PagedSearchListState<T> extends State<PagedSearchList<T>> {
               onRetry: () => _load(reset: _items.isEmpty),
             ),
           if (_loading)
-            const Padding(padding: EdgeInsets.all(16), child: LoadingView()),
+            const Padding(
+              padding: EdgeInsets.all(KdConstants.space4),
+              child: LoadingView(),
+            ),
           if (!_loading && error == null && _items.length < _total)
             OutlinedButton(
               onPressed: () => _load(reset: false),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/connectivity/connectivity_widgets.dart';
+import '../../../design_system/tokens.g.dart';
 
 /// Minimum length of a new password: the api default (`PasswordProperties`).
 /// The api is the authority and answers `WEAK_PASSWORD` if its policy differs.
@@ -27,7 +28,7 @@ class AuthPage extends StatelessWidget {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(KdConstants.space6),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 480),
               child: Column(
@@ -59,7 +60,7 @@ class ErrorMessage extends StatelessWidget {
     if (text == null) return const SizedBox.shrink();
     final scheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: KdConstants.space4),
       child: Semantics(
         liveRegion: true,
         container: true,

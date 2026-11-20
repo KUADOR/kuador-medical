@@ -12,6 +12,7 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_secure_storage: ^11.2.0
+  flutter_svg: ^2.3.4
   http: ^1.6.0
 
 dev_dependencies:
@@ -21,3 +22,18 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  # Design system assets (ADR-006). Icons: the single SVG set from
+  # design/icons/, drawn with flutter_svg. Fonts: self-hosted, never from a CDN.
+  assets:
+    - assets/icons/
+    - assets/fonts/
+
+  # The base family comes from the identity guide (MEDK-39). When it is chosen,
+  # declare it here with the same name as the type.family.base token, e.g.:
+  # fonts:
+  #   - family: <type.family.base>
+  #     fonts:
+  #       - asset: assets/fonts/<Family>-Regular.ttf
+  #       - asset: assets/fonts/<Family>-SemiBold.ttf
+  #         weight: 600
