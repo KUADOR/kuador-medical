@@ -226,14 +226,12 @@ paths:
       operationId: getHealth
       summary: Get health status
       description: |
-        Spring Boot Actuator health endpoint, outside `/api/v1`. **Planned**: the api does
-        not expose Actuator yet; the MEDK-26 task "Perfil local del api" adds it, exposing
-        only `health` with the status of its components (no details). Until then use
-        `GET /api/v1/system/info`, which reports the same database check.
+        Spring Boot Actuator health endpoint, outside `/api/v1`. It is the only Actuator
+        endpoint the api exposes, with the status of its components and no details
+        (MEDK-29). Email is not a component: a down SMTP server does not report the api as down.
 
         Responds `200` when the api and its database are up and `503` when a component
         is down.
-      x-implementation-status: planned
       x-required-permission: public
       x-public: true
       security: []

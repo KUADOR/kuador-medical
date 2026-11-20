@@ -1,0 +1,6 @@
+# Fail fast when the "local" profile misses a required environment variable (MEDK-29).
+org.springframework.boot.EnvironmentPostProcessor=\
+com.kuador.medical.shared.config.LocalEnvironmentValidator
+
+org.springframework.boot.diagnostics.FailureAnalyzer=\
+com.kuador.medical.shared.config.MissingEnvironmentVariablesFailureAnalyzer

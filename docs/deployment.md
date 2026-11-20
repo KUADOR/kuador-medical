@@ -53,11 +53,12 @@ Librerías de la api que cambian cómo se despliega (no son servicios aparte, vi
 |---|---|---|
 | Flyway (`spring-boot-starter-flyway`, `flyway-database-postgresql`) | Migraciones de la base en `api/src/main/resources/db/migration` (`V<n>__<descripción>.sql`) | La api las aplica al arrancar, antes de atender solicitudes. El usuario `DB_USERNAME` necesita permiso para crear y modificar tablas en su esquema. Una migración publicada nunca se edita: se agrega una nueva. Si una migración falla, la api no arranca; se corrige con una migración nueva y se vuelve a desplegar (Flyway guarda el historial en `flyway_schema_history`) |
 | Spring Mail (`spring-boot-starter-mail`) | Adaptador SMTP de `NotificationSender` (módulo `notifications`): invitaciones del personal, de pacientes y representantes (MEDK-16) y recuperación de contraseña (MEDK-15) | Usa `spring.mail.*` desde `KUADOR_SMTP_*` y el remitente `KUADOR_MAIL_FROM`. Sin `KUADOR_SMTP_HOST` o sin `KUADOR_MAIL_FROM` la api arranca pero no envía correos (lo avisa en el log sin datos personales). Las invitaciones salen después de confirmar la transacción y se pueden reenviar; la recuperación sale en segundo plano, así que un fallo del proveedor queda en el log y no cambia la respuesta `202` |
+| Spring Boot Actuator (`spring-boot-starter-actuator`) | Solo `GET /actuator/health` (MEDK-29): estado de la api y de sus componentes (`db`, `ping`, `diskSpace`), sin detalles; 200 si está arriba y 503 si un componente está caído. El correo no cuenta como componente | Público y fuera de `/api/v1`, en el mismo puerto de la api. Todos los demás endpoints de Actuator están deshabilitados y no se exponen por HTTP ni JMX (`management.*` en `application.yaml`). Si un proxy o balanceador hace chequeos de salud, debe apuntar a esta ruta |
 | ShedLock (`shedlock-spring`, `shedlock-provider-jdbc-template` 7.11.0) | Lock distribuido de las tareas programadas (el job de mayoría de edad de MEDK-18), para que con varias réplicas de la api cada ejecución corra una sola vez | Usa la tabla `shedlock` de la misma base, creada por `V6__patients_adulthood_transition.sql`. Toma la hora de la base (UTC), así que no depende del reloj de cada réplica. No necesita servicio propio; variables opcionales `KUADOR_ADULTHOOD_*`. No se borran filas de `shedlock`: un lock se libera solo al vencer |
 
 ## Variables y secretos
 
-Solo nombres: los valores nunca van en este documento ni en el repo. En local viven en `.env` (copiado de `.env.example`, ignorado por git); en pruebas y producción, en el gestor de secretos del entorno [POR DEFINIR: cuál].
+Solo nombres: los valores nunca van en este documento ni en el repo. En local viven en `.env` (copiado de `.env.example`, ignorado por git) o, solo para la api en el host, en `api/.env` (copiado de `api/.env.example`); en pruebas y producción, en el gestor de secretos del entorno [POR DEFINIR: cuál].
 
 | Nombre | Pieza | Entornos | Dónde vive | Secreto | Uso |
 |---|---|---|---|---|---|
@@ -99,7 +100,10 @@ Solo nombres: los valores nunca van en este documento ni en el repo. En local vi
 | APP_LINKS_IOS_APP_IDS | web | pruebas, producción | variables del contenedor web | no | `<TeamID>.<bundle id>` de la app iOS, separados por coma (bundle actual `com.kuador.medicalKuador`) [POR DEFINIR: Team ID de Apple] |
 | KUADOR_BOOTSTRAP_ADMIN_EMAIL | api | local, pruebas, producción | `.env` / variables del entorno | no | Correo de la cuenta inicial SUPER_ADMIN (el acordado en MEDK-1) |
 | KUADOR_BOOTSTRAP_ADMIN_PASSWORD | api | local, pruebas, producción | `.env` / gestor de secretos | sí | Clave inicial del SUPER_ADMIN; ver «Cuenta inicial del SUPER_ADMIN» |
-| KUADOR_CORS_ALLOWED_ORIGINS | api | local, pruebas, producción | `.env` / variables del entorno | no | Origen permitido de la web |
+| KUADOR_CORS_ALLOWED_ORIGINS | api | local, pruebas, producción | `.env` / variables del entorno | no | Origen permitido de la web. Opcional en local (por defecto `http://localhost:4200`; vacío = sin CORS, suficiente si la web usa su proxy de desarrollo) |
+| LOCAL_SEED_PASSWORD | api | solo local | `.env` / `api/.env` | sí | Contraseña de los dos usuarios de prueba de la semilla local (≥ 12 caracteres; ver «api en local»). Obligatoria con el perfil `local`; los demás perfiles la ignoran. Se guarda solo como hash; para cambiarla hay que recrear la base local |
+| SERVER_PORT | api | local | `.env` / `api/.env` | no | Puerto HTTP de la api en el host (por defecto 8080). En el perfil `full` de Compose se fija en 8080 dentro del contenedor y el puerto del host es `API_PORT` |
+| SERVER_ADDRESS | api | local | `.env` / `api/.env` | no | Interfaz de escucha (por defecto `0.0.0.0`, para que un dispositivo físico en la misma red llegue por la IP LAN del equipo). `127.0.0.1` la limita al propio equipo |
 | SMOKE_SUPER_ADMIN_NEW_PASSWORD | `scripts/smoke-test.sh` | local | `.env` | sí | Clave que la prueba de humo pone al SUPER_ADMIN en su primera corrida sobre una base nueva (≥ 12 caracteres) y con la que ingresa en las siguientes. Solo local; la api la ignora |
 | API_PORT | api | local | `.env` | no | Puerto del host para la api en el perfil `full` |
 | WEB_PORT | web | local | `.env` | no | Puerto del host para la web en el perfil `full` |
@@ -150,10 +154,20 @@ Prerrequisitos: Docker con Compose v2 (Docker Desktop en macOS/Windows o Docker 
 
 Si también se usan `mailpit` u otros servicios de `compose.yaml`, Compose avisa de «orphan containers» al usar `compose.local.yaml`: es esperado porque ambos archivos comparten proyecto.
 
+#### api en local (perfil `local`)
+
+Prerrequisitos: JDK 25 y la base local levantada (subsección anterior).
+
+1. `cp api/.env.example api/.env` y completar `DB_PASSWORD` (la misma de la base), `KUADOR_JWT_SECRET` (por ejemplo `openssl rand -base64 48`) y `LOCAL_SEED_PASSWORD` (≥ 12 caracteres). El perfil `local` importa `api/.env` si existe; las variables ya definidas en el entorno (por ejemplo, con `set -a; . ./.env; set +a` desde la raíz) tienen prioridad. `api/.env` está en `.gitignore` y en `api/.dockerignore`.
+2. `cd api && ./mvnw spring-boot:run`: escucha en `SERVER_ADDRESS:SERVER_PORT` (por defecto `0.0.0.0:8080`). Si falta o está vacía `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `KUADOR_JWT_SECRET` o `LOCAL_SEED_PASSWORD`, no arranca y el mensaje nombra la variable, nunca su valor.
+3. `curl -s http://localhost:8080/actuator/health` responde 200 con `"status":"UP"` y `components.db.status` en `UP`.
+4. Semilla local (solo perfil `local`, migración repetible `db.localseed.LocalSeedMigration`, ubicación `classpath:db/localseed`): dos clínicas ficticias, «Clínica Demo A» y «Clínica Demo B», con una sucursal «Sede principal», los roles OWNER y ADMIN y un usuario de prueba OWNER cada una: `usuario.a@clinica-a.example.test` y `usuario.b@clinica-b.example.test`, ambos con la contraseña `LOCAL_SEED_PASSWORD`. Sirven para probar a mano el aislamiento A/B (`POST /api/v1/auth/login` y luego `GET /api/v1/me`). Los perfiles `test` y `prod` no cargan esa ubicación.
+5. Dispositivo físico en la misma red: usar `http://<IP-LAN-del-equipo>:8080` y permitir el puerto 8080 en el firewall local.
+
 #### Entorno completo
 
 1. Requisitos: Docker con Compose v2, JDK 25, Node.js LTS, Flutter estable.
-2. `cp .env.example .env` y completar `DB_PASSWORD`, `KUADOR_JWT_SECRET`, `KUADOR_BOOTSTRAP_ADMIN_EMAIL` y `KUADOR_BOOTSTRAP_ADMIN_PASSWORD`.
+2. `cp .env.example .env` y completar `DB_PASSWORD`, `KUADOR_JWT_SECRET`, `LOCAL_SEED_PASSWORD`, `KUADOR_BOOTSTRAP_ADMIN_EMAIL` y `KUADOR_BOOTSTRAP_ADMIN_PASSWORD`.
 3. `docker compose up -d db mailpit` y esperar a que `docker compose ps` muestre `db` y `mailpit` como `healthy`. Los correos que envía la api se ven en `http://localhost:8025`.
 4. Comprobar la base: `docker compose exec db psql -U "$DB_USERNAME" -d "$DB_NAME" -c 'select version();'` (con las variables de `.env` cargadas) o con cualquier cliente en `127.0.0.1:${DB_PORT}`.
 5. api en el host: `set -a; . ./.env; set +a` y luego `cd api && ./mvnw spring-boot:run`.
@@ -211,6 +225,8 @@ Comprobar en local lo mismo que el CI: ver «Comandos del proyecto» en `AGENTS.
 - Local: `docker compose ps` muestra `db` y `mailpit` como `healthy` y la base responde a `select version();`; `http://localhost:8025` abre Mailpit.
 - web: `curl -sI <web>/.well-known/assetlinks.json` y `curl -sI <web>/.well-known/apple-app-site-association` responden 200 con `Content-Type: application/json`; `curl -sI <web>/.well-known/otro` responde 404.
 - api: `POST /api/v1/auth/login` con la cuenta inicial responde 200 con `scope: PLATFORM` y `mustChangePassword: true`; hasta cambiar la clave (`POST /api/v1/auth/password`) solo responden `/auth/password` y `/me`.
+- api: `GET /actuator/health` (público) responde 200 con `status: UP` y el estado de `db`, sin detalles; cualquier otra ruta de `/actuator` responde 404.
+- api (local): con el perfil `local`, los usuarios de la semilla inician sesión con `LOCAL_SEED_PASSWORD` y cada uno ve solo su clínica; `./mvnw -B verify` incluye `LocalProfileIT`, `LocalSeedTenantIsolationIT` y `DefaultProfileWithoutSeedIT`.
 - api: `GET /api/v1/system/info` (público) responde 200 con `status` y `database` en `UP`; si la base no responde, devuelve `DOWN` en ambos (sigue respondiendo 200). Las migraciones Flyway (`api/src/main/resources/db/migration`) se aplican al arrancar.
 - Punta a punta (local): `scripts/smoke-test.sh` con el perfil `full` arriba; debe terminar en 0. Ver «Prueba de humo».
 - [POR DEFINIR: revisión de logs y prueba de punta a punta en pruebas y producción (el script sirve apuntando `API_URL`/`WEB_URL` al entorno, pero cambia la clave del SUPER_ADMIN en su primera corrida: ahí se usa solo después de cambiarla a mano).]
@@ -263,3 +279,4 @@ Resultado de MEDK-11 (2026-11-19, perfil `full` en macOS con Docker 29): 45 paso
 | 2026-11-19 | Registro de pacientes, representantes, consentimiento LOPDP y autorregistro opcional: migración `V5__patients_registration.sql` (tablas `patients_patient`, `patients_guardian`, `patients_guardian_link`, `patients_consent` y `patients_registration_settings`, más acciones de auditoría nuevas). Endpoints `/patients`, `/patient-registration-settings`, `POST /public/clinics/{publicCode}/patient-registrations` y `POST /auth/email-verification/confirm`. El módulo `patients` queda habilitado como capacidad básica de todo plan (`enabledModules` de `/me` incluye `patients`). Variable nueva `KUADOR_CLINIC_TIME_ZONE` (opcional, `UTC` por defecto). El correo de verificación usa `KUADOR_EMAIL_VERIFICATION_TTL` y la ruta `email-verification-path`. Sin secretos, puertos, servicios ni dependencias nuevas | MEDK-17 |
 | 2026-11-19 | `compose.local.yaml` con solo PostgreSQL (extiende el servicio `db` de `compose.yaml`: puerto 5432, volumen local y healthcheck) y subsección «Base de datos local» con prerrequisitos. Reutiliza `DB_NAME`, `DB_USERNAME` y `DB_PASSWORD` de `.env.example` en lugar de `POSTGRES_*`; `.env` ya estaba en `.gitignore`. Sin variables, secretos, puertos ni servicios nuevos | MEDK-28 |
 | 2026-11-19 | Transición a la mayoría de edad y `/me/guardian-links`: job programado `AdulthoodJob` con lock distribuido ShedLock (dependencias `shedlock-spring` y `shedlock-provider-jdbc-template` 7.11.0), migración `V6__patients_adulthood_transition.sql` (tabla `shedlock`, índice de candidatos y acciones de auditoría nuevas), variables opcionales `KUADOR_ADULTHOOD_CRON` y `KUADOR_ADULTHOOD_LOCK_AT_MOST_FOR`. La invitación por SMS sigue inactiva hasta definir el proveedor. Sin secretos, puertos ni servicios nuevos | MEDK-18 |
+| 2026-11-19 | Perfil `local` de la api solo con referencias a variables y `api/.env.example` (importa `api/.env` si existe); la api no arranca en `local` si falta `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `KUADOR_JWT_SECRET` o `LOCAL_SEED_PASSWORD` (nombra la variable, sin valores). Variables nuevas: `LOCAL_SEED_PASSWORD` (secreto, solo local), `SERVER_PORT` y `SERVER_ADDRESS` (por defecto `0.0.0.0:8080` en local; el perfil `full` fija 8080). Semilla local con clínicas A y B (ubicación Flyway `db/localseed`, solo perfil `local`). Dependencia `spring-boot-starter-actuator`: solo `GET /actuator/health`, público y sin detalles | MEDK-29 |
