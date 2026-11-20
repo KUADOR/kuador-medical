@@ -21,6 +21,7 @@ Perfiles de Compose:
 
 - sin perfil: `db` y `mailpit` (`docker compose up -d db mailpit`).
 - `full`: `db`, `mailpit`, `api` y `web` en contenedores (`docker compose --profile full up -d --build`).
+- `compose.local.yaml`: solo `db` (PostgreSQL), para correr api y web en el host con sus comandos nativos. Toma el servicio `db` de `compose.yaml` (misma imagen, variables, volumen y healthcheck) y usa el mismo nombre de proyecto, así que comparte contenedor y datos con `docker compose up -d db`. Ver «Paso a paso › Local › Base de datos local».
 
 ## Infraestructura
 
@@ -138,6 +139,19 @@ La api crea la cuenta al arrancar solo si no existe ningún SUPER_ADMIN, con `KU
 
 ### Local
 
+#### Base de datos local
+
+Prerrequisitos: Docker con Compose v2 (Docker Desktop en macOS/Windows o Docker Engine en Linux) y el puerto 5432 libre en el equipo (o cambiar `DB_PORT`).
+
+1. `cp .env.example .env` y completar `DB_PASSWORD` con cualquier valor local (por ejemplo `openssl rand -base64 24`). `DB_NAME` y `DB_USERNAME` ya traen `medical`; `.env` está en `.gitignore` y no debe versionarse.
+2. `docker compose -f compose.local.yaml --env-file .env up -d --wait`: levanta PostgreSQL 18 en `127.0.0.1:${DB_PORT}` (por defecto 5432) con el volumen `medical-kuador_db-data` y espera al healthcheck (`pg_isready`). Sin `DB_PASSWORD` no arranca y el mensaje dice qué variable falta.
+3. `docker compose -f compose.local.yaml ps` debe mostrar `db` como `healthy`.
+4. Detener: `docker compose -f compose.local.yaml down` (con `-v` se borran los datos locales).
+
+Si también se usan `mailpit` u otros servicios de `compose.yaml`, Compose avisa de «orphan containers» al usar `compose.local.yaml`: es esperado porque ambos archivos comparten proyecto.
+
+#### Entorno completo
+
 1. Requisitos: Docker con Compose v2, JDK 25, Node.js LTS, Flutter estable.
 2. `cp .env.example .env` y completar `DB_PASSWORD`, `KUADOR_JWT_SECRET`, `KUADOR_BOOTSTRAP_ADMIN_EMAIL` y `KUADOR_BOOTSTRAP_ADMIN_PASSWORD`.
 3. `docker compose up -d db mailpit` y esperar a que `docker compose ps` muestre `db` y `mailpit` como `healthy`. Los correos que envía la api se ven en `http://localhost:8025`.
@@ -247,4 +261,5 @@ Resultado de MEDK-11 (2026-11-19, perfil `full` en macOS con Docker 29): 45 paso
 | 2026-11-19 | App movil: autenticación, sesión y deep links. Variable de build nueva `APP_LINK_HOST` (`--dart-define`; en iOS, `ios/Flutter/AppLinks.local.xcconfig`) para App Links (`autoVerify`) y Associated Domains; `CONSENT_TEXT_VERSION` opcional (por defecto `2026-01`); tokens en Keychain/Keystore con `flutter_secure_storage`; dependencias `app_links`, `connectivity_plus` y `flutter_secure_storage`. Sin secretos ni servicios nuevos | MEDK-23 |
 | 2026-11-19 | Autenticación de MEDK-12: login entre clínicas, elección de clínica y sucursal, refresh token rotativo, logout, recuperación de contraseña por clínica, `POST /auth/switch-branch` y `GET /me` con sucursal y módulos. `KUADOR_JWT_TTL` baja por defecto a `PT15M`. Migración `V3__identity_auth_tokens_and_login_throttle.sql` (tablas `identity_one_time_token`, `identity_refresh_token`, `identity_login_throttle`). Dependencia `spring-boot-starter-mail` (los correos salen por SMTP; Mailpit en local). `server.forward-headers-strategy: native`: detrás del proxy la IP del cliente sale de `X-Forwarded-For`, aceptado solo desde proxies de red interna; si el proxy de pruebas o producción no está en una red privada, configurar `server.tomcat.remoteip.internal-proxies`. Sin variables ni secretos nuevos | MEDK-15 |
 | 2026-11-19 | Registro de pacientes, representantes, consentimiento LOPDP y autorregistro opcional: migración `V5__patients_registration.sql` (tablas `patients_patient`, `patients_guardian`, `patients_guardian_link`, `patients_consent` y `patients_registration_settings`, más acciones de auditoría nuevas). Endpoints `/patients`, `/patient-registration-settings`, `POST /public/clinics/{publicCode}/patient-registrations` y `POST /auth/email-verification/confirm`. El módulo `patients` queda habilitado como capacidad básica de todo plan (`enabledModules` de `/me` incluye `patients`). Variable nueva `KUADOR_CLINIC_TIME_ZONE` (opcional, `UTC` por defecto). El correo de verificación usa `KUADOR_EMAIL_VERIFICATION_TTL` y la ruta `email-verification-path`. Sin secretos, puertos, servicios ni dependencias nuevas | MEDK-17 |
+| 2026-11-19 | `compose.local.yaml` con solo PostgreSQL (extiende el servicio `db` de `compose.yaml`: puerto 5432, volumen local y healthcheck) y subsección «Base de datos local» con prerrequisitos. Reutiliza `DB_NAME`, `DB_USERNAME` y `DB_PASSWORD` de `.env.example` en lugar de `POSTGRES_*`; `.env` ya estaba en `.gitignore`. Sin variables, secretos, puertos ni servicios nuevos | MEDK-28 |
 | 2026-11-19 | Transición a la mayoría de edad y `/me/guardian-links`: job programado `AdulthoodJob` con lock distribuido ShedLock (dependencias `shedlock-spring` y `shedlock-provider-jdbc-template` 7.11.0), migración `V6__patients_adulthood_transition.sql` (tabla `shedlock`, índice de candidatos y acciones de auditoría nuevas), variables opcionales `KUADOR_ADULTHOOD_CRON` y `KUADOR_ADULTHOOD_LOCK_AT_MOST_FOR`. La invitación por SMS sigue inactiva hasta definir el proveedor. Sin secretos, puertos ni servicios nuevos | MEDK-18 |

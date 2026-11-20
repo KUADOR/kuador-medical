@@ -4,3 +4,8 @@
 contracts/identity.openapi.yaml:
   operation-4xx-response:
     - '#/paths/~1system~1info/get/responses'
+# MEDK-27: status endpoints of the local integration contract are public and have no client error by design.
+contracts/local-integration.openapi.yaml:
+  operation-4xx-response:
+    - '#/paths/~1api~1v1~1system~1info/get/responses'
+    - '#/paths/~1actuator~1health/get/responses'

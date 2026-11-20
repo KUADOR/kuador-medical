@@ -1,0 +1,17 @@
+# Local database only (PostgreSQL). Run api and web from the host with their native commands.
+#   docker compose -f compose.local.yaml --env-file .env up -d
+#   docker compose -f compose.local.yaml ps          -> "db" must be "healthy"
+#   docker compose -f compose.local.yaml down        -> stop (add -v to delete local data)
+# Values come from .env (copy .env.example). Never commit .env.
+# The "db" service is taken from compose.yaml so both files stay in sync; same project name,
+# so the container and the "db-data" volume are shared with "docker compose up -d db".
+name: medical-kuador
+
+services:
+  db:
+    extends:
+      file: compose.yaml
+      service: db
+
+volumes:
+  db-data:
