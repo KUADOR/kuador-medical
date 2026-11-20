@@ -3,9 +3,9 @@
     "family": {
       "$type": "fontFamily",
       "base": {
-        "$value": ["system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
-        "$description": "Interface text.",
-        "$extensions": { "com.kuador.dart": { "fontFamily": null } }
+        "$value": ["Figtree", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
+        "$description": "Interface text. Figtree (SIL OFL 1.1), self-hosted in web and movil.",
+        "$extensions": { "com.kuador.dart": { "fontFamily": "Figtree" } }
       },
       "mono": {
         "$value": ["ui-monospace", "SFMono-Regular", "Menlo", "Consolas", "monospace"],

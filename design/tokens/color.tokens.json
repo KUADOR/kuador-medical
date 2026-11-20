@@ -2,80 +2,80 @@
   "color": {
     "$type": "color",
     "accent": {
-      "$value": "#3d4a5c",
-      "$description": "Primary action and brand accent.",
-      "$extensions": { "com.kuador.modes": { "dark": "#b9c4d2" } }
+      "$value": "#00737a",
+      "$description": "Primary action, selection and brand accent (teal of the reference image).",
+      "$extensions": { "com.kuador.modes": { "dark": "#3ccfd2" } }
     },
     "on-accent": {
       "$value": "#ffffff",
       "$description": "Text and icons placed on the accent.",
-      "$extensions": { "com.kuador.modes": { "dark": "#14171a" } }
+      "$extensions": { "com.kuador.modes": { "dark": "#002244" } }
     },
     "focus": {
-      "$value": "#2f4a6e",
+      "$value": "#004f55",
       "$description": "Focus ring around interactive elements.",
-      "$extensions": { "com.kuador.modes": { "dark": "#a9c1e0" } }
+      "$extensions": { "com.kuador.modes": { "dark": "#86e6e8" } }
     },
     "ok": {
-      "$value": "#1f6b3a",
+      "$value": "#1f7034",
       "$description": "Success state (text and icons).",
-      "$extensions": { "com.kuador.modes": { "dark": "#7bd19a" } }
+      "$extensions": { "com.kuador.modes": { "dark": "#6fd38c" } }
     },
     "error": {
-      "$value": "#b3261e",
+      "$value": "#c0263d",
       "$description": "Error state (text, icons and destructive actions).",
-      "$extensions": { "com.kuador.modes": { "dark": "#f2b8b5" } }
+      "$extensions": { "com.kuador.modes": { "dark": "#ff8da0" } }
     },
     "on-error": {
       "$value": "#ffffff",
       "$description": "Text and icons placed on the error color.",
-      "$extensions": { "com.kuador.modes": { "dark": "#3d0d0a" } }
+      "$extensions": { "com.kuador.modes": { "dark": "#3d0712" } }
     },
     "warning": {
-      "$value": "#7a4f00",
+      "$value": "#8a5000",
       "$description": "Warning state (text and icons).",
-      "$extensions": { "com.kuador.modes": { "dark": "#e8bf6a" } }
+      "$extensions": { "com.kuador.modes": { "dark": "#f2c063" } }
     },
     "info": {
-      "$value": "#2b5285",
+      "$value": "#3456b8",
       "$description": "Informative state (text and icons).",
-      "$extensions": { "com.kuador.modes": { "dark": "#a3c4ee" } }
+      "$extensions": { "com.kuador.modes": { "dark": "#a4bbff" } }
     }
   },
   "surface": {
     "$type": "color",
     "base": {
-      "$value": "#f4f5f7",
+      "$value": "#f1f5f6",
       "$description": "Page background (lowest layer).",
-      "$extensions": { "com.kuador.modes": { "dark": "#121417" } }
+      "$extensions": { "com.kuador.modes": { "dark": "#071827" } }
     },
     "sunken": {
-      "$value": "#eaecef",
+      "$value": "#e3ebed",
       "$description": "Recessed areas: table headers, disabled fields, wells.",
-      "$extensions": { "com.kuador.modes": { "dark": "#0c0d0f" } }
+      "$extensions": { "com.kuador.modes": { "dark": "#030f1a" } }
     },
     "raised": {
       "$value": "#ffffff",
       "$description": "Cards, forms and panels above the base.",
-      "$extensions": { "com.kuador.modes": { "dark": "#1b1e22" } }
+      "$extensions": { "com.kuador.modes": { "dark": "#0e2236" } }
     },
     "overlay": {
       "$value": "#ffffff",
       "$description": "Dialogs, menus and sheets above everything else.",
-      "$extensions": { "com.kuador.modes": { "dark": "#24282d" } }
+      "$extensions": { "com.kuador.modes": { "dark": "#162c42" } }
     }
   },
   "text": {
     "$type": "color",
     "default": {
-      "$value": "#1b1e22",
-      "$description": "Main text.",
-      "$extensions": { "com.kuador.modes": { "dark": "#e8eaed" } }
+      "$value": "#0b2440",
+      "$description": "Main text (navy of the reference image).",
+      "$extensions": { "com.kuador.modes": { "dark": "#e7eff3" } }
     },
     "muted": {
-      "$value": "#4f5761",
+      "$value": "#4a5e6d",
       "$description": "Secondary text: hints, metadata.",
-      "$extensions": { "com.kuador.modes": { "dark": "#a9b0b8" } }
+      "$extensions": { "com.kuador.modes": { "dark": "#a4b5c1" } }
     }
   }
 }

@@ -8,37 +8,37 @@
 [data-theme='light'] {
   color-scheme: light;
   /* Thin decorative divider between layers. Not used to identify controls. */
-  --kd-border-hairline: 1px solid #d3d7dc;
+  --kd-border-hairline: 1px solid #d3dee1;
   /* Outline of form controls; meets 3:1 against surfaces. */
-  --kd-border-strong: 1px solid #6b737d;
-  /* Primary action and brand accent. */
-  --kd-color-accent: #3d4a5c;
+  --kd-border-strong: 1px solid #6b808b;
+  /* Primary action, selection and brand accent (teal of the reference image). */
+  --kd-color-accent: #00737a;
   /* Text and icons placed on the accent. */
   --kd-color-on-accent: #ffffff;
   /* Focus ring around interactive elements. */
-  --kd-color-focus: #2f4a6e;
+  --kd-color-focus: #004f55;
   /* Success state (text and icons). */
-  --kd-color-ok: #1f6b3a;
+  --kd-color-ok: #1f7034;
   /* Error state (text, icons and destructive actions). */
-  --kd-color-error: #b3261e;
+  --kd-color-error: #c0263d;
   /* Text and icons placed on the error color. */
   --kd-color-on-error: #ffffff;
   /* Warning state (text and icons). */
-  --kd-color-warning: #7a4f00;
+  --kd-color-warning: #8a5000;
   /* Informative state (text and icons). */
-  --kd-color-info: #2b5285;
+  --kd-color-info: #3456b8;
   /* Page background (lowest layer). */
-  --kd-surface-base: #f4f5f7;
+  --kd-surface-base: #f1f5f6;
   /* Recessed areas: table headers, disabled fields, wells. */
-  --kd-surface-sunken: #eaecef;
+  --kd-surface-sunken: #e3ebed;
   /* Cards, forms and panels above the base. */
   --kd-surface-raised: #ffffff;
   /* Dialogs, menus and sheets above everything else. */
   --kd-surface-overlay: #ffffff;
-  /* Main text. */
-  --kd-text-default: #1b1e22;
+  /* Main text (navy of the reference image). */
+  --kd-text-default: #0b2440;
   /* Secondary text: hints, metadata. */
-  --kd-text-muted: #4f5761;
+  --kd-text-muted: #4a5e6d;
   /* Hover, press, small state changes. */
   --kd-motion-duration-fast: 120ms;
   /* Expanding, fading, moving within a view. */
@@ -49,16 +49,16 @@
   --kd-motion-easing-enter: cubic-bezier(0, 0, 0, 1);
   --kd-motion-easing-exit: cubic-bezier(0.3, 0, 1, 1);
   /* Badges, small controls. */
-  --kd-radius-sm: 4px;
-  /* Buttons, fields, cards. */
-  --kd-radius-md: 8px;
-  /* Dialogs, sheets. */
-  --kd-radius-lg: 12px;
+  --kd-radius-sm: 6px;
+  /* Buttons, fields, list rows. */
+  --kd-radius-md: 10px;
+  /* Cards, dialogs, sheets. */
+  --kd-radius-lg: 16px;
   /* Pills and circular elements. */
   --kd-radius-full: 9999px;
-  --kd-shadow-sm: 0 1px 2px 0 #0000001a;
-  --kd-shadow-md: 0 4px 12px 0 #0000001f;
-  --kd-shadow-lg: 0 12px 32px 0 #00000029;
+  --kd-shadow-sm: 0 1px 2px 0 #0b24401a;
+  --kd-shadow-md: 0 4px 12px 0 #0b24401f;
+  --kd-shadow-lg: 0 12px 32px 0 #0b244029;
   --kd-space-0: 0;
   --kd-space-1: 0.25rem;
   --kd-space-2: 0.5rem;
@@ -69,8 +69,8 @@
   --kd-space-12: 3rem;
   /* Minimum size of any touch or click target. */
   --kd-size-target-min: 2.75rem;
-  /* Interface text. */
-  --kd-type-family-base: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* Interface text. Figtree (SIL OFL 1.1), self-hosted in web and movil. */
+  --kd-type-family-base: Figtree, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   /* Codes and identifiers. */
   --kd-type-family-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --kd-type-weight-regular: 400;
@@ -87,56 +87,56 @@
   --kd-type-line-height-snug: 1.35;
   --kd-type-line-height-normal: 1.5;
   /* Page title. */
-  --kd-type-display: 600 1.875rem/1.2 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --kd-type-display: 600 1.875rem/1.2 Figtree, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   /* Section and card titles. */
-  --kd-type-title: 600 1.25rem/1.35 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --kd-type-title: 600 1.25rem/1.35 Figtree, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   /* Secondary headings. */
-  --kd-type-subtitle: 500 1.125rem/1.35 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --kd-type-subtitle: 500 1.125rem/1.35 Figtree, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   /* Running text. */
-  --kd-type-body: 400 1rem/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --kd-type-body: 400 1rem/1.5 Figtree, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   /* Dense text: tables, hints. */
-  --kd-type-body-sm: 400 0.875rem/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --kd-type-body-sm: 400 0.875rem/1.5 Figtree, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   /* Buttons, field labels and tabs. */
-  --kd-type-label: 600 0.875rem/1.35 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --kd-type-label: 600 0.875rem/1.35 Figtree, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   /* Small print: timestamps, footnotes. */
-  --kd-type-caption: 400 0.75rem/1.35 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --kd-type-caption: 400 0.75rem/1.35 Figtree, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     color-scheme: dark;
     /* Thin decorative divider between layers. Not used to identify controls. */
-    --kd-border-hairline: 1px solid #363b42;
+    --kd-border-hairline: 1px solid #223a4e;
     /* Outline of form controls; meets 3:1 against surfaces. */
-    --kd-border-strong: 1px solid #8a929c;
-    /* Primary action and brand accent. */
-    --kd-color-accent: #b9c4d2;
+    --kd-border-strong: 1px solid #7c93a3;
+    /* Primary action, selection and brand accent (teal of the reference image). */
+    --kd-color-accent: #3ccfd2;
     /* Text and icons placed on the accent. */
-    --kd-color-on-accent: #14171a;
+    --kd-color-on-accent: #002244;
     /* Focus ring around interactive elements. */
-    --kd-color-focus: #a9c1e0;
+    --kd-color-focus: #86e6e8;
     /* Success state (text and icons). */
-    --kd-color-ok: #7bd19a;
+    --kd-color-ok: #6fd38c;
     /* Error state (text, icons and destructive actions). */
-    --kd-color-error: #f2b8b5;
+    --kd-color-error: #ff8da0;
     /* Text and icons placed on the error color. */
-    --kd-color-on-error: #3d0d0a;
+    --kd-color-on-error: #3d0712;
     /* Warning state (text and icons). */
-    --kd-color-warning: #e8bf6a;
+    --kd-color-warning: #f2c063;
     /* Informative state (text and icons). */
-    --kd-color-info: #a3c4ee;
+    --kd-color-info: #a4bbff;
     /* Page background (lowest layer). */
-    --kd-surface-base: #121417;
+    --kd-surface-base: #071827;
     /* Recessed areas: table headers, disabled fields, wells. */
-    --kd-surface-sunken: #0c0d0f;
+    --kd-surface-sunken: #030f1a;
     /* Cards, forms and panels above the base. */
-    --kd-surface-raised: #1b1e22;
+    --kd-surface-raised: #0e2236;
     /* Dialogs, menus and sheets above everything else. */
-    --kd-surface-overlay: #24282d;
-    /* Main text. */
-    --kd-text-default: #e8eaed;
+    --kd-surface-overlay: #162c42;
+    /* Main text (navy of the reference image). */
+    --kd-text-default: #e7eff3;
     /* Secondary text: hints, metadata. */
-    --kd-text-muted: #a9b0b8;
+    --kd-text-muted: #a4b5c1;
     --kd-shadow-sm: 0 1px 2px 0 #00000066;
     --kd-shadow-md: 0 4px 12px 0 #00000080;
     --kd-shadow-lg: 0 12px 32px 0 #00000099;
@@ -146,37 +146,37 @@
 [data-theme='dark'] {
   color-scheme: dark;
   /* Thin decorative divider between layers. Not used to identify controls. */
-  --kd-border-hairline: 1px solid #363b42;
+  --kd-border-hairline: 1px solid #223a4e;
   /* Outline of form controls; meets 3:1 against surfaces. */
-  --kd-border-strong: 1px solid #8a929c;
-  /* Primary action and brand accent. */
-  --kd-color-accent: #b9c4d2;
+  --kd-border-strong: 1px solid #7c93a3;
+  /* Primary action, selection and brand accent (teal of the reference image). */
+  --kd-color-accent: #3ccfd2;
   /* Text and icons placed on the accent. */
-  --kd-color-on-accent: #14171a;
+  --kd-color-on-accent: #002244;
   /* Focus ring around interactive elements. */
-  --kd-color-focus: #a9c1e0;
+  --kd-color-focus: #86e6e8;
   /* Success state (text and icons). */
-  --kd-color-ok: #7bd19a;
+  --kd-color-ok: #6fd38c;
   /* Error state (text, icons and destructive actions). */
-  --kd-color-error: #f2b8b5;
+  --kd-color-error: #ff8da0;
   /* Text and icons placed on the error color. */
-  --kd-color-on-error: #3d0d0a;
+  --kd-color-on-error: #3d0712;
   /* Warning state (text and icons). */
-  --kd-color-warning: #e8bf6a;
+  --kd-color-warning: #f2c063;
   /* Informative state (text and icons). */
-  --kd-color-info: #a3c4ee;
+  --kd-color-info: #a4bbff;
   /* Page background (lowest layer). */
-  --kd-surface-base: #121417;
+  --kd-surface-base: #071827;
   /* Recessed areas: table headers, disabled fields, wells. */
-  --kd-surface-sunken: #0c0d0f;
+  --kd-surface-sunken: #030f1a;
   /* Cards, forms and panels above the base. */
-  --kd-surface-raised: #1b1e22;
+  --kd-surface-raised: #0e2236;
   /* Dialogs, menus and sheets above everything else. */
-  --kd-surface-overlay: #24282d;
-  /* Main text. */
-  --kd-text-default: #e8eaed;
+  --kd-surface-overlay: #162c42;
+  /* Main text (navy of the reference image). */
+  --kd-text-default: #e7eff3;
   /* Secondary text: hints, metadata. */
-  --kd-text-muted: #a9b0b8;
+  --kd-text-muted: #a4b5c1;
   --kd-shadow-sm: 0 1px 2px 0 #00000066;
   --kd-shadow-md: 0 4px 12px 0 #00000080;
   --kd-shadow-lg: 0 12px 32px 0 #00000099;

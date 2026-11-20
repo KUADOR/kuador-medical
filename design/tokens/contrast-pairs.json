@@ -13,6 +13,8 @@
     { "foreground": "color.on-error", "background": "color.error", "kind": "text" },
     { "foreground": "color.accent", "background": "surface.base", "kind": "text" },
     { "foreground": "color.accent", "background": "surface.raised", "kind": "text" },
+    { "foreground": "color.accent", "background": "surface.sunken", "kind": "text" },
+    { "foreground": "color.accent", "background": "surface.overlay", "kind": "text" },
     { "foreground": "color.ok", "background": "surface.base", "kind": "text" },
     { "foreground": "color.ok", "background": "surface.raised", "kind": "text" },
     { "foreground": "color.error", "background": "surface.base", "kind": "text" },
@@ -24,7 +26,10 @@
     { "foreground": "color.focus", "background": "surface.base", "kind": "non-text" },
     { "foreground": "color.focus", "background": "surface.raised", "kind": "non-text" },
     { "foreground": "color.focus", "background": "surface.overlay", "kind": "non-text" },
+    { "foreground": "color.focus", "background": "surface.sunken", "kind": "non-text" },
     { "foreground": "border.strong", "background": "surface.base", "kind": "non-text" },
-    { "foreground": "border.strong", "background": "surface.raised", "kind": "non-text" }
+    { "foreground": "border.strong", "background": "surface.raised", "kind": "non-text" },
+    { "foreground": "border.strong", "background": "surface.sunken", "kind": "non-text" },
+    { "foreground": "border.strong", "background": "surface.overlay", "kind": "non-text" }
   ]
 }

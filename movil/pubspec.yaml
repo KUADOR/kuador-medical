@@ -29,11 +29,14 @@ flutter:
     - assets/icons/
     - assets/fonts/
 
-  # The base family comes from the identity guide (MEDK-39). When it is chosen,
-  # declare it here with the same name as the type.family.base token, e.g.:
-  # fonts:
-  #   - family: <type.family.base>
-  #     fonts:
-  #       - asset: assets/fonts/<Family>-Regular.ttf
-  #       - asset: assets/fonts/<Family>-SemiBold.ttf
-  #         weight: 600
+  # Figtree (SIL OFL 1.1, assets/fonts/OFL.txt): base family of the identity guide (DESIGN.md),
+  # same name as the type.family.base token.
+  fonts:
+    - family: Figtree
+      fonts:
+        - asset: assets/fonts/Figtree-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Figtree-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Figtree-SemiBold.ttf
+          weight: 600
