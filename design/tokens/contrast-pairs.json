@@ -1,0 +1,30 @@
+{
+  "$description": "Pairs checked in every mode. text: WCAG 2.2 AA 4.5:1 (1.4.3); non-text: 3:1 (1.4.11). The build fails if a pair does not meet its minimum.",
+  "pairs": [
+    { "foreground": "text.default", "background": "surface.base", "kind": "text" },
+    { "foreground": "text.default", "background": "surface.sunken", "kind": "text" },
+    { "foreground": "text.default", "background": "surface.raised", "kind": "text" },
+    { "foreground": "text.default", "background": "surface.overlay", "kind": "text" },
+    { "foreground": "text.muted", "background": "surface.base", "kind": "text" },
+    { "foreground": "text.muted", "background": "surface.sunken", "kind": "text" },
+    { "foreground": "text.muted", "background": "surface.raised", "kind": "text" },
+    { "foreground": "text.muted", "background": "surface.overlay", "kind": "text" },
+    { "foreground": "color.on-accent", "background": "color.accent", "kind": "text" },
+    { "foreground": "color.on-error", "background": "color.error", "kind": "text" },
+    { "foreground": "color.accent", "background": "surface.base", "kind": "text" },
+    { "foreground": "color.accent", "background": "surface.raised", "kind": "text" },
+    { "foreground": "color.ok", "background": "surface.base", "kind": "text" },
+    { "foreground": "color.ok", "background": "surface.raised", "kind": "text" },
+    { "foreground": "color.error", "background": "surface.base", "kind": "text" },
+    { "foreground": "color.error", "background": "surface.raised", "kind": "text" },
+    { "foreground": "color.warning", "background": "surface.base", "kind": "text" },
+    { "foreground": "color.warning", "background": "surface.raised", "kind": "text" },
+    { "foreground": "color.info", "background": "surface.base", "kind": "text" },
+    { "foreground": "color.info", "background": "surface.raised", "kind": "text" },
+    { "foreground": "color.focus", "background": "surface.base", "kind": "non-text" },
+    { "foreground": "color.focus", "background": "surface.raised", "kind": "non-text" },
+    { "foreground": "color.focus", "background": "surface.overlay", "kind": "non-text" },
+    { "foreground": "border.strong", "background": "surface.base", "kind": "non-text" },
+    { "foreground": "border.strong", "background": "surface.raised", "kind": "non-text" }
+  ]
+}
