@@ -1,0 +1,28 @@
+{
+  "customSyntax": "postcss-scss",
+  "ignoreFiles": ["src/styles/tokens.css", "dist/**", ".angular/**", "node_modules/**"],
+  "rules": {
+    "color-no-hex": [true, { "message": "Use a color token (var(--kd-color-*), --kd-surface-*, --kd-text-*) instead of a hex color (ADR-007)." }],
+    "color-named": ["never", { "message": "Use a color token instead of a named color (ADR-007)." }],
+    "function-disallowed-list": [
+      ["rgb", "rgba", "hsl", "hsla", "hwb", "lab", "lch", "oklab", "oklch"],
+      { "message": "Use a color token instead of a color function (ADR-007)." }
+    ],
+    "unit-disallowed-list": [
+      ["px"],
+      { "message": "Use a token (var(--kd-space-*), --kd-radius-*, --kd-border-*) or rem instead of px outside src/app/design-system/ (ADR-007)." }
+    ],
+    "function-url-scheme-disallowed-list": [
+      ["/^https?/", "/^\\/\\//"],
+      { "message": "Fonts and images are self-hosted: no remote URLs (ADR-007)." }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["src/app/design-system/**/*.{css,scss}"],
+      "rules": {
+        "unit-disallowed-list": null
+      }
+    }
+  ]
+}
