@@ -68,7 +68,7 @@ class EndpointPermissionContractTest {
                 "POST /patients/{id}/guardian-links", "POST /patients/{id}/guardian-links/{linkId}/end",
                 "POST /patients/{id}/account-invitation", "GET /patient-registration-settings",
                 "PUT /patient-registration-settings", "POST /public/clinics/{publicCode}/patient-registrations",
-                "POST /auth/email-verification/confirm");
+                "POST /auth/email-verification/confirm", "GET /me/guardian-links", "POST /me/guardian-links");
         handlers.forEach((operation, handler) -> {
             if (required.containsKey(operation)) {
                 assertThat(accessOf(handler)).as("access of %s", operation).isEqualTo(required.get(operation));

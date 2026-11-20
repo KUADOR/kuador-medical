@@ -36,5 +36,10 @@ public enum AuditAction {
     PATIENT_ACCOUNT_INVITED,
     PATIENT_REGISTRATION_SETTINGS_UPDATED,
     EMAIL_VERIFICATION_SENT,
-    EMAIL_VERIFIED
+    EMAIL_VERIFIED,
+    // MEDK-18 transition to adulthood and links authorized by the adult patient
+    PATIENT_BECAME_ADULT,
+    /** The new adult has no usable contact channel: the staff invites it later. */
+    ADULTHOOD_INVITATION_PENDING,
+    GUARDIAN_LINK_AUTHORIZED
 }

@@ -59,7 +59,19 @@ class GuardianLink {
     protected GuardianLink() {}
 
     private GuardianLink(UUID id, UUID patientId, UUID guardianId, LinkType linkType, String relationship, @Nullable UUID createdBy) {
+        this(id, patientId, guardianId, linkType, relationship, createdBy, null);
+    }
+
+    private GuardianLink(
+            UUID id,
+            UUID patientId,
+            UUID guardianId,
+            LinkType linkType,
+            String relationship,
+            @Nullable UUID createdBy,
+            @Nullable UUID authorizedBy) {
         this.id = Objects.requireNonNull(id, "id");
+        this.authorizedBy = authorizedBy;
         this.patientId = patientId;
         this.guardianId = guardianId;
         this.linkType = linkType;
@@ -71,6 +83,19 @@ class GuardianLink {
     /** A legal guardian of a minor, added by the staff. */
     static GuardianLink legalGuardian(UUID id, UUID patientId, UUID guardianId, String relationship, @Nullable UUID createdBy) {
         return new GuardianLink(id, patientId, guardianId, LinkType.LEGAL_GUARDIAN, relationship, createdBy);
+    }
+
+    /**
+     * An emergency contact or a delegated access explicitly authorized by the adult patient
+     * through its own account (FR-028).
+     */
+    static GuardianLink authorizedByPatient(
+            UUID id, UUID patientId, UUID guardianId, LinkType linkType, String relationship, UUID patientAccount) {
+        if (linkType == LinkType.LEGAL_GUARDIAN) {
+            throw new IllegalArgumentException("An adult patient authorizes only emergency contacts or delegated access");
+        }
+        Objects.requireNonNull(patientAccount, "patientAccount");
+        return new GuardianLink(id, patientId, guardianId, linkType, relationship, patientAccount, patientAccount);
     }
 
     boolean isCurrent() {
