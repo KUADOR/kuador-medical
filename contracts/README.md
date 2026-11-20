@@ -6,6 +6,7 @@ HTTP contracts of Medical Kuador, written contract-first (ADR-011) in OpenAPI 3.
 |---|---|---|
 | `identity.openapi.yaml` | System status, clinic self-signup, password change, permission catalog, clinic roles and platform permissions. | Implemented by the api. |
 | `user-registration.openapi.yaml` | User registration epic (MEDK-12): multi-clinic login, branch selection and switching, refresh tokens, password reset, invitations, email verification, `/me`, staff users and branch role assignments, roles, patients, consent, guardians, adult patient links and patient self-registration. | Target contract; implemented by MEDK-14 to MEDK-18. |
+| `local-integration.openapi.yaml` | Local integration (MEDK-26): `POST /api/v1/auth/login`, `GET /api/v1/me`, `GET /api/v1/system/info` and `GET /actuator/health`, with full paths from the api origin. | Login, `/me` and system info implemented (schemas referenced from the files above, not redefined); `/actuator/health` planned (`x-implementation-status: planned`). |
 
 ## Overlapping operations
 
@@ -26,6 +27,10 @@ has a single source of truth once implemented.
 - One-time tokens (invitation, password reset, email verification) travel only in request bodies, never in paths or query strings (ADR-014).
 - Errors are Problem Details (RFC 9457, `application/problem+json`) with a stable `code` from the `ErrorCode` enum, mirrored by `ErrorCode` in the api. Clients map each `code` to a user-facing message in Spanish.
 - Descriptions, summaries and examples are in English; examples use fictitious data only.
+
+`LocalIntegrationContractTest` (api, part of `./mvnw -B verify`) checks that
+`local-integration.openapi.yaml` lists exactly its operations, that each implemented one
+declares the access of its handler and that no request carries a tenant identifier.
 
 `UserRegistrationContractTest` (api, part of `./mvnw -B verify`) fails the build if an
 operation of `user-registration.openapi.yaml` breaks these rules, if a planned operation is
@@ -64,6 +69,12 @@ Configuration lives in `redocly.yaml` at the repository root; justified exceptio
 ```bash
 npx @stoplight/prism-cli mock contracts/identity.openapi.yaml -p 4010
 npx @stoplight/prism-cli mock contracts/user-registration.openapi.yaml -p 4011
+npx @stoplight/prism-cli mock contracts/local-integration.openapi.yaml -p 4012
 ```
+
+`local-integration.openapi.yaml` keeps the full paths (`GET http://localhost:4012/api/v1/me`,
+`GET http://localhost:4012/actuator/health`), so no prefix needs to be stripped. It references
+schemas of the other two files; tools that cannot follow relative references can use
+`npx @redocly/cli bundle local-integration -o local-integration.bundled.yaml`.
 
 Prism serves the paths without the `/api/v1` prefix (for example `GET http://localhost:4010/roles`); a client proxy should strip it. Use the `Prefer` header to pick a response, for example `Prefer: code=409, example=systemRole` or, on `POST /auth/login`, `Prefer: example=clinicSelection`. Recent Prism versions require Node 24 or later; version 5 runs on Node 22.

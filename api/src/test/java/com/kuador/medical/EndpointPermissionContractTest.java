@@ -93,7 +93,7 @@ class EndpointPermissionContractTest {
     }
 
     /** Handlers of the application by {@code "METHOD /path"}, without the {@code /api/v1} prefix. */
-    private static Map<String, Method> handlers() {
+    static Map<String, Method> handlers() {
         Map<String, Method> handlers = new HashMap<>();
         for (JavaClass javaClass : new ClassFileImporter()
                 .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
