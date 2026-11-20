@@ -7,7 +7,7 @@ authentication and session, staff users, branch role assignments, roles, patient
 
 > Since MEDK-25 the api implements the whole `user-registration.openapi.yaml`: `npm start` against the real api
 > is the normal mode. The Prism mocks (`npm run dev:mock`) stay for working without an api. The end-to-end
-> scenarios of the epic run with `scripts/e2e-user-registration.sh` (see `docs/deployment.md`).
+> scenarios of the epic run with `scripts/e2e-user-registration.sh` (see `docs/deployment/changes/MEDK-25.md`).
 
 | Build | Test | Run |
 |---|---|---|

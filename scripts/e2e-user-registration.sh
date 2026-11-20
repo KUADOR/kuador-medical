@@ -12,7 +12,7 @@
 # (CONTRACT_URL), so any difference between the api and contracts/user-registration.openapi.yaml
 # is reported as a failure («contract» lines). Emails are read from Mailpit.
 #
-# Usage (from the repository root, with db, mailpit and the api up; see docs/deployment.md):
+# Usage (from the repository root, with db, mailpit and the api up; see docs/deployment/changes/MEDK-25.md):
 #   (cd web && npx prism proxy ../contracts/user-registration.openapi.yaml "$API_URL" --port 4011 --errors) &
 #   scripts/e2e-user-registration.sh
 #

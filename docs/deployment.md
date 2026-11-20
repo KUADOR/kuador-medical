@@ -173,7 +173,7 @@ Prerrequisitos: JDK 25 y la base local levantada (subsección anterior).
 4. Comprobar la base: `docker compose exec db psql -U "$DB_USERNAME" -d "$DB_NAME" -c 'select version();'` (con las variables de `.env` cargadas) o con cualquier cliente en `127.0.0.1:${DB_PORT}`.
 5. api en el host: `set -a; . ./.env; set +a` y luego `cd api && ./mvnw spring-boot:run`.
 6. web en el host: `cd web && npm install && npm start` (`http://localhost:4200`; el servidor de desarrollo hace proxy de `/api` y `/actuator` a `API_PROXY_TARGET`, por defecto `http://localhost:8080`, sin reescribir la ruta, así que no hace falta CORS). Con la api en otro puerto o equipo: `API_PROXY_TARGET=http://localhost:9090 npm start`. Si la api no responde, el proxy contesta 502 y la web muestra «No pudimos conectar con el servidor. Revisa tu conexión e intenta de nuevo.».
-   - Sin api: `cd web && npm run dev:mock` levanta los mocks Prism de los contratos (`identity.openapi.yaml` en `http://localhost:4010` y `user-registration.openapi.yaml` en `http://localhost:4011`) y la web en `http://localhost:4200` con proxy de `/api/v1` a los mocks. Desde MEDK-25 la api implementa `user-registration.openapi.yaml` completo: `npm start` contra la api real es el modo normal y el mock queda solo para trabajar sin api.
+   - Sin api: `cd web && npm run dev:mock` levanta los mocks Prism de los contratos (`identity.openapi.yaml` en `http://localhost:4010` y `user-registration.openapi.yaml` en `http://localhost:4011`) y la web en `http://localhost:4200` con proxy de `/api/v1` a los mocks. Mientras la api no implemente `user-registration.openapi.yaml` (MEDK-14 a MEDK-16), el login de la web solo funciona contra el mock.
 7. Alternativa con todo en contenedores: `docker compose --profile full up -d --build`.
 8. Detener: `docker compose down` (con `-v` se borran los datos locales).
 
@@ -245,7 +245,6 @@ Comprobar en local lo mismo que el CI: ver «Comandos del proyecto» en `AGENTS.
 - api (local): con el perfil `local`, los usuarios de la semilla inician sesión con `LOCAL_SEED_PASSWORD` y cada uno ve solo su clínica; `./mvnw -B verify` incluye `LocalProfileIT`, `LocalSeedTenantIsolationIT` y `DefaultProfileWithoutSeedIT`.
 - api: `GET /api/v1/system/info` (público) responde 200 con `status` y `database` en `UP`; si la base no responde, devuelve `DOWN` en ambos (sigue respondiendo 200). Las migraciones Flyway (`api/src/main/resources/db/migration`) se aplican al arrancar.
 - Punta a punta (local): `scripts/smoke-test.sh` con el perfil `full` arriba; debe terminar en 0. Ver «Prueba de humo».
-- Punta a punta del registro de usuarios (local): `scripts/e2e-user-registration.sh` con `db`, `mailpit` y la api arriba; debe terminar en 0. Ver «Escenarios de punta a punta del registro de usuarios».
 - [POR DEFINIR: revisión de logs y prueba de punta a punta en pruebas y producción (el script sirve apuntando `API_URL`/`WEB_URL` al entorno, pero cambia la clave del SUPER_ADMIN en su primera corrida: ahí se usa solo después de cambiarla a mano).]
 
 ### Prueba de humo
@@ -277,37 +276,6 @@ Resultado de MEDK-11 (2026-11-19, perfil `full` en macOS con Docker 29): 45 paso
 - Base caída, en la web: «Estado del sistema» muestra la base «No disponible» con el aviso «Algunos servicios no están disponibles…» y el login muestra «Ocurrió un error inesperado. Intenta de nuevo en unos minutos.». Observación: con la base caída cada solicitud tarda unos 10–13 s en responder (espera de conexión a la base); queda anotado para la api, no bloquea.
 - Movil (simulador iPhone 17 Pro, iOS 26, Xcode 27, `--dart-define=API_BASE_URL=http://localhost:8080/api/v1`): la pantalla «Estado del sistema» muestra «El sistema funciona correctamente» con aplicación y base «Disponible» y versión 0.1.0. Para compilar en Xcode 27 se subió el mínimo de iOS de 13.0 a 15.0 (Xcode 27 ya no admite 13.0). En el emulador de Android la URL es `http://10.0.2.2:8080/api/v1`; no se probó en Android en esta tarea.
 
-
-### Escenarios de punta a punta del registro de usuarios
-
-`scripts/e2e-user-registration.sh` (MEDK-25; requiere `bash`, `curl`, `jq`, `openssl` y Docker) recorre contra la api real los escenarios de la spec de MEDK-12, con las mismas llamadas que hacen la web y la app movil:
-
-1. Invitación y deep link: alta de personal con rol por sucursal, correo con `<KUADOR_APP_LINK_BASE_URL>/invitation#t=…`, reenvío (el enlace anterior deja de valer), vista previa, aceptación, enlace usado o desconocido rechazado (400 `ONE_TIME_TOKEN_INVALID`); si `WEB_URL` no está vacío, la web sirve `/.well-known/*` y la ruta `/invitation` (respaldo sin app).
-2. Login con dos clínicas: mismo correo invitado en A y B; rol clínico sin registro profesional rechazado; mensaje genérico igual para clave errónea y correo inexistente; `CLINIC_SELECTION_REQUIRED` con las dos clínicas; elegir B o A (y en A, elegir sucursal).
-3. Cambio de sucursal: ADMIN en «Matriz» y Recepción en «Sucursal Norte»; `/me` y los permisos cambian con `POST /auth/switch-branch`; personal permitido en Matriz y 403 en Norte; sucursal sin asignación 403 `BRANCH_NOT_ASSIGNED`.
-4. Recuperación: 202 siempre; un correo por clínica; el enlace de A cambia solo la clave de A (luego el login entra directo a A y la clave anterior sigue abriendo B); enlace usado rechazado.
-5. Menor con tutor: sin representante o sin consentimiento 400; con representante 201, `minor: true`, sin cuenta y con vínculo `LEGAL_GUARDIAN` vigente; invitación de cuenta para el menor rechazada; documento repetido 409.
-6. Autorregistro: deshabilitado 404; habilitado 202, verificación por `/email-verification#t=…`, ingreso del paciente solo con módulos de paciente; deshabilitado de nuevo 404.
-7. Aislamiento: A lee, edita o desactiva personal de B, edita un rol de B; B lee pacientes o vínculos de A o asigna roles a personal de A: todo 404 `NOT_FOUND`; los listados no mezclan clínicas.
-
-Cada operación de `user-registration.openapi.yaml` pasa por un proxy de validación de Prism: cualquier diferencia de la respuesta con el contrato sale como `FAIL contract: …`. Las sucursales todavía no tienen API (épica de clínicas), así que el script inserta dos sucursales en la clínica A y una en la B con `psql` (por defecto `docker compose exec -T db psql`; otro comando con `E2E_PSQL`). Solo para bases locales o descartables.
-
-```bash
-docker compose up -d db mailpit                                   # con .env completo
-set -a; . ./.env; set +a; (cd api && ./mvnw spring-boot:run) &    # api en http://localhost:8080
-(cd web && npm start) &                                           # opcional: comprobaciones de la web (WEB_URL)
-(cd web && npx prism proxy ../contracts/user-registration.openapi.yaml http://localhost:8080/api/v1 --port 4011 --errors) &
-scripts/e2e-user-registration.sh                                  # PASS/FAIL por paso; termina en 0 si todo pasa
-```
-
-Variables del script (opcionales): `API_URL`, `CONTRACT_URL` (vacío: sin validación del contrato), `MAILPIT_URL`, `WEB_URL` (vacío: sin comprobaciones de la web), `LINK_BASE_URL` y `E2E_PSQL`. Genera claves por corrida y nunca imprime claves ni tokens; los datos que crea (clínicas `E2E Clínica A/B`) quedan en la base local.
-
-Resultado de MEDK-25 (2026-11-19, macOS, Docker 29, JDK 25, api del commit de la rama sobre `develop` con MEDK-29 a MEDK-31, web con `npm start` y `API_PROXY_TARGET` apuntando a la api): 67 pasos en verde, sin diferencias con el contrato. Además:
-
-- Web (Chrome sin interfaz, Playwright fuera del repo, contra la api real): 33 comprobaciones de los mismos siete escenarios por la interfaz: aceptar invitaciones de A y B desde el enlace del correo, mismo mensaje para clave errónea y correo inexistente, elegir clínica y sucursal, menú «Personal | Pacientes | Roles» en Matriz y solo «Pacientes» en Norte (y `/staff` lleva a «Sin permiso»), registrar un menor con su representante (sin representante el formulario no se envía), recuperar la clave desde el enlace `/password-reset` (el enlace usado muestra «El enlace no es válido…»), autorregistro deshabilitado («no está disponible para esta clínica») y habilitado con verificación en `/email-verification`, paciente sin módulos del personal, y la dueña de A sin acceso a personal de B («No encontramos lo que buscas.»). Sin errores en la consola.
-- Movil (sin simulador ni emulador disponibles en esta corrida): la capa de datos de la app (`AuthApi`, `SessionApi`, `StaffApi`, `RolesApi`, `PatientsApi` y `parseDeepLink`) recorrió los siete escenarios contra la api real en una prueba temporal de `flutter test` (no versionada), incluidos los enlaces reales de los correos pasados por el parser de deep links (con `https`, como en pruebas y producción). Queda pendiente probar App Links / Universal Links en un dispositivo cuando exista el dominio [POR DEFINIR: dominio].
-- Entorno de pruebas: [POR DEFINIR: servidor y URL]; los escenarios se corrieron en el entorno local. El script sirve para el entorno de pruebas apuntando `API_URL`, `MAILPIT_URL`/correo y `E2E_PSQL` a ese entorno cuando exista.
-
 ## Cambios
 
 | Fecha | Qué cambió | Tarjeta |
@@ -330,4 +298,3 @@ Resultado de MEDK-25 (2026-11-19, macOS, Docker 29, JDK 25, api del commit de la
 | 2026-11-19 | Perfil `local` de la api solo con referencias a variables y `api/.env.example` (importa `api/.env` si existe); la api no arranca en `local` si falta `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `KUADOR_JWT_SECRET` o `LOCAL_SEED_PASSWORD` (nombra la variable, sin valores). Variables nuevas: `LOCAL_SEED_PASSWORD` (secreto, solo local), `SERVER_PORT` y `SERVER_ADDRESS` (por defecto `0.0.0.0:8080` en local; el perfil `full` fija 8080). Semilla local con clínicas A y B (ubicación Flyway `db/localseed`, solo perfil `local`). Dependencia `spring-boot-starter-actuator`: solo `GET /actuator/health`, público y sin detalles | MEDK-29 |
 | 2026-11-19 | Web conectada a la api local por proxy: `web/proxy.conf.mjs` reemplaza a `proxy.conf.json` y reenvía `/api` y `/actuator` a la variable nueva `API_PROXY_TARGET` (por defecto `http://localhost:8080`); el proxy se aplica solo a la configuración `development` de `ng serve` (puerto 4200). `src/environments/environment.development.ts` con `apiBaseUrl` relativo (`/api/v1`); `config.json` sigue mandando en tiempo de ejecución. Sin secretos, servicios ni dependencias nuevas | MEDK-30 |
 | 2026-11-19 | App movil contra la api local: `API_BASE_URL` pasa a ser el origen de la api (la app agrega `/api/v1`; se sigue aceptando el valor con `/api/v1`) y su valor por defecto cambia de `http://localhost:8080/api/v1` a `http://10.0.2.2:8080` (emulador Android); valores para simulador iOS y dispositivo físico en «App móvil contra la api local». HTTP en claro solo en debug: `network_security_config` en `android/app/src/debug` (reemplaza `usesCleartextTraffic`) y `NSAllowsLocalNetworking` quitado de las builds Release y Profile de iOS por una fase de build. Sin secretos, puertos ni servicios nuevos | MEDK-31 |
-| 2026-11-19 | Integración de punta a punta del registro de usuarios: script `scripts/e2e-user-registration.sh` (variables opcionales del script `CONTRACT_URL`, `MAILPIT_URL`, `LINK_BASE_URL`, `E2E_PSQL`; sin secretos), que inserta sucursales de prueba en la base local. La web ahora atiende los enlaces de los correos en las mismas rutas que la api, la app y `.well-known`: `/password-reset` y `/email-verification` (antes `/reset-password` y `/verify-email`, que daban «Página no encontrada»). `KUADOR_CLINIC_TIME_ZONE` vacía en `.env` ya no impide arrancar la api (usa UTC) | MEDK-25 |
