@@ -2,7 +2,7 @@
   "shadow": {
     "$type": "shadow",
     "sm": {
-      "$value": { "color": "#0000001a", "offsetX": "0px", "offsetY": "1px", "blur": "2px", "spread": "0px" },
+      "$value": { "color": "#0b24401a", "offsetX": "0px", "offsetY": "1px", "blur": "2px", "spread": "0px" },
       "$extensions": {
         "com.kuador.modes": {
           "dark": { "color": "#00000066", "offsetX": "0px", "offsetY": "1px", "blur": "2px", "spread": "0px" }
@@ -10,7 +10,7 @@
       }
     },
     "md": {
-      "$value": { "color": "#0000001f", "offsetX": "0px", "offsetY": "4px", "blur": "12px", "spread": "0px" },
+      "$value": { "color": "#0b24401f", "offsetX": "0px", "offsetY": "4px", "blur": "12px", "spread": "0px" },
       "$extensions": {
         "com.kuador.modes": {
           "dark": { "color": "#00000080", "offsetX": "0px", "offsetY": "4px", "blur": "12px", "spread": "0px" }
@@ -18,7 +18,7 @@
       }
     },
     "lg": {
-      "$value": { "color": "#00000029", "offsetX": "0px", "offsetY": "12px", "blur": "32px", "spread": "0px" },
+      "$value": { "color": "#0b244029", "offsetX": "0px", "offsetY": "12px", "blur": "32px", "spread": "0px" },
       "$extensions": {
         "com.kuador.modes": {
           "dark": { "color": "#00000099", "offsetX": "0px", "offsetY": "12px", "blur": "32px", "spread": "0px" }

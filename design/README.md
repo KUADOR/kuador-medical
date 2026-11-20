@@ -12,8 +12,16 @@ generated with [Style Dictionary](https://styledictionary.com/) into:
 Both outputs are **generated and versioned** (Flutter builds without Node). Never edit them
 by hand: change `design/tokens/` and run the build.
 
-The current values are **provisional and neutral**. The final values come from the approved
-reference image (identity guide); switching to them only touches `design/tokens/`.
+The values are the **final ones of the identity guide** (MEDK-39), taken from the reference
+image `design/reference/medical-inspirations.avif`. The guide, its named rules and a summary of
+the tokens are in [`DESIGN.md`](../DESIGN.md) at the repository root; a test fails if that summary
+drifts from `design/tokens/`.
+
+| Folder | Content |
+|---|---|
+| `tokens/` | DTCG source of every style value. |
+| `icons/` | The SVG icon set (Lucide line icons, ISC license): 24px grid, 2px stroke, `currentColor`. |
+| `reference/` | Reference image (and mockups, when they arrive). |
 
 ## Commands
 
@@ -24,7 +32,7 @@ cd design
 npm ci
 npm run build   # checks the contract and contrast, then writes both outputs
 npm run check   # same checks; fails if the versioned outputs are out of date (CI)
-npm test        # generator tests: output snapshots, contract, modes and contrast
+npm test        # generator tests: outputs, contract, modes, contrast, icons and DESIGN.md
 ```
 
 ## Contract

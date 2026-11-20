@@ -2,17 +2,17 @@
   "border": {
     "$type": "border",
     "hairline": {
-      "$value": { "color": "#d3d7dc", "width": "1px", "style": "solid" },
+      "$value": { "color": "#d3dee1", "width": "1px", "style": "solid" },
       "$description": "Thin decorative divider between layers. Not used to identify controls.",
       "$extensions": {
-        "com.kuador.modes": { "dark": { "color": "#363b42", "width": "1px", "style": "solid" } }
+        "com.kuador.modes": { "dark": { "color": "#223a4e", "width": "1px", "style": "solid" } }
       }
     },
     "strong": {
-      "$value": { "color": "#6b737d", "width": "1px", "style": "solid" },
+      "$value": { "color": "#6b808b", "width": "1px", "style": "solid" },
       "$description": "Outline of form controls; meets 3:1 against surfaces.",
       "$extensions": {
-        "com.kuador.modes": { "dark": { "color": "#8a929c", "width": "1px", "style": "solid" } }
+        "com.kuador.modes": { "dark": { "color": "#7c93a3", "width": "1px", "style": "solid" } }
       }
     }
   }

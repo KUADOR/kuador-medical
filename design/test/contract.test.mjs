@@ -46,7 +46,7 @@ describe('modes', () => {
     t.after(fixture.cleanup);
     const tokens = await resolveTokens(fixture);
     const link = (mode) => tokens.css[mode].find((token) => token.name === 'kd-color-link').$value;
-    assert.equal(link('light'), '#3d4a5c');
-    assert.equal(link('dark'), '#b9c4d2');
+    assert.equal(link('light'), '#00737a');
+    assert.equal(link('dark'), '#3ccfd2');
   });
 });

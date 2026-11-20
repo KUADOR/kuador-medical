@@ -20,11 +20,11 @@ abstract final class KdConstants {
   static const Cubic motionEasingEnter = Cubic(0.0, 0.0, 0.0, 1.0);
   static const Cubic motionEasingExit = Cubic(0.3, 0.0, 1.0, 1.0);
   /// Badges, small controls.
-  static const double radiusSm = 4.0;
-  /// Buttons, fields, cards.
-  static const double radiusMd = 8.0;
-  /// Dialogs, sheets.
-  static const double radiusLg = 12.0;
+  static const double radiusSm = 6.0;
+  /// Buttons, fields, list rows.
+  static const double radiusMd = 10.0;
+  /// Cards, dialogs, sheets.
+  static const double radiusLg = 16.0;
   /// Pills and circular elements.
   static const double radiusFull = 9999.0;
   static const double space0 = 0.0;
@@ -37,8 +37,8 @@ abstract final class KdConstants {
   static const double space12 = 48.0;
   /// Minimum size of any touch or click target.
   static const double sizeTargetMin = 44.0;
-  /// Interface text.
-  static const String? typeFamilyBase = null;
+  /// Interface text. Figtree (SIL OFL 1.1), self-hosted in web and movil.
+  static const String typeFamilyBase = 'Figtree';
   /// Codes and identifiers.
   static const String typeFamilyMono = 'monospace';
   static const FontWeight typeWeightRegular = FontWeight.w400;
@@ -55,19 +55,19 @@ abstract final class KdConstants {
   static const double typeLineHeightSnug = 1.35;
   static const double typeLineHeightNormal = 1.5;
   /// Page title.
-  static const TextStyle typeDisplay = TextStyle(fontSize: 30.0, fontWeight: FontWeight.w600, height: 1.2);
+  static const TextStyle typeDisplay = TextStyle(fontFamily: 'Figtree', fontSize: 30.0, fontWeight: FontWeight.w600, height: 1.2);
   /// Section and card titles.
-  static const TextStyle typeTitle = TextStyle(fontSize: 20.0, fontWeight: FontWeight.w600, height: 1.35);
+  static const TextStyle typeTitle = TextStyle(fontFamily: 'Figtree', fontSize: 20.0, fontWeight: FontWeight.w600, height: 1.35);
   /// Secondary headings.
-  static const TextStyle typeSubtitle = TextStyle(fontSize: 18.0, fontWeight: FontWeight.w500, height: 1.35);
+  static const TextStyle typeSubtitle = TextStyle(fontFamily: 'Figtree', fontSize: 18.0, fontWeight: FontWeight.w500, height: 1.35);
   /// Running text.
-  static const TextStyle typeBody = TextStyle(fontSize: 16.0, fontWeight: FontWeight.w400, height: 1.5);
+  static const TextStyle typeBody = TextStyle(fontFamily: 'Figtree', fontSize: 16.0, fontWeight: FontWeight.w400, height: 1.5);
   /// Dense text: tables, hints.
-  static const TextStyle typeBodySm = TextStyle(fontSize: 14.0, fontWeight: FontWeight.w400, height: 1.5);
+  static const TextStyle typeBodySm = TextStyle(fontFamily: 'Figtree', fontSize: 14.0, fontWeight: FontWeight.w400, height: 1.5);
   /// Buttons, field labels and tabs.
-  static const TextStyle typeLabel = TextStyle(fontSize: 14.0, fontWeight: FontWeight.w600, height: 1.35);
+  static const TextStyle typeLabel = TextStyle(fontFamily: 'Figtree', fontSize: 14.0, fontWeight: FontWeight.w600, height: 1.35);
   /// Small print: timestamps, footnotes.
-  static const TextStyle typeCaption = TextStyle(fontSize: 12.0, fontWeight: FontWeight.w400, height: 1.35);
+  static const TextStyle typeCaption = TextStyle(fontFamily: 'Figtree', fontSize: 12.0, fontWeight: FontWeight.w400, height: 1.35);
 }
 
 /// Design tokens of Medical Kuador for one brightness.
@@ -138,22 +138,22 @@ class KdTokens extends ThemeExtension<KdTokens> {
 
   /// Tokens of the light theme.
   static const KdTokens light = KdTokens(
-    borderHairline: BorderSide(color: Color(0xFFD3D7DC), width: 1.0),
-    borderStrong: BorderSide(color: Color(0xFF6B737D), width: 1.0),
-    colorAccent: Color(0xFF3D4A5C),
+    borderHairline: BorderSide(color: Color(0xFFD3DEE1), width: 1.0),
+    borderStrong: BorderSide(color: Color(0xFF6B808B), width: 1.0),
+    colorAccent: Color(0xFF00737A),
     colorOnAccent: Color(0xFFFFFFFF),
-    colorFocus: Color(0xFF2F4A6E),
-    colorOk: Color(0xFF1F6B3A),
-    colorError: Color(0xFFB3261E),
+    colorFocus: Color(0xFF004F55),
+    colorOk: Color(0xFF1F7034),
+    colorError: Color(0xFFC0263D),
     colorOnError: Color(0xFFFFFFFF),
-    colorWarning: Color(0xFF7A4F00),
-    colorInfo: Color(0xFF2B5285),
-    surfaceBase: Color(0xFFF4F5F7),
-    surfaceSunken: Color(0xFFEAECEF),
+    colorWarning: Color(0xFF8A5000),
+    colorInfo: Color(0xFF3456B8),
+    surfaceBase: Color(0xFFF1F5F6),
+    surfaceSunken: Color(0xFFE3EBED),
     surfaceRaised: Color(0xFFFFFFFF),
     surfaceOverlay: Color(0xFFFFFFFF),
-    textDefault: Color(0xFF1B1E22),
-    textMuted: Color(0xFF4F5761),
+    textDefault: Color(0xFF0B2440),
+    textMuted: Color(0xFF4A5E6D),
     motionDurationFast: KdConstants.motionDurationFast,
     motionDurationNormal: KdConstants.motionDurationNormal,
     motionDurationSlow: KdConstants.motionDurationSlow,
@@ -164,9 +164,9 @@ class KdTokens extends ThemeExtension<KdTokens> {
     radiusMd: KdConstants.radiusMd,
     radiusLg: KdConstants.radiusLg,
     radiusFull: KdConstants.radiusFull,
-    shadowSm: <BoxShadow>[BoxShadow(color: Color(0x1A000000), offset: Offset(0.0, 1.0), blurRadius: 2.0, spreadRadius: 0.0)],
-    shadowMd: <BoxShadow>[BoxShadow(color: Color(0x1F000000), offset: Offset(0.0, 4.0), blurRadius: 12.0, spreadRadius: 0.0)],
-    shadowLg: <BoxShadow>[BoxShadow(color: Color(0x29000000), offset: Offset(0.0, 12.0), blurRadius: 32.0, spreadRadius: 0.0)],
+    shadowSm: <BoxShadow>[BoxShadow(color: Color(0x1A0B2440), offset: Offset(0.0, 1.0), blurRadius: 2.0, spreadRadius: 0.0)],
+    shadowMd: <BoxShadow>[BoxShadow(color: Color(0x1F0B2440), offset: Offset(0.0, 4.0), blurRadius: 12.0, spreadRadius: 0.0)],
+    shadowLg: <BoxShadow>[BoxShadow(color: Color(0x290B2440), offset: Offset(0.0, 12.0), blurRadius: 32.0, spreadRadius: 0.0)],
     space0: KdConstants.space0,
     space1: KdConstants.space1,
     space2: KdConstants.space2,
@@ -202,22 +202,22 @@ class KdTokens extends ThemeExtension<KdTokens> {
 
   /// Tokens of the dark theme.
   static const KdTokens dark = KdTokens(
-    borderHairline: BorderSide(color: Color(0xFF363B42), width: 1.0),
-    borderStrong: BorderSide(color: Color(0xFF8A929C), width: 1.0),
-    colorAccent: Color(0xFFB9C4D2),
-    colorOnAccent: Color(0xFF14171A),
-    colorFocus: Color(0xFFA9C1E0),
-    colorOk: Color(0xFF7BD19A),
-    colorError: Color(0xFFF2B8B5),
-    colorOnError: Color(0xFF3D0D0A),
-    colorWarning: Color(0xFFE8BF6A),
-    colorInfo: Color(0xFFA3C4EE),
-    surfaceBase: Color(0xFF121417),
-    surfaceSunken: Color(0xFF0C0D0F),
-    surfaceRaised: Color(0xFF1B1E22),
-    surfaceOverlay: Color(0xFF24282D),
-    textDefault: Color(0xFFE8EAED),
-    textMuted: Color(0xFFA9B0B8),
+    borderHairline: BorderSide(color: Color(0xFF223A4E), width: 1.0),
+    borderStrong: BorderSide(color: Color(0xFF7C93A3), width: 1.0),
+    colorAccent: Color(0xFF3CCFD2),
+    colorOnAccent: Color(0xFF002244),
+    colorFocus: Color(0xFF86E6E8),
+    colorOk: Color(0xFF6FD38C),
+    colorError: Color(0xFFFF8DA0),
+    colorOnError: Color(0xFF3D0712),
+    colorWarning: Color(0xFFF2C063),
+    colorInfo: Color(0xFFA4BBFF),
+    surfaceBase: Color(0xFF071827),
+    surfaceSunken: Color(0xFF030F1A),
+    surfaceRaised: Color(0xFF0E2236),
+    surfaceOverlay: Color(0xFF162C42),
+    textDefault: Color(0xFFE7EFF3),
+    textMuted: Color(0xFFA4B5C1),
     motionDurationFast: KdConstants.motionDurationFast,
     motionDurationNormal: KdConstants.motionDurationNormal,
     motionDurationSlow: KdConstants.motionDurationSlow,
@@ -271,7 +271,7 @@ class KdTokens extends ThemeExtension<KdTokens> {
   final BorderSide borderHairline;
   /// Outline of form controls; meets 3:1 against surfaces.
   final BorderSide borderStrong;
-  /// Primary action and brand accent.
+  /// Primary action, selection and brand accent (teal of the reference image).
   final Color colorAccent;
   /// Text and icons placed on the accent.
   final Color colorOnAccent;
@@ -295,7 +295,7 @@ class KdTokens extends ThemeExtension<KdTokens> {
   final Color surfaceRaised;
   /// Dialogs, menus and sheets above everything else.
   final Color surfaceOverlay;
-  /// Main text.
+  /// Main text (navy of the reference image).
   final Color textDefault;
   /// Secondary text: hints, metadata.
   final Color textMuted;
@@ -310,9 +310,9 @@ class KdTokens extends ThemeExtension<KdTokens> {
   final Cubic motionEasingExit;
   /// Badges, small controls.
   final double radiusSm;
-  /// Buttons, fields, cards.
+  /// Buttons, fields, list rows.
   final double radiusMd;
-  /// Dialogs, sheets.
+  /// Cards, dialogs, sheets.
   final double radiusLg;
   /// Pills and circular elements.
   final double radiusFull;
@@ -329,7 +329,7 @@ class KdTokens extends ThemeExtension<KdTokens> {
   final double space12;
   /// Minimum size of any touch or click target.
   final double sizeTargetMin;
-  /// Interface text.
+  /// Interface text. Figtree (SIL OFL 1.1), self-hosted in web and movil.
   final String? typeFamilyBase;
   /// Codes and identifiers.
   final String? typeFamilyMono;

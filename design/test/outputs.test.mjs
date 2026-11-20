@@ -5,6 +5,7 @@ import { describe, it } from 'node:test';
 import { DESIGN_DIR, OUTPUTS } from '../build/config.mjs';
 import { CONTRACT } from '../build/contract.mjs';
 import { generate, resolveTokens } from '../build/generate.mjs';
+import { tokensFixture } from './helpers.mjs';
 
 const REPO_ROOT = resolve(DESIGN_DIR, '..');
 const { files } = await generate();
@@ -67,9 +68,9 @@ describe('CSS output', () => {
     assert.match(lightBlock, /--kd-space-4: 1rem;/);
     assert.match(lightBlock, /--kd-type-size-md: 1rem;/);
     assert.match(lightBlock, /--kd-size-target-min: 2\.75rem;/);
-    assert.match(lightBlock, /--kd-radius-md: 8px;/);
+    assert.match(lightBlock, /--kd-radius-md: 10px;/);
     assert.match(lightBlock, /--kd-border-hairline: 1px solid #[0-9a-f]{6};/);
-    assert.match(lightBlock, /--kd-type-body: 400 1rem\/1\.5 system-ui, /);
+    assert.match(lightBlock, /--kd-type-body: 400 1rem\/1\.5 Figtree, system-ui, /);
   });
 });
 
@@ -113,10 +114,24 @@ describe('Dart output', () => {
     assert.doesNotMatch(constants, /surfaceRaised/);
   });
 
-  it('lets Flutter use the platform font when the family says so', () => {
-    assert.match(dart, /static const String\? typeFamilyBase = null;/);
+  it('uses the Dart family hint in the constants and the text styles', () => {
+    assert.match(dart, /static const String typeFamilyBase = 'Figtree';/);
     assert.match(
       dart,
+      /typeBody = TextStyle\(fontFamily: 'Figtree', fontSize: 16\.0, fontWeight: FontWeight\.w400, height: 1\.5\);/,
+    );
+  });
+
+  it('lets Flutter use the platform font when the family says so', async (t) => {
+    const fixture = await tokensFixture((files) => {
+      files['typography.tokens.json'].type.family.base.$extensions['com.kuador.dart'].fontFamily =
+        null;
+    });
+    t.after(fixture.cleanup);
+    const platformDart = (await generate(fixture)).files[OUTPUTS.dart];
+    assert.match(platformDart, /static const String\? typeFamilyBase = null;/);
+    assert.match(
+      platformDart,
       /typeBody = TextStyle\(fontSize: 16\.0, fontWeight: FontWeight\.w400, height: 1\.5\);/,
     );
   });
