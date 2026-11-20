@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/ui/module_widgets.dart';
+import '../../../design_system/tokens.g.dart';
+import '../../../design_system/widgets/widgets.dart';
 import '../../auth/data/registration_catalog.dart';
 import '../data/patient_models.dart';
 
@@ -141,7 +143,7 @@ class GuardianPersonFields extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const gap = SizedBox(height: 16);
+    const gap = SizedBox(height: KdConstants.space4);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -153,39 +155,38 @@ class GuardianPersonFields extends StatelessWidget {
           onChanged: (v) => controller.documentType = v,
         ),
         gap,
-        TextFormField(
+        KdTextField(
+          label: 'Número de documento del representante',
           controller: controller.documentNumber,
           validator: _v('documentNumber', FormRules.requiredMax(30)),
-          decoration: fieldDecoration('Número de documento del representante'),
         ),
         gap,
-        TextFormField(
+        KdTextField(
+          label: 'Nombres del representante',
           controller: controller.firstNames,
           textCapitalization: TextCapitalization.words,
           validator: _v('firstNames', FormRules.requiredMax(120)),
-          decoration: fieldDecoration('Nombres del representante'),
         ),
         gap,
-        TextFormField(
+        KdTextField(
+          label: 'Apellidos del representante',
           controller: controller.lastNames,
           textCapitalization: TextCapitalization.words,
           validator: _v('lastNames', FormRules.requiredMax(120)),
-          decoration: fieldDecoration('Apellidos del representante'),
         ),
         gap,
-        TextFormField(
+        KdTextField(
+          label: 'Correo del representante (opcional)',
           controller: controller.email,
           keyboardType: TextInputType.emailAddress,
-          autocorrect: false,
           validator: _v('email', FormRules.optionalEmail),
-          decoration: fieldDecoration('Correo del representante (opcional)'),
         ),
         gap,
-        TextFormField(
+        KdTextField(
+          label: 'Teléfono del representante (opcional)',
           controller: controller.phone,
           keyboardType: TextInputType.phone,
           validator: _v('phone', FormRules.optionalPhone),
-          decoration: fieldDecoration('Teléfono del representante (opcional)'),
         ),
       ],
     );
@@ -212,22 +213,44 @@ class GuardianLinkTile extends StatelessWidget {
         ? 'Vigente desde ${formatDate(link.validFrom.toLocal())}'
         : 'Del ${formatDate(link.validFrom.toLocal())} al ${formatDate(link.validTo!.toLocal())}';
     final reason = link.endReasonLabel;
-    return Card(
-      child: ListTile(
-        leading: Icon(
-          link.current ? Icons.verified_user_outlined : Icons.history,
-          semanticLabel: link.current ? 'Vigente' : 'Histórico',
+    final t = KdTokens.of(context);
+    final end = trailing;
+    return Padding(
+      padding: EdgeInsets.only(bottom: t.space2),
+      child: KdCard(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            KdIcon(
+              link.current ? KdIcons.circleCheck : KdIcons.clock,
+              color: link.current ? t.colorAccent : t.textMuted,
+              semanticLabel: link.current ? 'Vigente' : 'Histórico',
+            ),
+            SizedBox(width: t.space3),
+            Expanded(
+              child: MergeSemantics(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      link.guardianName,
+                      style: t.typeBody.copyWith(color: t.textDefault),
+                    ),
+                    Text(
+                      [
+                        '${link.linkType.label} · ${link.relationship}',
+                        period,
+                        ?reason,
+                      ].join('\n'),
+                      style: t.typeBodySm.copyWith(color: t.textMuted),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (end != null) ...[SizedBox(width: t.space2), end],
+          ],
         ),
-        title: Text(link.guardianName),
-        subtitle: Text(
-          [
-            '${link.linkType.label} · ${link.relationship}',
-            period,
-            ?reason,
-          ].join('\n'),
-        ),
-        isThreeLine: true,
-        trailing: trailing,
       ),
     );
   }

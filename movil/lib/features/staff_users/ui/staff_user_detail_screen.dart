@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../app_scope.dart';
 import '../../../core/ui/module_widgets.dart';
 import '../../../design_system/tokens.g.dart';
+import '../../../design_system/widgets/widgets.dart';
 import '../data/staff_models.dart';
 import 'role_assignments_screen.dart';
 import 'staff_user_form_screen.dart';
@@ -114,9 +115,9 @@ class _StaffUserDetailScreenState extends State<StaffUserDetailScreen> {
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: KdConstants.space2),
               Wrap(
-                spacing: 8,
+                spacing: KdConstants.space2,
                 children: [Chip(label: Text(user.status.label))],
               ),
               InfoRow('Correo', user.email),
@@ -136,30 +137,30 @@ class _StaffUserDetailScreenState extends State<StaffUserDetailScreen> {
                     'Esta es tu cuenta. Nadie puede cambiar sus propios datos, roles ni acceso.',
                   ),
                 ),
-              const SizedBox(height: 24),
+              const SizedBox(height: KdConstants.space6),
               if (canManage)
                 _Action(
-                  icon: Icons.edit_outlined,
+                  icon: KdIcons.pencil,
                   label: 'Editar datos',
                   onPressed: () => _edit(user),
                 ),
               if (canAssign)
                 _Action(
-                  icon: Icons.admin_panel_settings_outlined,
+                  icon: KdIcons.lock,
                   label: 'Cambiar roles',
                   onPressed: () => _changeRoles(user),
                 ),
               if (canManage && user.status == AccountStatus.invited)
                 _Action(
-                  icon: Icons.forward_to_inbox_outlined,
+                  icon: KdIcons.mail,
                   label: 'Reenviar invitación',
                   onPressed: () => _resend(user),
                 ),
               if (canManage)
                 _Action(
                   icon: user.status == AccountStatus.disabled
-                      ? Icons.lock_open_outlined
-                      : Icons.block_outlined,
+                      ? KdIcons.check
+                      : KdIcons.x,
                   label: user.status == AccountStatus.disabled
                       ? 'Habilitar acceso'
                       : 'Deshabilitar acceso',
@@ -180,7 +181,7 @@ class _Action extends StatelessWidget {
     required this.onPressed,
   });
 
-  final IconData icon;
+  final KdIconData icon;
   final String label;
   final VoidCallback onPressed;
 
@@ -188,11 +189,11 @@ class _Action extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: KdConstants.space3),
-      child: OutlinedButton.icon(
+      child: KdButton.secondary(
+        label: label,
+        icon: icon,
+        expand: true,
         onPressed: onPressed,
-        icon: Icon(icon),
-        label: Text(label),
-        style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
       ),
     );
   }

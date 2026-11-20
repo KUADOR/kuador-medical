@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/session/session_models.dart';
 import '../../roles/data/role_models.dart';
 import '../data/staff_models.dart';
+import '../../../design_system/tokens.g.dart';
 
 /// Chooses the roles of a staff user per branch (FR-026): the same role in
 /// every branch (default) or one role per branch, with "no access" allowed in
@@ -47,7 +48,7 @@ class RoleAssignmentsEditor extends StatelessWidget {
           header: true,
           child: Text('Roles por sucursal', style: theme.textTheme.titleMedium),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: KdConstants.space1),
         const Text(
           'Por defecto la persona tiene el mismo rol en todas las sucursales. '
           'Puedes darle un rol distinto en cada una (por ejemplo, ADMIN en la '
@@ -76,7 +77,7 @@ class RoleAssignmentsEditor extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: KdConstants.space2),
         if (draft.mode == AssignmentMode.allBranches)
           DropdownButtonFormField<String>(
             key: ValueKey('all-${draft.roleId}'),
@@ -127,7 +128,7 @@ class RoleAssignmentsEditor extends StatelessWidget {
                 border: const OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: KdConstants.space3),
           ],
           if (errorText != null)
             Semantics(

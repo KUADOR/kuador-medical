@@ -4,6 +4,7 @@ import '../../../app_scope.dart';
 import '../../../core/ui/module_widgets.dart';
 import '../data/role_models.dart';
 import 'role_form_screen.dart';
+import '../../../design_system/tokens.g.dart';
 
 /// Roles of the clinic (`GET /roles`), built over the fixed permission
 /// catalog of Kuador (FR-016).
@@ -63,7 +64,7 @@ class _RolesScreenState extends State<RolesScreen> {
                   'Cada rol combina permisos del catálogo de Kuador. OWNER y ADMIN '
                   'están protegidos.',
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: KdConstants.space2),
                 for (final role in roles)
                   Card(
                     child: ListTile(

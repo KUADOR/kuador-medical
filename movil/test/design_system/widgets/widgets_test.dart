@@ -680,6 +680,38 @@ void main() {
     });
   });
 
+  group('KdProgressIndicator', () {
+    testWidgets('spins inline and is announced with its label', (
+      tester,
+    ) async {
+      final handle = tester.ensureSemantics();
+      await tester.pumpWidget(
+        themedApp(
+          const Scaffold(
+            body: Center(child: KdProgressIndicator(semanticLabel: 'Abriendo')),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.bySemanticsLabel('Abriendo'), findsOneWidget);
+      final box = tester.getSize(find.byType(CircularProgressIndicator));
+      expect(box.width, lessThanOrEqualTo(KdConstants.space6));
+      handle.dispose();
+    });
+
+    testWidgets('is a static icon with reduced motion', (tester) async {
+      simulateReducedMotion(tester);
+      await tester.pumpWidget(
+        themedApp(const Scaffold(body: Center(child: KdProgressIndicator()))),
+      );
+      await settleWithAssets(tester);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.byType(KdIcon), findsOneWidget);
+      expect(tester.binding.hasScheduledFrame, isFalse);
+    });
+  });
+
   testWidgets('every widget renders in dark with the dark tokens', (
     tester,
   ) async {

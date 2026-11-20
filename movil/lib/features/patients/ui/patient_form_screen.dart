@@ -10,6 +10,7 @@ import '../../auth/data/registration_catalog.dart';
 import '../../auth/ui/auth_widgets.dart';
 import '../data/patient_models.dart';
 import 'patient_widgets.dart';
+import '../../../design_system/tokens.g.dart';
 
 /// Registers a patient with the mandatory data and the personal data consent
 /// (FR-008, FR-009); a minor needs a legal guardian and gets no account
@@ -204,7 +205,7 @@ class _PatientFormScreenState extends State<PatientFormScreen> {
     final services = AppScope.of(context);
     final today = services.clock();
     final minor = _isMinor(today);
-    const gap = SizedBox(height: 16);
+    const gap = SizedBox(height: KdConstants.space4);
     final guardianErrors = nestedErrors(_fieldErrors, 'guardian.person');
     return ModulePage(
       title: _isNew ? 'Nuevo paciente' : 'Editar paciente',
@@ -260,7 +261,7 @@ class _PatientFormScreenState extends State<PatientFormScreen> {
                       : _fieldErrors['birthDate'],
                 ),
                 if (minor) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: KdConstants.space2),
                   const NoticeCard(
                     'Es menor de edad: se registra con su representante legal y no '
                     'tendrá una cuenta propia mientras sea menor.',
@@ -357,7 +358,7 @@ class _PatientFormScreenState extends State<PatientFormScreen> {
             ),
             ErrorMessage(_consentError),
           ],
-          const SizedBox(height: 24),
+          const SizedBox(height: KdConstants.space6),
           OnlineSubmitButton(
             label: _isNew ? 'Registrar paciente' : 'Guardar cambios',
             busy: _busy,

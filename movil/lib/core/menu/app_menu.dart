@@ -1,5 +1,4 @@
-import 'package:flutter/material.dart';
-
+import '../../design_system/widgets/widgets.dart';
 import '../session/session_models.dart';
 
 /// Destinations of the main menu. The screens behind them belong to the
@@ -21,7 +20,7 @@ class MenuEntry {
 
   final MenuDestination destination;
   final String label;
-  final IconData icon;
+  final KdIconData icon;
 }
 
 /// Builds the menu from `GET /me`: an entry is shown only when the clinic plan
@@ -38,25 +37,25 @@ List<MenuEntry> buildMenu(CurrentSession session) {
         const MenuEntry(
           destination: MenuDestination.staffUsers,
           label: 'Personal',
-          icon: Icons.badge_outlined,
+          icon: KdIcons.stethoscope,
         ),
       if (allowed('identity', 'roles.read'))
         const MenuEntry(
           destination: MenuDestination.roles,
           label: 'Roles y permisos',
-          icon: Icons.admin_panel_settings_outlined,
+          icon: KdIcons.lock,
         ),
       if (allowed('patients', 'patients.read'))
         const MenuEntry(
           destination: MenuDestination.patients,
           label: 'Pacientes',
-          icon: Icons.people_outline,
+          icon: KdIcons.heartPulse,
         ),
       if (allowed('patients', 'patients.selfRegistration.configure'))
         const MenuEntry(
           destination: MenuDestination.selfRegistrationSettings,
           label: 'Autorregistro de pacientes',
-          icon: Icons.how_to_reg_outlined,
+          icon: KdIcons.userPlus,
         ),
     ],
     AccountKind.patient => [
@@ -64,7 +63,7 @@ List<MenuEntry> buildMenu(CurrentSession session) {
         const MenuEntry(
           destination: MenuDestination.myGuardianLinks,
           label: 'Mis contactos autorizados',
-          icon: Icons.family_restroom_outlined,
+          icon: KdIcons.users,
         ),
     ],
     AccountKind.guardian => const [],

@@ -10,6 +10,7 @@ import '../../auth/ui/auth_widgets.dart';
 import '../../roles/data/role_models.dart';
 import '../data/staff_models.dart';
 import 'role_assignments_editor.dart';
+import '../../../design_system/tokens.g.dart';
 
 /// Replaces the branch role assignments of a staff user
 /// (`PUT /staff-users/{id}/role-assignments`). Pops the new assignments.
@@ -121,7 +122,7 @@ class _RoleAssignmentsScreenState extends State<RoleAssignmentsScreen> {
                   _fieldError = null;
                 }),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: KdConstants.space6),
               OnlineSubmitButton(
                 label: 'Guardar roles',
                 busy: _busy,

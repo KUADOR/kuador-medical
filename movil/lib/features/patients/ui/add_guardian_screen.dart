@@ -6,6 +6,8 @@ import '../../../core/api/error_messages.dart';
 import '../../../core/connectivity/connectivity_widgets.dart';
 import '../../../core/ui/module_widgets.dart';
 import '../../../core/util/idempotent_creation.dart';
+import '../../../design_system/tokens.g.dart';
+import '../../../design_system/widgets/widgets.dart';
 import '../../auth/ui/auth_widgets.dart';
 import '../data/patient_models.dart';
 import 'patient_widgets.dart';
@@ -81,24 +83,22 @@ class _AddGuardianScreenState extends State<AddGuardianScreen> {
       body: ModuleListView(
         children: [
           Text('Representante legal de ${widget.patient.fullName}.'),
-          const SizedBox(height: 16),
+          const SizedBox(height: KdConstants.space4),
           ErrorMessage(_error),
           Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                TextFormField(
+                KdTextField(
+                  label: 'Parentesco o relación',
+                  helperText: 'Por ejemplo, madre, padre o tutor legal.',
                   controller: _relationship,
                   validator: (v) =>
                       FormRules.requiredMax(60)(v) ??
                       _fieldErrors['relationship'],
-                  decoration: fieldDecoration(
-                    'Parentesco o relación',
-                    helper: 'Por ejemplo, madre, padre o tutor legal.',
-                  ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: KdConstants.space4),
                 GuardianPersonFields(
                   controller: _person,
                   errors: nestedErrors(_fieldErrors, 'person'),
@@ -106,7 +106,7 @@ class _AddGuardianScreenState extends State<AddGuardianScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: KdConstants.space6),
           OnlineSubmitButton(
             label: 'Agregar representante',
             busy: _busy,

@@ -25,7 +25,16 @@ final _materialColors = RegExp(r'(?<![\w.])(Colors|CupertinoColors)\.');
 final _geometryCall = RegExp(
   r'(?<![\w.])(EdgeInsetsDirectional|EdgeInsets|BorderRadiusDirectional|BorderRadius|Radius)\b\s*(\.\s*\w+\s*)?\(',
 );
+final _sizeCall = RegExp(r'(?<![\w.])Size\b\s*(\.\s*\w+\s*)?\(');
 final _numberLiteral = RegExp(r'(?<![\w.$])\d+(\.\d+)?(?![\w.])');
+
+/// Named arguments that size or space a widget: a number there is a
+/// hand-written style (`SizedBox(height: 16)`, `Wrap(spacing: 8)`,
+/// `Icon(size: 48)`, `Divider(height: 1)`, `BoxConstraints(maxWidth: 480)`). Zero is allowed: it means
+/// «none» (`elevation: 0`, R-04), not a size.
+final _dimensionLiteral = RegExp(
+  r'(?<![\w.$])(height|width|minWidth|maxWidth|minHeight|maxHeight|dimension|spacing|runSpacing|size|iconSize|elevation|thickness|indent|endIndent|fontSize|strokeWidth)\s*:\s*-?(?!0+(\.0+)?(?![\w.]))\d+(\.\d+)?(?![\w.])',
+);
 const _token = r'(KdConstants\.\w+|\w+\.(space|radius)\w*)';
 final _tokenArithmetic = RegExp('$_token\\s*[-+*/]\\s*$_token');
 
@@ -34,8 +43,11 @@ final _tokenArithmetic = RegExp('$_token\\s*[-+*/]\\s*$_token');
 /// Rules: no `Color(0x…)` or `Color.fromARGB/RGBO`, no `Colors.*` /
 /// `CupertinoColors.*`, and no `EdgeInsets*`, `BorderRadius*` or `Radius`
 /// built with numeric literals or with arithmetic between tokens (a derived
-/// value gets a name in `lib/design_system/`). Comments and string literals
-/// are ignored.
+/// value gets a name in `lib/design_system/`), and no numeric literal as a
+/// size or gap argument (`height`, `width`, `min/maxWidth`, `min/maxHeight`,
+/// `dimension`, `spacing`, `runSpacing`, `size`, `iconSize`, `elevation`,
+/// `thickness`, `indent`, `endIndent`, `fontSize`, `strokeWidth`) or in a
+/// `Size(…)`. Comments and string literals are ignored.
 List<StyleViolation> scanSource(String path, String source) {
   final code = _blankCommentsAndStrings(source);
   final violations = <StyleViolation>[];
@@ -64,6 +76,15 @@ List<StyleViolation> scanSource(String path, String source) {
     } else if (_tokenArithmetic.hasMatch(args)) {
       add(m.start, 'token-arithmetic', _lineAt(source, m.start));
     }
+  }
+  for (final m in _sizeCall.allMatches(code)) {
+    final args = _balancedArgs(code, m.end - 1);
+    if (args != null && _numberLiteral.hasMatch(args)) {
+      add(m.start, 'dimension-literal', _lineAt(source, m.start));
+    }
+  }
+  for (final m in _dimensionLiteral.allMatches(code)) {
+    add(m.start, 'dimension-literal', _lineAt(source, m.start));
   }
   violations.sort((a, b) => a.line.compareTo(b.line));
   return violations;
