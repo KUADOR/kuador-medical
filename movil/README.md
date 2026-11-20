@@ -126,7 +126,27 @@ xcrun simctl openurl booted "https://localhost/invitation#t=<token>"
   Linux (CI or a Linux container) with `flutter test --tags golden
   --update-goldens` and commit the PNG files in the same PR.
 - Assets: icons (SVG, drawn with `flutter_svg`) in `assets/icons/`,
-  self-hosted fonts in `assets/fonts/`.
+  self-hosted fonts in `assets/fonts/`. `assets/icons/` is an exact copy of
+  `design/icons/` (a test fails if they differ): add an icon there first, copy
+  it and list it in `KdIcons`.
+- Widget library (MEDK-41), imported from
+  `lib/design_system/widgets/widgets.dart`. Widgets read styles only from
+  `Theme` and `KdTokens` (the style guard also runs on this folder), follow
+  the named rules of `DESIGN.md` and drop their animations when the platform
+  disables them:
+  - `KdButton` (primary, `.secondary`, `.text`, `.destructive`; `loading`,
+    `expand`): 44 visual height, 48 tap area, focus ring.
+  - `KdTextField` and `KdFormScrollView`: visible label, helper and error text,
+    password toggle, «next» moves to the next field, fields scroll above the
+    keyboard and dragging hides it.
+  - `KdListSection` / `KdListTile` (selection with accent bar) and `KdCard`.
+  - `showKdBottomSheet` + `KdSheet`, `showKdDialog` + `KdDialog`.
+  - `KdBottomNavBar` with `KdNavDestination` (labels always visible).
+  - `KdIcon` / `KdIcons`: decorative unless given a `semanticLabel`.
+  - `KdEmptyState`, `KdLoadingState` (static with reduced motion) and
+    `KdErrorState` (with «Reintentar»).
+  - Tests and goldens: `test/design_system/widgets/` (gallery of synthetic
+    screens in `gallery.dart`).
 
 ## Commands
 
