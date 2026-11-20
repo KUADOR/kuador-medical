@@ -87,10 +87,24 @@ export function errorMessage(error: unknown): string {
   if (problem) {
     return ERROR_MESSAGES[problem.code];
   }
-  if (error instanceof HttpErrorResponse && error.status === 0) {
+  if (isServerUnreachable(error)) {
     return NETWORK_ERROR_MESSAGE;
   }
   return GENERIC_ERROR_MESSAGE;
+}
+
+/**
+ * Gateway statuses a proxy answers when it cannot reach the api: the dev server proxy sends an
+ * empty 502 and nginx 502/504 pages. The api itself always answers with a Problem Details code.
+ */
+const GATEWAY_STATUSES = new Set([502, 503, 504]);
+
+/** True when the request never got an answer from the api (network failure or gateway error). */
+export function isServerUnreachable(error: unknown): boolean {
+  return (
+    error instanceof HttpErrorResponse &&
+    (error.status === 0 || (GATEWAY_STATUSES.has(error.status) && toProblem(error) === null))
+  );
 }
 
 export function fieldErrorMessage(fieldError: FieldError): string {

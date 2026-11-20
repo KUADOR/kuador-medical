@@ -1,6 +1,7 @@
 import { HttpBackend, HttpClient } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 /** Shape of public/config.json, read at runtime so one build serves every environment. */
 export interface RuntimeConfig {
@@ -8,7 +9,8 @@ export interface RuntimeConfig {
 }
 
 export const CONFIG_URL = 'config.json';
-export const DEFAULT_API_BASE_URL = '/api/v1';
+/** Used until config.json answers, or when it is missing (relative: same origin / dev proxy). */
+export const DEFAULT_API_BASE_URL = environment.apiBaseUrl;
 
 @Injectable({ providedIn: 'root' })
 export class AppConfigService {
