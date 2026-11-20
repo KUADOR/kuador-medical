@@ -101,7 +101,7 @@ Solo nombres: los valores nunca van en este documento ni en el repo. En local vi
 | SMOKE_SUPER_ADMIN_NEW_PASSWORD | `scripts/smoke-test.sh` | local | `.env` | sí | Clave que la prueba de humo pone al SUPER_ADMIN en su primera corrida sobre una base nueva (≥ 12 caracteres) y con la que ingresa en las siguientes. Solo local; la api la ignora |
 | API_PORT | api | local | `.env` | no | Puerto del host para la api en el perfil `full` |
 | WEB_PORT | web | local | `.env` | no | Puerto del host para la web en el perfil `full` |
-| API_BASE_URL | web (`config.json`), movil (`--dart-define`) | todos | web: `public/config.json` (por defecto `/api/v1`, mismo origen) o variable del contenedor web, que reescribe `config.json` al arrancar; movil: `--dart-define` | no | URL de la api (`…/api/v1`). En la web, una URL de otro origen exige incluir el origen de la web en `KUADOR_CORS_ALLOWED_ORIGINS` |
+| API_BASE_URL | web (`config.json`), movil (`--dart-define`) | todos | web: `public/config.json` (por defecto `/api/v1`, mismo origen) o variable del contenedor web, que reescribe `config.json` al arrancar; movil: `--dart-define` al compilar o ejecutar | no | URL de la api. En la web, `…/api/v1`; una URL de otro origen exige incluir el origen de la web en `KUADOR_CORS_ALLOWED_ORIGINS`. En movil, el origen de la api (la app agrega `/api/v1`; también acepta un valor que ya termine en `/api/v1`); por defecto `http://10.0.2.2:8080` (emulador Android contra la api local). Valores locales en «App móvil contra la api local». Fuera de local, siempre `https://` |
 | APP_LINK_HOST | movil (`--dart-define`; iOS: `ios/Flutter/AppLinks.local.xcconfig`, no se versiona) | pruebas, producción | build de la app | no | Host de `KUADOR_APP_LINK_BASE_URL` sin esquema [POR DEFINIR: dominio]. Android lo pone en el `intent-filter` con `autoVerify` y iOS en `applinks:` de Associated Domains; la app solo acepta enlaces `https` de ese host. Sin valor: `localhost` en el manifiesto y los entitlements, y la app acepta cualquier host (solo para builds locales) |
 | [POR DEFINIR: credenciales de proveedores de pagos y facturación] | api | pruebas, producción | [POR DEFINIR] | sí | — |
 
@@ -161,6 +161,21 @@ Si también se usan `mailpit` u otros servicios de `compose.yaml`, Compose avisa
 8. Detener: `docker compose down` (con `-v` se borran los datos locales).
 
 Si el puerto 5432 del equipo ya está ocupado, cambiar `DB_PORT` y el puerto de `DB_URL` en `.env` (por ejemplo 55432).
+
+#### App móvil contra la api local
+
+Con la api levantada en el puerto 8080 (pasos anteriores), desde `movil/`:
+
+| Dónde corre la app | `API_BASE_URL` | Comando |
+|---|---|---|
+| Emulador Android | `http://10.0.2.2:8080` (valor por defecto) | `flutter run` |
+| Simulador iOS | `http://localhost:8080` | `flutter run --dart-define=API_BASE_URL=http://localhost:8080` |
+| Dispositivo físico (Android o iOS) | `http://<IP-LAN-del-equipo>:8080` | `flutter run --dart-define=API_BASE_URL=http://<IP-LAN-del-equipo>:8080` |
+
+- IP LAN del equipo: `ipconfig getifaddr en0` en macOS, `hostname -I` en Linux, `ipconfig` en Windows. El teléfono debe estar en la misma red (sin aislamiento de clientes en el wifi), la api debe escuchar en todas las interfaces y el firewall del equipo debe permitir conexiones entrantes al puerto 8080.
+- HTTP en claro solo en builds debug: en Android, `android/app/src/debug/res/xml/network_security_config.xml` (solo se incluye en debug); en iOS, `NSAllowsLocalNetworking` en `Info.plist`, que la fase de build «Strip Local Networking» (`ios/scripts/strip_local_networking.sh`) quita en Release y Profile. Las builds release y profile solo permiten HTTPS.
+- Si la api no responde (apagada, rechazo de conexión o 15 s sin respuesta), la app muestra «No pudimos conectarnos con el servidor. Revisa tu conexión e inténtalo de nuevo.». La app no registra tokens, contraseñas ni datos personales en consola.
+- Un valor de `API_BASE_URL` que no sea una URL `http`/`https` detiene la app al iniciar con un error que nombra la variable, sin mostrar el valor.
 
 ### Primera vez (pruebas y producción)
 
@@ -260,3 +275,4 @@ Resultado de MEDK-11 (2026-11-19, perfil `full` en macOS con Docker 29): 45 paso
 | 2026-11-19 | Autenticación de MEDK-12: login entre clínicas, elección de clínica y sucursal, refresh token rotativo, logout, recuperación de contraseña por clínica, `POST /auth/switch-branch` y `GET /me` con sucursal y módulos. `KUADOR_JWT_TTL` baja por defecto a `PT15M`. Migración `V3__identity_auth_tokens_and_login_throttle.sql` (tablas `identity_one_time_token`, `identity_refresh_token`, `identity_login_throttle`). Dependencia `spring-boot-starter-mail` (los correos salen por SMTP; Mailpit en local). `server.forward-headers-strategy: native`: detrás del proxy la IP del cliente sale de `X-Forwarded-For`, aceptado solo desde proxies de red interna; si el proxy de pruebas o producción no está en una red privada, configurar `server.tomcat.remoteip.internal-proxies`. Sin variables ni secretos nuevos | MEDK-15 |
 | 2026-11-19 | Registro de pacientes, representantes, consentimiento LOPDP y autorregistro opcional: migración `V5__patients_registration.sql` (tablas `patients_patient`, `patients_guardian`, `patients_guardian_link`, `patients_consent` y `patients_registration_settings`, más acciones de auditoría nuevas). Endpoints `/patients`, `/patient-registration-settings`, `POST /public/clinics/{publicCode}/patient-registrations` y `POST /auth/email-verification/confirm`. El módulo `patients` queda habilitado como capacidad básica de todo plan (`enabledModules` de `/me` incluye `patients`). Variable nueva `KUADOR_CLINIC_TIME_ZONE` (opcional, `UTC` por defecto). El correo de verificación usa `KUADOR_EMAIL_VERIFICATION_TTL` y la ruta `email-verification-path`. Sin secretos, puertos, servicios ni dependencias nuevas | MEDK-17 |
 | 2026-11-19 | `compose.local.yaml` con solo PostgreSQL (extiende el servicio `db` de `compose.yaml`: puerto 5432, volumen local y healthcheck) y subsección «Base de datos local» con prerrequisitos. Reutiliza `DB_NAME`, `DB_USERNAME` y `DB_PASSWORD` de `.env.example` en lugar de `POSTGRES_*`; `.env` ya estaba en `.gitignore`. Sin variables, secretos, puertos ni servicios nuevos | MEDK-28 |
+| 2026-11-19 | App movil contra la api local: `API_BASE_URL` pasa a ser el origen de la api (la app agrega `/api/v1`; se sigue aceptando el valor con `/api/v1`) y su valor por defecto cambia de `http://localhost:8080/api/v1` a `http://10.0.2.2:8080` (emulador Android); valores para simulador iOS y dispositivo físico en «App móvil contra la api local». HTTP en claro solo en debug: `network_security_config` en `android/app/src/debug` (reemplaza `usesCleartextTraffic`) y `NSAllowsLocalNetworking` quitado de las builds Release y Profile de iOS por una fase de build. Sin secretos, puertos ni servicios nuevos | MEDK-31 |
