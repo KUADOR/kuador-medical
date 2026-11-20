@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:medical_kuador/design_system/theme.dart';
@@ -24,24 +26,32 @@ void simulateReducedMotion(WidgetTester tester) {
 /// Golden test of [builder] in the light and the dark theme.
 ///
 /// Writes/compares `goldens/<name>_light.png` and `goldens/<name>_dark.png`
-/// next to the calling test file (`flutter test --update-goldens` to accept).
-/// Goldens only use synthetic data.
+/// next to the calling test file. Goldens only use synthetic data.
+///
+/// Tagged `golden` and compared exactly. Baselines are the Linux renderings of
+/// CI (Flutter 3.47.9), so the comparison is skipped on macOS and Windows,
+/// whose text and antialiasing differ slightly (README § Design system).
 void testGoldens(
   String name,
   Widget Function() builder, {
   Size size = const Size(360, 640),
 }) {
   for (final mode in const [ThemeMode.light, ThemeMode.dark]) {
-    testWidgets('$name matches its ${mode.name} golden', (tester) async {
-      await tester.binding.setSurfaceSize(size);
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      await tester.pumpWidget(themedApp(builder(), mode: mode));
-      await tester.pumpAndSettle();
-      await expectLater(
-        find.byType(MaterialApp),
-        matchesGoldenFile('goldens/${name}_${mode.name}.png'),
-      );
-    });
+    testWidgets(
+      '$name matches its ${mode.name} golden',
+      tags: 'golden',
+      skip: !Platform.isLinux,
+      (tester) async {
+        await tester.binding.setSurfaceSize(size);
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        await tester.pumpWidget(themedApp(builder(), mode: mode));
+        await tester.pumpAndSettle();
+        await expectLater(
+          find.byType(MaterialApp),
+          matchesGoldenFile('goldens/${name}_${mode.name}.png'),
+        );
+      },
+    );
   }
 }
 

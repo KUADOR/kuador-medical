@@ -116,10 +116,15 @@ xcrun simctl openurl booted "https://localhost/invitation#t=<token>"
   `Color(0x…)`, `Colors.*`, or `EdgeInsets` / `BorderRadius` / `Radius` with
   numeric literals anywhere in `lib/` except `lib/design_system/` (ADR-007).
 - Test helpers in `test/support/design_system_harness.dart`: `testGoldens`
-  (light and dark goldens, synthetic data only; accept changes with
-  `flutter test --update-goldens`) and `expectMeetsA11yGuidelines` /
+  (light and dark goldens, synthetic data only) and `expectMeetsA11yGuidelines` /
   `testA11yGuidelines` (Android and iOS tap targets, labeled targets, text
   contrast).
+- Goldens carry the tag `golden` (`dart_test.yaml`) and compare exactly. The
+  baselines are rendered on Linux with Flutter `3.47.9`, like the CI job
+  `movil`; macOS renders text and antialiasing slightly differently, so
+  `flutter test` skips them outside Linux. To update them, render them on
+  Linux (CI or a Linux container) with `flutter test --tags golden
+  --update-goldens` and commit the PNG files in the same PR.
 - Assets: icons (SVG, drawn with `flutter_svg`) in `assets/icons/`,
   self-hosted fonts in `assets/fonts/`.
 
