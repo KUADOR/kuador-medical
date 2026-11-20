@@ -42,24 +42,36 @@ cd movil && flutter test         # probar
 
 ## Levantar en local
 
-Requisitos: Docker con Compose v2, JDK 25, Node.js LTS y Flutter estable. Detalle de variables, secretos y puertos en `docs/deployment.md`.
+Requisitos: Docker con Compose v2, JDK 25, Node.js `^22.22.3` o `^24.15.0`, Flutter estable y, para el móvil, Android SDK con emulador (JDK 17+ para compilar Android). Procedimiento completo, variables, puertos (5432, 8080, 4200), dispositivo físico y solución de problemas en `docs/deployment.md` § «Paso a paso › Entorno local».
 
 ```bash
-cp .env.example .env                 # completar DB_PASSWORD, KUADOR_JWT_SECRET, LOCAL_SEED_PASSWORD y la cuenta inicial (nunca commitear .env)
-docker compose up -d db              # PostgreSQL 18 en 127.0.0.1:${DB_PORT:-5432}
-docker compose ps                    # db debe quedar «healthy»
+# 1. Variables (una vez): completar DB_PASSWORD, KUADOR_JWT_SECRET y LOCAL_SEED_PASSWORD. Nunca commitear .env
+cp .env.example .env
 
-# api en el host (perfil local)
+# 2. Base de datos: PostgreSQL 18 en 127.0.0.1:${DB_PORT:-5432}; espera a «healthy»
+docker compose -f compose.local.yaml --env-file .env up -d --wait
+
+# 3. api en el host, perfil local (otra terminal): http://localhost:8080
 set -a; . ./.env; set +a
-cd api && ./mvnw spring-boot:run     # http://localhost:8080
+cd api && ./mvnw spring-boot:run
+curl -s http://localhost:8080/actuator/health        # 200 con "status":"UP"
 
-# web en el host
-cd web && npm install && npm start   # http://localhost:4200
+# 4. web en el host (otra terminal): http://localhost:4200, proxy de /api a la api
+cd web && npm install && npm start
 
-# o todo en contenedores (db + api + web)
+# 5. móvil (desde movil/): emulador Android con el valor por defecto http://10.0.2.2:8080
+cd movil && flutter pub get && flutter run
+#    simulador iOS:      flutter run --dart-define=API_BASE_URL=http://localhost:8080
+#    dispositivo físico: flutter run --dart-define=API_BASE_URL=http://<IP-LAN-del-equipo>:8080
+
+# Usuarios de prueba (semilla del perfil local): usuario.a@clinica-a.example.test y
+# usuario.b@clinica-b.example.test, con la contraseña LOCAL_SEED_PASSWORD.
+
+# Detener: Ctrl+C en api y web, luego (agregar -v borra los datos locales)
+docker compose -f compose.local.yaml down
+
+# Alternativa con todo en contenedores (db + mailpit + api + web)
 docker compose --profile full up -d --build
-
-docker compose down                  # detener (agregar -v borra los datos locales)
 ```
 
 Si el puerto 5432 está ocupado, cambiar `DB_PORT` y el puerto de `DB_URL` en `.env`.
