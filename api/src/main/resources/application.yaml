@@ -81,6 +81,13 @@ kuador:
   clinics:
     # Time zone used to compute minority of patients (under 18) [POR DEFINIR: zona horaria por clínica].
     time-zone: ${KUADOR_CLINIC_TIME_ZONE:UTC}
+  patients:
+    adulthood:
+      # Transition to adulthood (MEDK-18): hourly by default (cron in UTC) so every clinic is
+      # processed soon after its own midnight; idempotent. "-" disables it.
+      cron: ${KUADOR_ADULTHOOD_CRON:0 5 * * * *}
+      # Upper bound of the ShedLock lock if a replica dies while running the job.
+      lock-at-most-for: ${KUADOR_ADULTHOOD_LOCK_AT_MOST_FOR:PT1H}
   sms:
     # SMS provider [POR DEFINIR]. Empty provider: SMS invitations stay disabled.
     provider: ${KUADOR_SMS_PROVIDER:}
