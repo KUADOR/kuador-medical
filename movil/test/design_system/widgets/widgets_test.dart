@@ -250,6 +250,30 @@ void main() {
       expect(find.text('Falta el teléfono.'), findsOneWidget);
     });
 
+    testWidgets('email and url fields do not autocorrect by default', (
+      tester,
+    ) async {
+      await pumpThemed(
+        tester,
+        const Column(
+          children: [
+            KdTextField(label: 'Nombre'),
+            KdTextField(
+              label: 'Correo',
+              keyboardType: TextInputType.emailAddress,
+            ),
+            KdTextField(label: 'Sitio', keyboardType: TextInputType.url),
+            KdTextField(label: 'Código', autocorrect: false),
+          ],
+        ),
+      );
+      List<bool> autocorrect() => tester
+          .widgetList<EditableText>(find.byType(EditableText))
+          .map((e) => e.autocorrect)
+          .toList();
+      expect(autocorrect(), [true, false, false, false]);
+    });
+
     testWidgets('the password toggle shows and hides the text', (tester) async {
       await pumpThemed(
         tester,
@@ -676,6 +700,36 @@ void main() {
       await settleWithAssets(tester);
       expect(find.byType(CircularProgressIndicator), findsNothing);
       expect(find.text('Cargando…'), findsOneWidget);
+      expect(tester.binding.hasScheduledFrame, isFalse);
+    });
+  });
+
+  group('KdProgressIndicator', () {
+    testWidgets('spins inline and is announced with its label', (tester) async {
+      final handle = tester.ensureSemantics();
+      await tester.pumpWidget(
+        themedApp(
+          const Scaffold(
+            body: Center(child: KdProgressIndicator(semanticLabel: 'Abriendo')),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.bySemanticsLabel('Abriendo'), findsOneWidget);
+      final box = tester.getSize(find.byType(CircularProgressIndicator));
+      expect(box.width, lessThanOrEqualTo(KdConstants.space6));
+      handle.dispose();
+    });
+
+    testWidgets('is a static icon with reduced motion', (tester) async {
+      simulateReducedMotion(tester);
+      await tester.pumpWidget(
+        themedApp(const Scaffold(body: Center(child: KdProgressIndicator()))),
+      );
+      await settleWithAssets(tester);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.byType(KdIcon), findsOneWidget);
       expect(tester.binding.hasScheduledFrame, isFalse);
     });
   });

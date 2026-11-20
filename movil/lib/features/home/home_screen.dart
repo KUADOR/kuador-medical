@@ -5,7 +5,10 @@ import '../../core/api/api_exception.dart';
 import '../../core/connectivity/connectivity_widgets.dart';
 import '../../core/menu/app_menu.dart';
 import '../../core/session/session_models.dart';
+import '../../core/ui/module_widgets.dart';
+import '../../design_system/layout.dart';
 import '../../design_system/tokens.g.dart';
+import '../../design_system/widgets/widgets.dart';
 import '../../system_status/system_status_screen.dart';
 import '../auth/ui/auth_messages.dart';
 import '../patients/ui/my_guardian_links_screen.dart';
@@ -25,9 +28,8 @@ class HomeScreen extends StatelessWidget {
       AppScope.of(context).session.logout();
 
   Future<void> _switchBranch(BuildContext context) async {
-    final chosen = await showModalBottomSheet<NamedRef>(
+    final chosen = await showKdBottomSheet<NamedRef>(
       context: context,
-      showDragHandle: true,
       builder: (_) => _BranchPicker(session: session),
     );
     if (chosen == null || chosen.id == session.activeBranch?.id) return;
@@ -45,7 +47,7 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final t = KdTokens.of(context);
     final menu = buildMenu(session);
     final online = ConnectivityScope.of(context).isOnline;
     return Scaffold(
@@ -54,7 +56,7 @@ class HomeScreen extends StatelessWidget {
         actions: [
           IconButton(
             tooltip: 'Cerrar sesión',
-            icon: const Icon(Icons.logout),
+            icon: const KdIcon(KdIcons.logOut),
             onPressed: () => _logout(context),
           ),
         ],
@@ -62,7 +64,7 @@ class HomeScreen extends StatelessWidget {
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600),
+            constraints: const BoxConstraints(maxWidth: KdLayout.pageMaxWidth),
             child: ListView(
               padding: const EdgeInsets.all(KdConstants.space4),
               children: [
@@ -71,65 +73,82 @@ class HomeScreen extends StatelessWidget {
                   header: true,
                   child: Text(
                     'Hola, ${session.displayName}',
-                    style: theme.textTheme.headlineSmall,
+                    style: t.typeTitle.copyWith(color: t.textDefault),
                   ),
                 ),
                 if (session.roles.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(session.roles.join(' · ')),
-                ],
-                const SizedBox(height: 16),
-                if (session.activeBranch != null)
-                  Card(
-                    child: ListTile(
-                      leading: const Icon(Icons.store_mall_directory_outlined),
-                      title: const Text('Sucursal activa'),
-                      subtitle: Text(session.activeBranch!.name),
-                      trailing: session.canSwitchBranch
-                          ? TextButton(
-                              onPressed: online
-                                  ? () => _switchBranch(context)
-                                  : null,
-                              child: const Text('Cambiar'),
-                            )
-                          : null,
-                    ),
+                  SizedBox(height: t.space1),
+                  Text(
+                    session.roles.join(' · '),
+                    style: t.typeBodySm.copyWith(color: t.textMuted),
                   ),
-                if (session.mustChangePassword)
-                  const _Notice(
+                ],
+                SizedBox(height: t.space4),
+                if (session.activeBranch != null) ...[
+                  KdListSection(
+                    children: [
+                      KdListTile(
+                        leadingIcon: KdIcons.building,
+                        title: 'Sucursal activa',
+                        subtitle: session.activeBranch!.name,
+                        trailing: session.canSwitchBranch
+                            ? KdButton.text(
+                                label: 'Cambiar',
+                                onPressed: online
+                                    ? () => _switchBranch(context)
+                                    : null,
+                              )
+                            : null,
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: t.space4),
+                ],
+                if (session.mustChangePassword) ...[
+                  const NoticeCard(
                     'Debes cambiar tu contraseña antes de usar los módulos. '
                     'Hazlo desde la web de la clínica.',
                   ),
-                const SizedBox(height: 8),
-                if (menu.isEmpty && !session.mustChangePassword)
-                  const _Notice(
+                  SizedBox(height: t.space4),
+                ],
+                if (menu.isEmpty && !session.mustChangePassword) ...[
+                  const NoticeCard(
                     'Tu rol no tiene módulos habilitados en esta sucursal. '
                     'Consulta con el administrador de la clínica.',
                   ),
-                for (final entry in menu)
-                  Card(
-                    child: ListTile(
-                      leading: Icon(entry.icon),
-                      title: Text(entry.label),
-                      trailing: const Icon(Icons.chevron_right),
+                  SizedBox(height: t.space4),
+                ],
+                if (menu.isNotEmpty) ...[
+                  KdListSection(
+                    children: [
+                      for (final entry in menu)
+                        KdListTile(
+                          leadingIcon: entry.icon,
+                          title: entry.label,
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => moduleScreen(entry.destination),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  SizedBox(height: t.space4),
+                ],
+                KdListSection(
+                  children: [
+                    KdListTile(
+                      leadingIcon: KdIcons.settings,
+                      title: 'Estado del sistema',
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
-                          builder: (_) => moduleScreen(entry.destination),
+                          builder: (_) => SystemStatusScreen(
+                            client: AppScope.of(context).systemInfoClient,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                const SizedBox(height: 8),
-                ListTile(
-                  leading: const Icon(Icons.monitor_heart_outlined),
-                  title: const Text('Estado del sistema'),
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => SystemStatusScreen(
-                        client: AppScope.of(context).systemInfoClient,
-                      ),
-                    ),
-                  ),
+                  ],
                 ),
               ],
             ),
@@ -147,54 +166,21 @@ class _BranchPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+    return KdSheet(
+      title: 'Elige la sucursal',
+      child: KdListSection(
         children: [
-          Semantics(
-            header: true,
-            child: Text(
-              'Elige la sucursal',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-          ),
-          const SizedBox(height: 8),
           for (final branch in session.availableBranches)
-            ListTile(
-              leading: Icon(
-                branch.id == session.activeBranch?.id
-                    ? Icons.radio_button_checked
-                    : Icons.radio_button_unchecked,
-              ),
-              title: Text(branch.name),
+            KdListTile(
+              leadingIcon: KdIcons.building,
+              title: branch.name,
               selected: branch.id == session.activeBranch?.id,
+              trailing: branch.id == session.activeBranch?.id
+                  ? const KdIcon(KdIcons.check, semanticLabel: 'Activa')
+                  : null,
               onTap: () => Navigator.of(context).pop(branch),
             ),
-          const SizedBox(height: 8),
         ],
-      ),
-    );
-  }
-}
-
-class _Notice extends StatelessWidget {
-  const _Notice(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      color: Theme.of(context).colorScheme.secondaryContainer,
-      child: Padding(
-        padding: const EdgeInsets.all(KdConstants.space4),
-        child: Row(
-          children: [
-            const Icon(Icons.info_outline),
-            const SizedBox(width: 12),
-            Expanded(child: Text(text)),
-          ],
-        ),
       ),
     );
   }

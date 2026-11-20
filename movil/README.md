@@ -113,8 +113,13 @@ xcrun simctl openurl booted "https://localhost/invitation#t=<token>"
   other animation.
 - Screens read colors, spacing and radii from `KdTokens.of(context)` or
   `KdConstants`. `test/design_system/style_guard_test.dart` fails on
-  `Color(0x…)`, `Colors.*`, or `EdgeInsets` / `BorderRadius` / `Radius` with
-  numeric literals anywhere in `lib/` except `lib/design_system/` (ADR-007).
+  `Color(0x…)`, `Colors.*`, `EdgeInsets` / `BorderRadius` / `Radius` / `Size`
+  with numeric literals, and numeric sizes or gaps (`SizedBox(height: 16)`,
+  `spacing`, `size`, `maxWidth`, `dimension`, `elevation`…; zero is allowed)
+  anywhere in `lib/` except `lib/design_system/` (ADR-007). It has no
+  exceptions: a value that a screen needs gets a name first, in
+  `lib/design_system/layout.dart` (`KdLayout`: `formMaxWidth`,
+  `pageMaxWidth`, `statusIconSize`, `fabClearance`).
 - Test helpers in `test/support/design_system_harness.dart`: `testGoldens`
   (light and dark goldens, synthetic data only) and `expectMeetsA11yGuidelines` /
   `testA11yGuidelines` (Android and iOS tap targets, labeled targets, text
@@ -150,6 +155,8 @@ xcrun simctl openurl booted "https://localhost/invitation#t=<token>"
   - `KdIcon` / `KdIcons`: decorative unless given a `semanticLabel`.
   - `KdEmptyState`, `KdLoadingState` (static with reduced motion) and
     `KdErrorState` (with «Reintentar»).
+  - `KdProgressIndicator`: small inline spinner for a busy row (static clock
+    with reduced motion).
   - Tests and goldens: `test/design_system/widgets/` (gallery of synthetic
     screens in `gallery.dart`).
 - Sign-in and sign-up screens (MEDK-45, `lib/features/auth/ui/`) use
@@ -159,6 +166,9 @@ xcrun simctl openurl booted "https://localhost/invitation#t=<token>"
   and goldens are in `test/features/auth_screens_test.dart`, with the helpers
   of `test/support/screen_harness.dart` (`pumpScreen`, `ScreenCase`,
   `testScreenGoldens`).
+- Screen goldens and accessibility checks of the migrated screens (home,
+  authorized contacts, system status, offline banner), with synthetic data:
+  `test/features/screens_visual_test.dart` (MEDK-47).
 
 ## Commands
 

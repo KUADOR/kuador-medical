@@ -8,6 +8,8 @@ import 'package:medical_kuador/system_status/system_info.dart';
 import 'package:medical_kuador/system_status/system_info_client.dart';
 import 'package:medical_kuador/system_status/system_status_screen.dart';
 
+import 'support/design_system_harness.dart';
+
 const baseUrl = 'https://api.example.test/api/v1';
 
 http.Response jsonResponse(Object body, [int status = 200]) => http.Response(
@@ -25,9 +27,7 @@ const upBody = {
 
 Future<void> pumpApp(WidgetTester tester, MockClient httpClient) async {
   final client = SystemInfoClient(httpClient: httpClient, baseUrl: baseUrl);
-  await tester.pumpWidget(
-    MaterialApp(home: SystemStatusScreen(client: client)),
-  );
+  await tester.pumpWidget(themedApp(SystemStatusScreen(client: client)));
 }
 
 void main() {

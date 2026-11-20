@@ -6,6 +6,7 @@ import '../../../core/api/error_messages.dart';
 import '../../../core/connectivity/connectivity_widgets.dart';
 import '../../../core/ui/module_widgets.dart';
 import '../../../core/util/idempotent_creation.dart';
+import '../../../design_system/tokens.g.dart';
 import '../../auth/ui/auth_widgets.dart';
 import '../../roles/data/role_models.dart';
 import '../data/staff_models.dart';
@@ -190,7 +191,7 @@ class _StaffUserFormScreenState extends State<StaffUserFormScreen> {
           final clinicalRequired = _isNew
               ? _draft.requiresProfessionalRegistration(roles)
               : _hasClinicalRole(roles);
-          const gap = SizedBox(height: 16);
+          const gap = SizedBox(height: KdConstants.space4);
           return ModuleListView(
             children: [
               if (_isNew)
@@ -298,7 +299,7 @@ class _StaffUserFormScreenState extends State<StaffUserFormScreen> {
                   }),
                 ),
               ],
-              const SizedBox(height: 24),
+              const SizedBox(height: KdConstants.space6),
               OnlineSubmitButton(
                 label: _isNew ? 'Registrar e invitar' : 'Guardar cambios',
                 busy: _busy,

@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/fake_api.dart';
@@ -59,6 +60,25 @@ void main() {
         find.text('Autorizaste un contacto de emergencia.'),
         findsOneWidget,
       );
+    });
+
+    testWidgets('the guardian email field does not autocorrect', (
+      tester,
+    ) async {
+      await pumpPatient(tester);
+      await tapText(tester, 'Otra persona');
+
+      final email = tester.widget<EditableText>(
+        find.descendant(
+          of: find.widgetWithText(
+            TextFormField,
+            'Correo del representante (opcional)',
+          ),
+          matching: find.byType(EditableText),
+        ),
+      );
+      expect(email.autocorrect, isFalse);
+      expect(email.keyboardType, TextInputType.emailAddress);
     });
 
     testWidgets('authorizes another person with delegated access', (

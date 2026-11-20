@@ -35,6 +35,7 @@ class KdTextField extends StatefulWidget {
     this.autofillHints,
     this.inputFormatters,
     this.obscureText = false,
+    this.autocorrect,
     this.enabled = true,
     this.autofocus = false,
     this.maxLines = 1,
@@ -61,6 +62,10 @@ class KdTextField extends StatefulWidget {
   final Iterable<String>? autofillHints;
   final List<TextInputFormatter>? inputFormatters;
   final bool obscureText;
+
+  /// Keyboard autocorrection. Defaults to off for passwords, emails and
+  /// URLs (they are not words) and on otherwise.
+  final bool? autocorrect;
   final bool enabled;
   final bool autofocus;
   final int maxLines;
@@ -85,6 +90,13 @@ class KdTextField extends StatefulWidget {
 class _KdTextFieldState extends State<KdTextField> {
   late bool _hidden = widget.obscureText;
 
+  bool get _autocorrectByDefault {
+    final type = widget.keyboardType;
+    return !widget.obscureText &&
+        type != TextInputType.emailAddress &&
+        type != TextInputType.url;
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = KdTokens.of(context);
@@ -99,7 +111,7 @@ class _KdTextFieldState extends State<KdTextField> {
       enableInteractiveSelection: !widget.readOnly,
       obscureText: _hidden,
       enableSuggestions: !widget.obscureText,
-      autocorrect: !widget.obscureText,
+      autocorrect: widget.autocorrect ?? _autocorrectByDefault,
       keyboardType:
           widget.keyboardType ?? (multiline ? TextInputType.multiline : null),
       textInputAction:

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../design_system/layout.dart';
 import '../../design_system/tokens.g.dart';
+import '../../design_system/widgets/widgets.dart';
 import '../api/error_messages.dart';
 import '../connectivity/connectivity_widgets.dart';
 
@@ -29,7 +30,7 @@ class ModulePage extends StatelessWidget {
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600),
+            constraints: const BoxConstraints(maxWidth: KdLayout.pageMaxWidth),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -78,13 +79,7 @@ class LoadingView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Semantics(
-        liveRegion: true,
-        label: 'Cargando',
-        child: const CircularProgressIndicator(),
-      ),
-    );
+    return const Center(child: KdLoadingState());
   }
 }
 
@@ -107,10 +102,11 @@ class LoadErrorView extends StatelessWidget {
               liveRegion: true,
               child: Text(apiErrorMessage(error), textAlign: TextAlign.center),
             ),
-            const SizedBox(height: 16),
-            FilledButton(
+            const SizedBox(height: KdConstants.space4),
+            KdButton.secondary(
+              label: 'Volver a intentar',
+              icon: KdIcons.refresh,
               onPressed: onRetry,
-              child: const Text('Volver a intentar'),
             ),
           ],
         ),
@@ -172,17 +168,14 @@ class NoticeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      color: Theme.of(context).colorScheme.secondaryContainer,
-      child: Padding(
-        padding: const EdgeInsets.all(KdConstants.space4),
-        child: Row(
-          children: [
-            const Icon(Icons.info_outline),
-            const SizedBox(width: 12),
-            Expanded(child: Text(text)),
-          ],
-        ),
+    final t = KdTokens.of(context);
+    return KdCard(
+      child: Row(
+        children: [
+          KdIcon(KdIcons.info, color: t.colorInfo),
+          SizedBox(width: t.space3),
+          Expanded(child: Text(text)),
+        ],
       ),
     );
   }
@@ -193,7 +186,9 @@ InputDecoration fieldDecoration(String label, {String? helper}) =>
       labelText: label,
       helperText: helper,
       helperMaxLines: 3,
-      border: const OutlineInputBorder(),
+      border: const OutlineInputBorder(
+        borderRadius: BorderRadius.all(Radius.circular(KdConstants.radiusMd)),
+      ),
     );
 
 /// Runs a mutating [action] only with a connection (FR-029): offline, it
@@ -229,21 +224,19 @@ Future<bool> confirmAction(
   required String message,
   required String confirmLabel,
 }) async {
-  final result = await showDialog<bool>(
+  final result = await showKdDialog<bool>(
     context: context,
-    builder: (context) => AlertDialog(
-      title: Text(title),
-      content: Text(message),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Cancelar'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          child: Text(confirmLabel),
-        ),
-      ],
+    builder: (context) => KdDialog(
+      title: title,
+      message: message,
+      confirm: KdButton(
+        label: confirmLabel,
+        onPressed: () => Navigator.of(context).pop(true),
+      ),
+      dismiss: KdButton.text(
+        label: 'Volver',
+        onPressed: () => Navigator.of(context).pop(false),
+      ),
     ),
   );
   return result ?? false;
