@@ -1,54 +1,140 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/connectivity/connectivity_widgets.dart';
+import '../../../design_system/layout.dart';
 import '../../../design_system/tokens.g.dart';
+import '../../../design_system/widgets/widgets.dart';
 
 /// Minimum length of a new password: the api default (`PasswordProperties`).
 /// The api is the authority and answers `WEAK_PASSWORD` if its policy differs.
 const int minPasswordLength = 12;
 
-/// Scrollable, centered page used by the auth screens (mobile-first, readable
-/// width on tablets).
+/// Page of the sign-in and sign-up screens (MEDK-45), mobile-first:
+///
+/// - the content scrolls, never stays under the keyboard and dragging it
+///   hides the keyboard ([KdFormScrollView]);
+/// - the [primaryAction] (one per screen, DESIGN.md R-02) is pinned at the
+///   bottom, within reach of the thumb and right above the keyboard;
+/// - the offline notice comes first while there is no connection;
+/// - on tablets the content keeps a readable width.
+///
+/// The app bar keeps the native back gesture and button of each platform.
 class AuthPage extends StatelessWidget {
   const AuthPage({
     super.key,
     required this.title,
     required this.children,
+    this.primaryAction,
     this.showOfflineBanner = true,
   });
 
   final String title;
   final List<Widget> children;
+
+  /// The main action of the screen, usually a full-width [KdButton] or an
+  /// [OnlineSubmitButton].
+  final Widget? primaryAction;
   final bool showOfflineBanner;
 
   @override
   Widget build(BuildContext context) {
+    final t = KdTokens.of(context);
+    final offline =
+        showOfflineBanner && !ConnectivityScope.of(context).isOnline;
+    final action = primaryAction;
     return Scaffold(
       appBar: AppBar(title: Text(title)),
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(KdConstants.space6),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 480),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (showOfflineBanner) const OfflineBanner(),
-                  if (showOfflineBanner) const SizedBox(height: 16),
-                  ...children,
-                ],
+        child: Column(
+          children: [
+            Expanded(
+              child: _ReadableWidth(
+                child: KdFormScrollView(
+                  children: [if (offline) const OfflineBanner(), ...children],
+                ),
               ),
             ),
-          ),
+            if (action != null)
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: t.surfaceBase,
+                  border: Border(top: t.borderHairline),
+                ),
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    t.space4,
+                    t.space3,
+                    t.space4,
+                    t.space4,
+                  ),
+                  child: _ReadableWidth(child: action),
+                ),
+              ),
+          ],
         ),
       ),
     );
   }
 }
 
-/// Error announced to screen readers; renders nothing when [message] is null.
+class _ReadableWidth extends StatelessWidget {
+  const _ReadableWidth({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Align(
+    alignment: Alignment.topCenter,
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: KdLayout.formMaxWidth),
+      child: child,
+    ),
+  );
+}
+
+/// Heading of an auth screen: a [title] announced as a header and, at most,
+/// one sentence under it (DESIGN.md · Tono).
+class AuthHeader extends StatelessWidget {
+  const AuthHeader({
+    super.key,
+    required this.title,
+    this.message,
+    this.display = false,
+  });
+
+  final String title;
+  final String? message;
+
+  /// Larger title, for the first screen of the app.
+  final bool display;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = KdTokens.of(context);
+    final text = message;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Semantics(
+          header: true,
+          child: Text(
+            title,
+            style: (display ? t.typeDisplay : t.typeTitle).copyWith(
+              color: t.textDefault,
+            ),
+          ),
+        ),
+        if (text != null) ...[
+          SizedBox(height: t.space2),
+          Text(text, style: t.typeBody.copyWith(color: t.textMuted)),
+        ],
+      ],
+    );
+  }
+}
+
+/// Error announced to screen readers, with space below; renders nothing when
+/// [message] is null. Used by forms that stack their own fields.
 class ErrorMessage extends StatelessWidget {
   const ErrorMessage(this.message, {super.key});
 
@@ -58,113 +144,54 @@ class ErrorMessage extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = message;
     if (text == null) return const SizedBox.shrink();
-    final scheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.only(bottom: KdConstants.space4),
-      child: Semantics(
-        liveRegion: true,
-        container: true,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(Icons.error_outline, color: scheme.error),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                text,
-                style: TextStyle(
-                  color: scheme.error,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+      child: KdInlineMessage.error(text),
     );
   }
 }
 
-/// Confirmation announced to screen readers.
+/// Confirmation that ends a flow (a sent link, a verified email), announced
+/// to screen readers.
 class SuccessMessage extends StatelessWidget {
-  const SuccessMessage(this.message, {super.key});
+  const SuccessMessage(this.message, {super.key, this.title});
 
   final String message;
+  final String? title;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final t = KdTokens.of(context);
+    final heading = title;
     return Semantics(
       liveRegion: true,
       container: true,
       child: Column(
         children: [
-          Icon(
-            Icons.check_circle_outline,
-            size: 48,
-            color: theme.colorScheme.primary,
+          SizedBox(height: t.space8),
+          KdIcon(
+            KdIcons.circleCheck,
+            size: KdLayout.statusIconSize,
+            color: t.colorOk,
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: t.space4),
+          if (heading != null) ...[
+            Semantics(
+              header: true,
+              child: Text(
+                heading,
+                textAlign: TextAlign.center,
+                style: t.typeTitle.copyWith(color: t.textDefault),
+              ),
+            ),
+            SizedBox(height: t.space2),
+          ],
           Text(
             message,
             textAlign: TextAlign.center,
-            style: theme.textTheme.titleMedium,
+            style: t.typeBody.copyWith(color: t.textMuted),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Password input with a show/hide toggle.
-class PasswordField extends StatefulWidget {
-  const PasswordField({
-    super.key,
-    required this.controller,
-    required this.label,
-    this.validator,
-    this.autofillHints = const [AutofillHints.password],
-    this.textInputAction = TextInputAction.done,
-    this.onSubmitted,
-    this.helperText,
-  });
-
-  final TextEditingController controller;
-  final String label;
-  final FormFieldValidator<String>? validator;
-  final Iterable<String> autofillHints;
-  final TextInputAction textInputAction;
-  final ValueChanged<String>? onSubmitted;
-  final String? helperText;
-
-  @override
-  State<PasswordField> createState() => _PasswordFieldState();
-}
-
-class _PasswordFieldState extends State<PasswordField> {
-  bool _obscured = true;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextFormField(
-      controller: widget.controller,
-      obscureText: _obscured,
-      enableSuggestions: false,
-      autocorrect: false,
-      autofillHints: widget.autofillHints,
-      textInputAction: widget.textInputAction,
-      onFieldSubmitted: widget.onSubmitted,
-      validator: widget.validator,
-      decoration: InputDecoration(
-        labelText: widget.label,
-        helperText: widget.helperText,
-        helperMaxLines: 2,
-        border: const OutlineInputBorder(),
-        suffixIcon: IconButton(
-          tooltip: _obscured ? 'Mostrar contraseña' : 'Ocultar contraseña',
-          icon: Icon(_obscured ? Icons.visibility : Icons.visibility_off),
-          onPressed: () => setState(() => _obscured = !_obscured),
-        ),
       ),
     );
   }

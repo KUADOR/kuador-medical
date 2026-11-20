@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../app_scope.dart';
 import '../../../core/api/api_exception.dart';
 import '../../../core/connectivity/connectivity_widgets.dart';
+import '../../../design_system/tokens.g.dart';
+import '../../../design_system/widgets/widgets.dart';
 import '../data/auth_models.dart';
 import 'auth_messages.dart';
 import 'auth_widgets.dart';
@@ -88,19 +90,17 @@ class _InvitationScreenState extends State<InvitationScreen> {
     }
   }
 
+  void _toLogin() => Navigator.of(context).popUntil((route) => route.isFirst);
+
   @override
   Widget build(BuildContext context) {
     const title = 'Activar tu cuenta';
     if (_loading) {
-      return AuthPage(
-        title: title,
-        children: [
-          Semantics(
-            liveRegion: true,
-            label: 'Revisando la invitación',
-            child: const Center(child: CircularProgressIndicator()),
-          ),
-        ],
+      return Scaffold(
+        appBar: AppBar(title: const Text(title)),
+        body: const SafeArea(
+          child: KdLoadingState(title: 'Revisando la invitación'),
+        ),
       );
     }
     final previewError = _previewError;
@@ -109,8 +109,16 @@ class _InvitationScreenState extends State<InvitationScreen> {
       final invalid = previewError?.code == 'ONE_TIME_TOKEN_INVALID';
       return AuthPage(
         title: title,
+        // Retrying is the main action unless the link is no longer valid.
+        primaryAction: invalid
+            ? KdButton(
+                label: 'Ir a iniciar sesión',
+                expand: true,
+                onPressed: _toLogin,
+              )
+            : OnlineSubmitButton(label: 'Reintentar', onPressed: _loadPreview),
         children: [
-          ErrorMessage(
+          KdInlineMessage.error(
             invalid
                 ? 'La invitación expiró o ya se usó. Pide a la clínica que te la reenvíe.'
                 : authErrorMessage(
@@ -118,59 +126,70 @@ class _InvitationScreenState extends State<InvitationScreen> {
                   ),
           ),
           if (!invalid)
-            OnlineSubmitButton(label: 'Reintentar', onPressed: _loadPreview),
-          TextButton(
-            onPressed: () =>
-                Navigator.of(context).popUntil((route) => route.isFirst),
-            child: const Text('Ir a iniciar sesión'),
-          ),
+            Center(
+              child: KdButton.text(
+                label: 'Ir a iniciar sesión',
+                onPressed: _toLogin,
+              ),
+            ),
         ],
       );
     }
+    final t = KdTokens.of(context);
     return AuthPage(
       title: title,
+      primaryAction: OnlineSubmitButton(
+        label: 'Activar cuenta',
+        busy: _busy,
+        onPressed: _submit,
+      ),
       children: [
-        Semantics(
-          header: true,
-          child: Text(
-            'Te invitaron a ${preview.clinicName}',
-            style: Theme.of(context).textTheme.titleLarge,
+        AuthHeader(
+          title: 'Te invitaron a ${preview.clinicName}',
+          message: 'Crea tu contraseña para entrar.',
+        ),
+        KdCard(
+          child: Row(
+            children: [
+              KdIcon(KdIcons.mail, color: t.textMuted),
+              SizedBox(width: t.space3),
+              Expanded(
+                child: Text(
+                  'Cuenta: ${preview.maskedEmail}',
+                  style: t.typeBody.copyWith(color: t.textDefault),
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 8),
-        Text('Cuenta: ${preview.maskedEmail}'),
-        const SizedBox(height: 4),
-        const Text('Crea tu contraseña para entrar.'),
-        const SizedBox(height: 16),
-        ErrorMessage(_error),
+        if (_error != null) KdInlineMessage.error(_error!),
         Form(
           key: _formKey,
           child: AutofillGroup(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                PasswordField(
-                  controller: _password,
+                KdTextField(
                   label: 'Contraseña',
+                  controller: _password,
+                  obscureText: true,
                   helperText: 'Usa al menos $minPasswordLength caracteres.',
                   autofillHints: const [AutofillHints.newPassword],
-                  textInputAction: TextInputAction.next,
                   validator: newPasswordValidator,
                 ),
-                const SizedBox(height: 16),
-                PasswordField(
-                  controller: _confirm,
+                SizedBox(height: t.space4),
+                KdTextField(
                   label: 'Repite la contraseña',
+                  controller: _confirm,
+                  obscureText: true,
                   autofillHints: const [AutofillHints.newPassword],
+                  textInputAction: TextInputAction.done,
                   validator: (v) => v != _password.text
                       ? 'Las contraseñas no coinciden.'
                       : null,
-                ),
-                const SizedBox(height: 24),
-                OnlineSubmitButton(
-                  label: 'Activar cuenta',
-                  busy: _busy,
-                  onPressed: _submit,
+                  onSubmitted: (_) {
+                    if (ConnectivityScope.of(context).isOnline) _submit();
+                  },
                 ),
               ],
             ),

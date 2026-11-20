@@ -4,6 +4,7 @@ import '../../../app_scope.dart';
 import '../../../core/api/api_exception.dart';
 import '../../../core/connectivity/connectivity_widgets.dart';
 import '../../../core/session/session_models.dart';
+import '../../../design_system/widgets/widgets.dart';
 import '../data/auth_models.dart';
 import 'clinic_selection_screen.dart';
 
@@ -50,7 +51,7 @@ class _BranchSelectionScreenState extends State<BranchSelectionScreen> {
       intro:
           'En ${widget.step.clinic.name} trabajas en varias sucursales. Tus permisos dependen de la sucursal que elijas.',
       items: widget.step.branches,
-      icon: Icons.store_mall_directory_outlined,
+      icon: KdIcons.mapPin,
       busyId: _busyId,
       error: _error,
       onSelect: _select,

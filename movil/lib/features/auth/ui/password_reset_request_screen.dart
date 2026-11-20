@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../app_scope.dart';
 import '../../../core/api/api_exception.dart';
 import '../../../core/connectivity/connectivity_widgets.dart';
+import '../../../design_system/widgets/widgets.dart';
 import 'auth_messages.dart';
 import 'auth_widgets.dart';
 
@@ -48,50 +49,53 @@ class _PasswordResetRequestScreenState
 
   @override
   Widget build(BuildContext context) {
+    const title = 'Recuperar acceso';
     if (_sent) {
       return AuthPage(
-        title: 'Recuperar acceso',
+        title: title,
         showOfflineBanner: false,
-        children: [
-          const SuccessMessage(
+        primaryAction: KdButton(
+          label: 'Volver a iniciar sesión',
+          expand: true,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        children: const [
+          SuccessMessage(
             'Si el correo está registrado, te enviamos un enlace para cada clínica donde tienes cuenta. '
             'Ábrelo en este teléfono; vence pronto y solo se puede usar una vez.',
-          ),
-          const SizedBox(height: 24),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Volver a iniciar sesión'),
+            title: 'Revisa tu correo',
           ),
         ],
       );
     }
     return AuthPage(
-      title: 'Recuperar acceso',
+      title: title,
+      primaryAction: OnlineSubmitButton(
+        label: 'Enviar enlace',
+        busy: _busy,
+        onPressed: _submit,
+      ),
       children: [
-        const Text(
-          'Escribe el correo con el que inicias sesión. Te enviaremos un enlace para crear una nueva contraseña.',
+        const AuthHeader(
+          title: '¿Olvidaste tu contraseña?',
+          message:
+              'Escribe el correo con el que inicias sesión. Te enviaremos un enlace para crear una nueva contraseña.',
         ),
-        const SizedBox(height: 16),
-        ErrorMessage(_error),
+        if (_error != null) KdInlineMessage.error(_error!),
         Form(
           key: _formKey,
-          child: TextFormField(
+          child: KdTextField(
+            label: 'Correo',
             controller: _email,
+            prefixIcon: KdIcons.mail,
             keyboardType: TextInputType.emailAddress,
-            autocorrect: false,
             autofillHints: const [AutofillHints.email],
+            textInputAction: TextInputAction.done,
             validator: emailValidator,
-            decoration: const InputDecoration(
-              labelText: 'Correo',
-              border: OutlineInputBorder(),
-            ),
+            onSubmitted: (_) {
+              if (ConnectivityScope.of(context).isOnline) _submit();
+            },
           ),
-        ),
-        const SizedBox(height: 24),
-        OnlineSubmitButton(
-          label: 'Enviar enlace',
-          busy: _busy,
-          onPressed: _submit,
         ),
       ],
     );

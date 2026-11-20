@@ -4,8 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import '../support/fake_api.dart';
 
 Future<void> pickBirthDate(WidgetTester tester, String typed) async {
-  await tester.ensureVisible(find.byTooltip('Elegir fecha de nacimiento'));
-  await tester.tap(find.byTooltip('Elegir fecha de nacimiento'));
+  final field = find.widgetWithText(TextFormField, 'Fecha de nacimiento');
+  await tester.ensureVisible(field);
+  await tester.tap(field);
   await tester.pumpAndSettle();
   await tester.tap(find.byIcon(Icons.edit_outlined));
   await tester.pumpAndSettle();
@@ -19,9 +20,10 @@ Future<void> selectOption(
   String field,
   String option,
 ) async {
-  final dropdown = find.widgetWithText(DropdownButtonFormField<String>, field);
-  await tester.ensureVisible(dropdown);
-  await tester.tap(dropdown);
+  // A select field opens a bottom sheet with the options (MEDK-45).
+  final select = find.widgetWithText(TextFormField, field);
+  await tester.ensureVisible(select);
+  await tester.tap(select);
   await tester.pumpAndSettle();
   await tester.tap(find.text(option).last);
   await tester.pumpAndSettle();
