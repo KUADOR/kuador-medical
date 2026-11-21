@@ -119,7 +119,7 @@ class TenantOnboardingService {
                 request.owner().email().strip(), actor.accountId(), now));
         flush();
         events.publishEvent(new TenantCreated(id));
-        subscriptions.open(plan, request.billingPeriod(), now);
+        subscriptions.open(plan, request.billingPeriod(), now, actor.accountId(), actor.displayName());
         flush();
         audit.record(AuditAction.TENANT_ONBOARDED, id, actor.accountId(), AuditTarget.tenant(id));
         return id;

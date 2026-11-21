@@ -50,5 +50,14 @@ public enum AuditAction {
     PLATFORM_SETTINGS_UPDATED,
     // MEDK-66 clinic onboarding and administration by the SUPER_ADMIN (event of the clinic)
     TENANT_ONBOARDED,
-    TENANT_UPDATED
+    TENANT_UPDATED,
+    // MEDK-68 subscription lifecycle (event of the clinic; the actor is null for events and the job)
+    SUBSCRIPTION_STATUS_CHANGED,
+    SUBSCRIPTION_RENEWED,
+    SUBSCRIPTION_PRICE_LOCK_UPDATED,
+    /** A PaymentFailed event: recorded, the status does not change (plan D5). */
+    SUBSCRIPTION_PAYMENT_FAILED,
+    /** A PaymentReceived event that the state machine rejects, for example on a cancelled clinic (D12). */
+    SUBSCRIPTION_PAYMENT_REJECTED,
+    PRICE_CHANGE_NOTICE_SENT
 }

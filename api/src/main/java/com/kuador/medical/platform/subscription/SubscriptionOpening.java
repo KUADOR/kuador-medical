@@ -37,15 +37,19 @@ public class SubscriptionOpening {
     /**
      * With the trial plan the subscription starts in TRIAL for the configured trial days; with a
      * paid plan it starts ACTIVE with a period from today at the price in force, kept as the
-     * contracted price. A paid plan without a price for {@code billingPeriod} cannot be sold.
+     * contracted price. A paid plan without a price for {@code billingPeriod} cannot be sold. The
+     * initial status is recorded as a manual transition of the SUPER_ADMIN who onboards the clinic.
      */
     @Transactional(propagation = Propagation.MANDATORY)
-    public Subscription open(OfferedPlan plan, BillingPeriod billingPeriod, Instant now) {
+    public Subscription open(OfferedPlan plan, BillingPeriod billingPeriod, Instant now, UUID actorId, String actorName) {
         requireTenant();
+        SubscriptionTransition.Actor actor = new SubscriptionTransition.Actor(actorId, actorName);
         if (plan.trial()) {
             Subscription trial = Subscription.trial(plan.id(), billingPeriod,
                     InitialTerms.trialEndsAt(now, settings.current().trialDays()), now);
             entityManager.persist(trial);
+            entityManager.persist(new SubscriptionTransition(
+                    trial.getId(), null, trial.getStatus(), TransitionCause.MANUAL, actor, null, null, now));
             return trial;
         }
         CurrentPrice price = plan.priceFor(billingPeriod).orElseThrow(() -> ApiException.validation(
@@ -57,6 +61,8 @@ public class SubscriptionOpening {
         entityManager.persist(active);
         entityManager.persist(new SubscriptionPeriod(
                 active.getId(), plan.id(), start, end, price.amount(), price.currency()));
+        entityManager.persist(new SubscriptionTransition(
+                active.getId(), null, active.getStatus(), TransitionCause.MANUAL, actor, null, null, now));
         return active;
     }
 
