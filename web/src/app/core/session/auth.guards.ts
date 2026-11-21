@@ -1,6 +1,6 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router, UrlTree } from '@angular/router';
-import type { PermissionCode } from '../api/api-types';
+import type { AccessPermission } from '../api/api-types';
 import { AuthRoutes, RETURN_URL_PARAM } from './auth-routes';
 import { AuthService, LoginStep } from './auth.service';
 import { AccessRequirement, canAccess, landingUrl } from './navigation';
@@ -34,7 +34,7 @@ export function requireAccess(requirement: AccessRequirement = {}): CanActivateF
 }
 
 /** Shorthand for pages that only need permissions (no plan module). */
-export function requirePermissions(...permissions: PermissionCode[]): CanActivateFn {
+export function requirePermissions(...permissions: AccessPermission[]): CanActivateFn {
   return requireAccess({ permissions });
 }
 

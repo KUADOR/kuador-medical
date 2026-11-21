@@ -1,0 +1,296 @@
+<kd-page [heading]="heading()" headingId="plan-form-title" width="wide">
+  <a kdPageBefore kdButton variant="tertiary" icon="arrow-left" [routerLink]="plansLink"
+    >Volver a planes</a
+  >
+
+  @switch (state().kind) {
+    @case ('loading') {
+      <kd-loading-state label="Cargando…" />
+    }
+    @case ('failed') {
+      <kd-alert tone="error" data-testid="load-error">{{ loadFailure()?.message }}</kd-alert>
+      @if (!loadFailure()?.notFound) {
+        <kd-actions>
+          <button kdButton type="button" icon="refresh-cw" (click)="load()">
+            Volver a intentar
+          </button>
+        </kd-actions>
+      }
+    }
+    @default {
+      @if (archived()) {
+        <kd-alert tone="info" data-testid="read-only">
+          Este plan está archivado: las clínicas que lo tienen lo conservan, pero ya no se puede
+          editar, elegir para clínicas nuevas ni publicarle tarifas.
+        </kd-alert>
+      }
+
+      <form class="plan-form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        @if (failure(); as message) {
+          <kd-alert tone="error" data-testid="form-error" tabindex="-1">
+            <p class="plan-form__message">{{ message }}</p>
+            @if (versionConflict()) {
+              <kd-actions>
+                <button kdButton type="button" icon="refresh-cw" (click)="load()">
+                  Recargar el plan
+                </button>
+              </kd-actions>
+            }
+          </kd-alert>
+        }
+
+        <fieldset kdFieldGroup [boxed]="true" legend="Datos del plan">
+          <kd-field
+            label="Código"
+            hint="Identificador fijo del plan, por ejemplo ESTANDAR. No se puede cambiar después."
+          >
+            <input
+              kdInput
+              id="plan-code"
+              type="text"
+              formControlName="code"
+              autocomplete="off"
+              maxlength="40"
+            />
+          </kd-field>
+
+          <kd-field label="Nombre">
+            <input
+              kdInput
+              id="plan-name"
+              type="text"
+              formControlName="name"
+              autocomplete="off"
+              [attr.maxlength]="nameMaxLength"
+            />
+          </kd-field>
+
+          <kd-field label="Descripción (opcional)">
+            <textarea
+              kdInput
+              id="plan-description"
+              formControlName="description"
+              [attr.maxlength]="descriptionMaxLength"
+            ></textarea>
+          </kd-field>
+
+          @if (isNew()) {
+            <kd-field
+              label="Plan de prueba"
+              hint="Es el plan de la prueba gratuita de las clínicas nuevas: no tiene tarifas y solo puede existir uno."
+            >
+              <input kdInput id="plan-trial" type="checkbox" formControlName="trial" />
+            </kd-field>
+          } @else if (plan()?.trial) {
+            <p class="plan-form__message">
+              <kd-badge tone="info" data-testid="trial-badge">Plan de prueba</kd-badge>
+              No tiene tarifas y no se puede archivar.
+            </p>
+          }
+        </fieldset>
+
+        <fieldset
+          kdFieldGroup
+          [boxed]="true"
+          legend="Módulos incluidos"
+          hint="Lo que las clínicas con este plan pueden usar. Quitar un módulo nunca borra datos de las clínicas."
+        >
+          @for (option of moduleOptions(); track option.code) {
+            <kd-field [label]="option.label" [hint]="option.code">
+              <input
+                kdInput
+                type="checkbox"
+                [value]="option.code"
+                [checked]="selected().has(option.code)"
+                [disabled]="archived()"
+                (change)="toggleModule(option.code, $event)"
+                data-testid="module"
+              />
+            </kd-field>
+          } @empty {
+            <p class="plan-form__message">No hay módulos en el catálogo.</p>
+          }
+        </fieldset>
+
+        <fieldset
+          kdFieldGroup
+          [boxed]="true"
+          legend="Límites"
+          hint="Totales por clínica. Marca «Sin límite» para no limitar. Bajar un límite nunca borra datos: la clínica no puede crear más hasta cumplirlo."
+          formGroupName="limits"
+        >
+          @for (limit of ready()?.limits ?? []; track limit.code) {
+            @if (limitGroup(limit.code); as group) {
+              <div class="plan-form__limit" [formGroupName]="limit.code" data-testid="limit">
+                <kd-field
+                  [label]="limit.label"
+                  [hint]="limit.unit === 'MEGABYTES' ? 'En megabytes (MB).' : null"
+                >
+                  <input
+                    kdInput
+                    type="number"
+                    min="0"
+                    step="1"
+                    inputmode="numeric"
+                    formControlName="value"
+                    [id]="'limit-' + limit.code"
+                  />
+                </kd-field>
+                <kd-field label="Sin límite">
+                  <input
+                    kdInput
+                    type="checkbox"
+                    formControlName="unlimited"
+                    [id]="'limit-' + limit.code + '-unlimited'"
+                    (change)="toggleUnlimited(limit.code)"
+                  />
+                </kd-field>
+              </div>
+            }
+          }
+        </fieldset>
+
+        @if (showInitialPrices()) {
+          <fieldset
+            kdFieldGroup
+            [boxed]="true"
+            legend="Tarifas iniciales (USD, sin IVA)"
+            hint="Precio por clínica en dólares, sin IVA: el IVA se desglosa en la factura."
+            formGroupName="prices"
+          >
+            @for (period of periods; track period) {
+              <kd-field [label]="'Tarifa ' + periodLabels[period].toLowerCase()">
+                <input
+                  kdInput
+                  type="text"
+                  inputmode="decimal"
+                  autocomplete="off"
+                  placeholder="0.00"
+                  [formControlName]="period"
+                  [id]="'price-' + period"
+                />
+              </kd-field>
+            }
+            @if (priceSaving(); as months) {
+              <p class="plan-form__message" data-testid="annual-saving">
+                La tarifa anual equivale a {{ months }} meses gratis frente a pagar 12 meses.
+              </p>
+            }
+          </fieldset>
+        }
+
+        @if (!archived()) {
+          <kd-actions>
+            <button kdButton variant="primary" icon="check" type="submit" [disabled]="submitting()">
+              {{ submitting() ? 'Guardando…' : isNew() ? 'Crear plan' : 'Guardar cambios' }}
+            </button>
+            <a kdButton variant="tertiary" [routerLink]="plansLink">Cancelar</a>
+          </kd-actions>
+        }
+      </form>
+
+      @if (showPriceVersions()) {
+        <section class="plan-form" aria-labelledby="prices-title" data-testid="prices">
+          <h2 id="prices-title" class="plan-form__title">Tarifas (USD, sin IVA)</h2>
+          <p class="plan-form__message">
+            Vigentes hoy: mensual {{ currentAmount('MONTHLY') }} · anual
+            {{ currentAmount('ANNUAL') }}. Las tarifas no se editan: se publica una versión nueva.
+            Las clínicas actuales conservan su precio hasta su próxima renovación y el OWNER recibe
+            un aviso previo por correo.
+          </p>
+
+          <kd-table label="Historial de tarifas">
+            <table>
+              <caption class="visually-hidden">
+                Historial de tarifas del plan, de la más reciente a la más antigua
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Periodicidad</th>
+                  <th scope="col">Monto (sin IVA)</th>
+                  <th scope="col">Vigente desde</th>
+                  <th scope="col">Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of priceHistory(); track row.price.id) {
+                  <tr data-testid="price-row">
+                    <td>{{ periodLabels[row.price.billingPeriod] }}</td>
+                    <td>{{ formatMoney(row.price.amount, row.price.currency) }}</td>
+                    <td>{{ formatDay(row.price.effectiveFrom) }}</td>
+                    <td>
+                      @switch (row.state) {
+                        @case ('current') {
+                          <kd-badge tone="ok">Vigente</kd-badge>
+                        }
+                        @case ('scheduled') {
+                          <kd-badge tone="info">Programada</kd-badge>
+                        }
+                        @default {
+                          <kd-badge>Anterior</kd-badge>
+                        }
+                      }
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="4">El plan todavía no tiene tarifas.</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </kd-table>
+
+          @if (!archived()) {
+            <form class="price-form" [formGroup]="priceForm" (ngSubmit)="publishPrice()" novalidate>
+              <h3 class="plan-form__subtitle">Publicar una tarifa nueva</h3>
+              <div aria-live="polite">
+                @if (priceNotice(); as message) {
+                  <kd-alert tone="ok" data-testid="price-notice">{{ message }}</kd-alert>
+                }
+              </div>
+              @if (priceFailure(); as message) {
+                <kd-alert tone="error" data-testid="price-error">{{ message }}</kd-alert>
+              }
+              <kd-field label="Periodicidad">
+                <select kdInput id="new-price-period" formControlName="billingPeriod">
+                  @for (period of periods; track period) {
+                    <option [value]="period">{{ periodLabels[period] }}</option>
+                  }
+                </select>
+              </kd-field>
+              <kd-field label="Monto en USD, sin IVA">
+                <input
+                  kdInput
+                  id="new-price-amount"
+                  type="text"
+                  inputmode="decimal"
+                  autocomplete="off"
+                  placeholder="0.00"
+                  formControlName="amount"
+                />
+              </kd-field>
+              <kd-field
+                label="Vigente desde"
+                hint="Aplica a clínicas nuevas desde ese día (hora de Ecuador continental)."
+              >
+                <input
+                  kdInput
+                  id="new-price-from"
+                  type="date"
+                  [min]="today"
+                  formControlName="effectiveFrom"
+                />
+              </kd-field>
+              <kd-actions>
+                <button kdButton icon="plus" type="submit" [disabled]="publishing()">
+                  {{ publishing() ? 'Publicando…' : 'Publicar tarifa' }}
+                </button>
+              </kd-actions>
+            </form>
+          }
+        </section>
+      }
+    }
+  }
+</kd-page>

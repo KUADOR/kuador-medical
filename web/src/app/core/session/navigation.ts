@@ -1,5 +1,5 @@
 import type { IconName } from '../../design-system';
-import type { AccountKind, CurrentSession, PermissionCode } from '../api/api-types';
+import type { AccessPermission, AccountKind, CurrentSession } from '../api/api-types';
 import { AuthRoutes } from './auth-routes';
 
 /** Client routes of the authenticated pages. */
@@ -11,6 +11,9 @@ export const AppRoutes = {
   roles: '/roles',
   newRole: '/roles/new',
   platformPermissions: '/platform/permissions',
+  plans: '/platform/plans',
+  newPlan: '/platform/plans/new',
+  platformSettings: '/platform/settings',
   patients: '/patients',
   newPatient: '/patients/new',
   selfRegistrationSettings: '/patients/self-registration',
@@ -20,6 +23,11 @@ export const AppRoutes = {
 /** Detail page of a patient. */
 export function patientUrl(id: string): string {
   return `${AppRoutes.patients}/${encodeURIComponent(id)}`;
+}
+
+/** Edit (or, when archived, view) page of a plan. */
+export function planUrl(id: string): string {
+  return `${AppRoutes.plans}/${encodeURIComponent(id)}`;
 }
 
 /** Edit page of a patient. */
@@ -36,7 +44,7 @@ export const Modules = {
 /** What a page or menu entry needs; the API enforces it again (ADR-008, Constitution VII). */
 export interface AccessRequirement {
   /** Every permission listed must be granted by the active assignment. */
-  permissions?: readonly PermissionCode[];
+  permissions?: readonly AccessPermission[];
   /** Module that the clinic plan must enable. Platform pages do not need one. */
   module?: string;
   /** Account kinds allowed (e.g. only PATIENT accounts). Any kind when absent. */
@@ -88,6 +96,18 @@ export const MENU_ITEMS: readonly MenuItem[] = [
     icon: 'clipboard-list',
     permissions: ['platform.permissions.read'],
   },
+  {
+    label: 'Planes y tarifas',
+    link: AppRoutes.plans,
+    icon: 'file-text',
+    permissions: ['platform.plans.manage'],
+  },
+  {
+    label: 'Ajustes de plataforma',
+    link: AppRoutes.platformSettings,
+    icon: 'settings',
+    permissions: ['platform.settings.manage'],
+  },
 ];
 
 /** True when the session grants every permission and the module of the requirement. */
@@ -95,7 +115,7 @@ export function canAccess(account: CurrentSession | null, requirement: AccessReq
   if (!account) {
     return false;
   }
-  const granted = new Set(account.permissions);
+  const granted = new Set<string>(account.permissions);
   const permissionsOk = (requirement.permissions ?? []).every((code) => granted.has(code));
   const moduleOk =
     !requirement.module || (account.enabledModules ?? []).includes(requirement.module);

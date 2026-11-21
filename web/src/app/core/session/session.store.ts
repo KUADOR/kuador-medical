@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import {
+  AccessPermission,
   AuthenticatedResult,
   CurrentSession,
   PermissionCode,
@@ -141,8 +142,8 @@ export class SessionStore {
     this.resetAccount();
   }
 
-  hasPermission(code: PermissionCode): boolean {
-    return this.permissions().has(code);
+  hasPermission(code: AccessPermission): boolean {
+    return (this.permissions() as ReadonlySet<string>).has(code);
   }
 
   hasModule(module: string): boolean {

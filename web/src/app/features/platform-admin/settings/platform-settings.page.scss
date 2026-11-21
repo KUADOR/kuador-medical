@@ -1,0 +1,14 @@
+// Layout of the platform settings (MEDK-72): one raised panel, no shadow (R-03, R-04).
+// Tokens only (ADR-007).
+.platform-settings {
+  display: grid;
+  gap: var(--kd-space-4);
+  padding: var(--kd-space-4);
+  border: var(--kd-border-hairline);
+  border-radius: var(--kd-radius-lg);
+  background: var(--kd-surface-raised);
+}
+
+.platform-settings__message {
+  margin: 0;
+}
