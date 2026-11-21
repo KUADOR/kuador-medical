@@ -1,9 +1,12 @@
 package com.kuador.medical.platform.plan;
 
+import org.springframework.modulith.NamedInterface;
+
 /**
  * Fixed catalog of limits a plan can set ({@code LimitCode} in {@code platform.openapi.yaml}).
  * Limits count tenant-wide totals (plan D11). Codes are stable: they are stored in {@code plan_limit}.
  */
+@NamedInterface("catalog")
 public enum LimitCode {
     MAX_BRANCHES("Sedes", Unit.COUNT),
     MAX_USERS("Usuarios", Unit.COUNT),

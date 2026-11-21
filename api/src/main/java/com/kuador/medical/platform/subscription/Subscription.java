@@ -159,6 +159,21 @@ public class Subscription {
         this.updatedAt = now;
     }
 
+    /**
+     * Changes the plan and billing period (MEDK-69, plan D2). {@code amount} is the new contracted
+     * price, taken by the following renewals; {@code null} keeps the snapshot (a trial has none).
+     */
+    void changePlan(UUID newPlanId, BillingPeriod newBillingPeriod, @Nullable BigDecimal amount,
+            @Nullable String currency, Instant now) {
+        this.planId = newPlanId;
+        this.billingPeriod = newBillingPeriod;
+        if (amount != null && currency != null) {
+            this.priceAmountSnapshot = amount;
+            this.priceCurrencySnapshot = currency;
+        }
+        this.updatedAt = now;
+    }
+
     /** Sets ({@code lockedUntil}, the start of its last local day) or removes ({@code null}) the price lock. */
     void lockPrice(@Nullable Instant lockedUntil, Instant now) {
         this.priceLockedUntil = lockedUntil;

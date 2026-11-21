@@ -134,7 +134,8 @@ kuador:
     api-key: ${KUADOR_SMS_API_KEY:}
     sender: ${KUADOR_SMS_SENDER:}
   plans:
-    # Temporary staff user limit for every clinic until the plans module exists (empty: none).
+    # Staff user limit only for clinics without a subscription (signed up before the platform
+    # onboarding); the others take MAX_USERS from their plan (MEDK-69). Empty: none.
     user-limit: ${KUADOR_PLAN_USER_LIMIT:}
   password:
     min-length: 12

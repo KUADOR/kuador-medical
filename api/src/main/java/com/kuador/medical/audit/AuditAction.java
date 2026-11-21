@@ -68,5 +68,10 @@ public enum AuditAction {
     SUBSCRIPTION_PAYMENT_FAILED,
     /** A PaymentReceived event that the state machine rejects, for example on a cancelled clinic (D12). */
     SUBSCRIPTION_PAYMENT_REJECTED,
-    PRICE_CHANGE_NOTICE_SENT
+    PRICE_CHANGE_NOTICE_SENT,
+    // MEDK-69 plan changes (the actor is the SUPER_ADMIN, or null when the job applies a scheduled one)
+    PLAN_CHANGE_APPLIED,
+    PLAN_CHANGE_SCHEDULED,
+    /** A scheduled change replaced by a new request, or that could no longer be applied. */
+    PLAN_CHANGE_CANCELLED
 }

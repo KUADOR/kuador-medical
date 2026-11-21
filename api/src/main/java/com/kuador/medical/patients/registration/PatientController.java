@@ -6,6 +6,7 @@ import com.kuador.medical.patients.registration.Responses.ConsentResponse;
 import com.kuador.medical.patients.registration.Responses.GuardianLinkResponse;
 import com.kuador.medical.patients.registration.Responses.PatientPage;
 import com.kuador.medical.patients.registration.Responses.PatientResponse;
+import com.kuador.medical.shared.security.RequiresModule;
 import com.kuador.medical.shared.security.RequiresPermission;
 import com.kuador.medical.shared.web.ApiException;
 import jakarta.validation.Valid;
@@ -31,6 +32,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 /** {@code /patients}: administrative registration, consent, guardians and account invitation (MEDK-17). */
 @RestController
 @RequestMapping("/patients")
+@RequiresModule("PATIENTS")
 class PatientController {
 
     private static final String IDEMPOTENCY_KEY = "Idempotency-Key";

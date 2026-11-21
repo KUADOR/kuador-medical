@@ -46,9 +46,6 @@ class StaffUserService {
 
     static final String CREATE_OPERATION = "createStaffUser";
     private static final int MAX_PAGE_SIZE = 100;
-    /** Staff accounts that take a seat of the plan. */
-    private static final List<ClinicAccountStatus> SEATED =
-            List.of(ClinicAccountStatus.INVITED, ClinicAccountStatus.PENDING_EMAIL_VERIFICATION, ClinicAccountStatus.ACTIVE);
 
     private final EntityManager entityManager;
     private final ClinicAccountRepository accounts;
@@ -57,6 +54,7 @@ class StaffUserService {
     private final InvitationService invitations;
     private final IdempotentCreations idempotency;
     private final PlanLimits planLimits;
+    private final StaffSeatCounter seats;
     private final AuditRecorder audit;
 
     StaffUserService(
@@ -67,6 +65,7 @@ class StaffUserService {
             InvitationService invitations,
             IdempotentCreations idempotency,
             PlanLimits planLimits,
+            StaffSeatCounter seats,
             AuditRecorder audit) {
         this.entityManager = entityManager;
         this.accounts = accounts;
@@ -75,6 +74,7 @@ class StaffUserService {
         this.invitations = invitations;
         this.idempotency = idempotency;
         this.planLimits = planLimits;
+        this.seats = seats;
         this.audit = audit;
     }
 
@@ -211,7 +211,7 @@ class StaffUserService {
 
     private void checkPlanLimit(AuthenticatedAccount caller) {
         OptionalInt limit = planLimits.userLimit(Objects.requireNonNull(caller.tenantId()));
-        if (limit.isPresent() && accounts.countByKindAndStatus(AccountKind.STAFF, SEATED) >= limit.getAsInt()) {
+        if (limit.isPresent() && seats.seatedStaff() >= limit.getAsInt()) {
             throw ApiException.conflict(
                     ErrorCode.PLAN_LIMIT_REACHED, "The plan allows up to %d users.".formatted(limit.getAsInt()));
         }

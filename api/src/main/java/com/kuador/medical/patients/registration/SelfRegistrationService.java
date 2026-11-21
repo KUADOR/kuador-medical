@@ -9,6 +9,8 @@ import com.kuador.medical.identity.NewSelfRegisteredAccount;
 import com.kuador.medical.identity.TenantDirectory;
 import com.kuador.medical.notifications.EmailMessage;
 import com.kuador.medical.notifications.NotificationSender;
+import com.kuador.medical.platform.api.PlanCapabilities;
+import com.kuador.medical.platform.plan.ModuleCode;
 import com.kuador.medical.shared.idempotency.IdempotentCreations;
 import com.kuador.medical.shared.tenancy.TenantContext;
 import com.kuador.medical.shared.web.ApiException;
@@ -48,6 +50,7 @@ class SelfRegistrationService {
     private final ClinicCalendar calendar;
     private final AuditRecorder audit;
     private final TransactionTemplate transaction;
+    private final PlanCapabilities plan;
 
     SelfRegistrationService(
             RegistrationSettingsService settings,
@@ -59,7 +62,8 @@ class SelfRegistrationService {
             NotificationSender notifications,
             ClinicCalendar calendar,
             AuditRecorder audit,
-            TransactionTemplate transaction) {
+            TransactionTemplate transaction,
+            PlanCapabilities plan) {
         this.settings = settings;
         this.patients = patients;
         this.store = store;
@@ -70,10 +74,18 @@ class SelfRegistrationService {
         this.calendar = calendar;
         this.audit = audit;
         this.transaction = transaction;
+        this.plan = plan;
     }
 
     void register(String publicCode, SelfRegistrationRequest request, @Nullable String idempotencyKey) {
         UUID tenantId = settings.enabledClinic(publicCode).orElseThrow(ApiException::notFound);
+        // A public request has no clinic session, so the central guard does not see it (ADR-017).
+        if (!plan.isModuleEnabled(tenantId, ModuleCode.PATIENTS)) {
+            throw ApiException.moduleNotInPlan(ModuleCode.PATIENTS.name());
+        }
+        if (!plan.accessMode(tenantId).allowsWrites()) {
+            throw ApiException.tenantReadOnly();
+        }
         TenantContext.runAs(tenantId, () -> transaction.executeWithoutResult(status -> {
             validate(request);
             idempotency.create(OPERATION, idempotencyKey, request.withoutPassword(), () -> create(tenantId, request));
