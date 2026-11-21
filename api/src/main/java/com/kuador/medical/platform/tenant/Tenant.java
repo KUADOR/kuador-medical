@@ -112,6 +112,12 @@ public class Tenant {
         this.updatedAt = now;
     }
 
+    /** The OWNER invitation was resent to a corrected email (MEDK-67). */
+    void correctOwnerEmail(String email, Instant now) {
+        this.ownerEmail = email;
+        this.updatedAt = now;
+    }
+
     /** The clinic data as stored; only meaningful for onboarded clinics. */
     ClinicData data() {
         return new ClinicData(legalName, tradeName, ruc, clinicType, countryCode, city, address, phone, contactEmail,

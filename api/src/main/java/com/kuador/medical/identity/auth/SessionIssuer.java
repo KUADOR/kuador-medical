@@ -15,6 +15,7 @@ import com.kuador.medical.identity.account.ClinicAccountRepository;
 import com.kuador.medical.identity.account.UserAccount;
 import com.kuador.medical.identity.account.UserAccountRepository;
 import com.kuador.medical.identity.role.EffectivePermissions;
+import com.kuador.medical.identity.twofactor.TwoFactorStore;
 import com.kuador.medical.shared.tenancy.TenantContext;
 import com.kuador.medical.shared.web.ApiException;
 import java.util.List;
@@ -46,6 +47,7 @@ class SessionIssuer {
     private final PreAuthTokens preAuthTokens;
     private final AuditRecorder audit;
     private final TransactionTemplate transaction;
+    private final TwoFactorStore twoFactors;
 
     SessionIssuer(
             UserAccountRepository accounts,
@@ -57,7 +59,8 @@ class SessionIssuer {
             RefreshTokens refreshTokens,
             PreAuthTokens preAuthTokens,
             AuditRecorder audit,
-            TransactionTemplate transaction) {
+            TransactionTemplate transaction,
+            TwoFactorStore twoFactors) {
         this.accounts = accounts;
         this.clinicAccounts = clinicAccounts;
         this.tenants = tenants;
@@ -68,6 +71,7 @@ class SessionIssuer {
         this.preAuthTokens = preAuthTokens;
         this.audit = audit;
         this.transaction = transaction;
+        this.twoFactors = twoFactors;
     }
 
     /** Session of the SUPER_ADMIN, without clinic nor branch. */
@@ -92,7 +96,7 @@ class SessionIssuer {
             }
             Branch branch = available.isEmpty() ? null : available.getFirst();
             audit.record(AuditAction.LOGIN_SUCCEEDED, tenantId, accountId, null);
-            return tenantSession(member, branch, RefreshTokens.newFamily());
+            return tenantSession(member, branch, RefreshTokens.newFamily(), null);
         }));
     }
 
@@ -107,7 +111,7 @@ class SessionIssuer {
             ClinicMember member = member(tenantId, accountId).orElseThrow(SessionErrors::invalidSessionToken);
             Branch branch = assignedBranch(accountId, branchId);
             audit.record(AuditAction.LOGIN_SUCCEEDED, tenantId, accountId, null);
-            return tenantSession(member, branch, RefreshTokens.newFamily());
+            return tenantSession(member, branch, RefreshTokens.newFamily(), null);
         }));
     }
 
@@ -133,7 +137,30 @@ class SessionIssuer {
                         .findFirst()
                         .orElseThrow(SessionErrors::invalidSessionToken);
             }
-            return tenantSession(member, branch, session.familyId());
+            return tenantSession(member, branch, session.familyId(), session.twoFactorId());
+        }));
+    }
+
+    /**
+     * New tokens, in the caller's clinic and branch, for a session that just verified the second
+     * factor {@code twoFactorId} (ADR-019). Starts a new refresh family: the tokens issued before
+     * the verification keep requiring it.
+     */
+    LoginResult.Authenticated twoFactorSession(AuthenticatedAccount caller, UUID twoFactorId) {
+        if (caller.scope() != AccountScope.TENANT || caller.tenantId() == null) {
+            throw ApiException.unauthenticated();
+        }
+        UUID tenantId = caller.tenantId();
+        return TenantContext.callAs(tenantId, () -> inTransaction(() -> {
+            ClinicMember member = member(tenantId, caller.accountId()).orElseThrow(ApiException::unauthenticated);
+            Branch branch = null;
+            if (caller.branchId() != null) {
+                branch = branchAccess.available(caller.accountId()).stream()
+                        .filter(candidate -> candidate.id().equals(caller.branchId()))
+                        .findFirst()
+                        .orElseThrow(ApiException::unauthenticated);
+            }
+            return tenantSession(member, branch, RefreshTokens.newFamily(), twoFactorId);
         }));
     }
 
@@ -153,7 +180,8 @@ class SessionIssuer {
                     ? RefreshTokens.newFamily()
                     : refreshTokens.revokeOwned(refreshToken, caller.accountId()).orElseGet(RefreshTokens::newFamily);
             audit.record(AuditAction.BRANCH_SWITCHED, tenantId, caller.accountId(), AuditTarget.account(caller.accountId()));
-            return tenantSession(member, branch, family);
+            // Only a session that passed the second factor gets here (ADR-019): it keeps it.
+            return tenantSession(member, branch, family, twoFactors.enabledFactorId(caller.accountId()).orElse(null));
         }));
     }
 
@@ -163,13 +191,14 @@ class SessionIssuer {
                 audit.record(AuditAction.LOGOUT, session.tenantId(), session.userId(), null));
     }
 
-    private LoginResult.Authenticated tenantSession(ClinicMember member, @Nullable Branch branch, UUID family) {
+    private LoginResult.Authenticated tenantSession(
+            ClinicMember member, @Nullable Branch branch, UUID family, @Nullable UUID twoFactorId) {
         UUID accountId = member.account().getId();
         UUID branchId = branch == null ? null : branch.id();
         EffectivePermissions.Grant grant = permissions.of(accountId, branchId);
         IssuedToken access = tokens.issue(new AccessGrant(
-                accountId, AccountScope.TENANT, member.clinic().id(), branchId, grant.permissionCodes()));
-        IssuedToken refresh = refreshTokens.issue(member.clinic().id(), accountId, branchId, family);
+                accountId, AccountScope.TENANT, member.clinic().id(), branchId, grant.permissionCodes(), twoFactorId));
+        IssuedToken refresh = refreshTokens.issue(member.clinic().id(), accountId, branchId, family, twoFactorId);
         return new LoginResult.Authenticated(access, refresh, AccountScope.TENANT, member.clinic(),
                 branch == null ? null : summary(branch), false);
     }
@@ -179,7 +208,7 @@ class SessionIssuer {
                 Permission.ofScope(PermissionScope.PLATFORM).stream().map(Permission::code).toList();
         IssuedToken access = tokens.issue(
                 new AccessGrant(account.getId(), AccountScope.PLATFORM, null, null, platformPermissions));
-        IssuedToken refresh = refreshTokens.issue(null, account.getId(), null, family);
+        IssuedToken refresh = refreshTokens.issue(null, account.getId(), null, family, null);
         return new LoginResult.Authenticated(
                 access, refresh, AccountScope.PLATFORM, null, null, account.isMustChangePassword());
     }

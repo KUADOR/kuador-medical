@@ -142,8 +142,9 @@ class LoginIT {
         contract.assertResponse("/auth/login", "POST", 200, "application/json", api.body(login));
         contract.assertResponse("/auth/login", "POST", 401, "application/problem+json",
                 api.body(api.login(email, password + "x")));
+        // The owner passes the mandatory second factor first (ADR-019); /me answers for that session.
         contract.assertResponse("/me", "GET", 200, "application/json",
-                api.body(api.me(api.body(login).get("accessToken").toString())));
+                api.body(api.me(api.completeTwoFactor(api.body(login)).get("accessToken").toString())));
         contract.assertResponse("/me", "GET", 401, "application/problem+json", api.body(api.me("not-a-jwt")));
     }
 }

@@ -23,6 +23,7 @@ import org.springframework.test.context.ActiveProfiles;
     "DB_USERNAME=test",
     "DB_PASSWORD=test",
     "KUADOR_JWT_SECRET=${random.uuid}${random.uuid}",
+    "KUADOR_TOTP_ENCRYPTION_KEY=${random.uuid}${random.uuid}",
     "LOCAL_SEED_PASSWORD=" + LocalProfileTest.SEED_PASSWORD
 })
 @AutoConfigureMockMvc

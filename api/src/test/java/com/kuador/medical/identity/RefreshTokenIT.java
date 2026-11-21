@@ -58,7 +58,8 @@ class RefreshTokenIT {
 
     @Test
     void loginIssuesARefreshTokenStoredOnlyAsAHash() {
-        Map<String, Object> session = api.session(email, password);
+        // The login itself, before the second factor of the owner issues a second token (ADR-019).
+        Map<String, Object> session = api.rawSession(email, password);
         String refreshToken = session.get("refreshToken").toString();
 
         assertThat(session).containsEntry("refreshExpiresIn", 604800).containsEntry("expiresIn", 900);

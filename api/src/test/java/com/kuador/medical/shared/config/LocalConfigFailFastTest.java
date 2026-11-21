@@ -25,7 +25,8 @@ class LocalConfigFailFastTest {
     @Test
     void requiresTheDatabaseTheSigningKeyAndTheSeedPassword() {
         assertThat(LocalEnvironmentValidator.REQUIRED_VARIABLES).containsExactly(
-                "DB_URL", "DB_USERNAME", "DB_PASSWORD", "KUADOR_JWT_SECRET", "LOCAL_SEED_PASSWORD");
+                "DB_URL", "DB_USERNAME", "DB_PASSWORD", "KUADOR_JWT_SECRET", "KUADOR_TOTP_ENCRYPTION_KEY",
+                "LOCAL_SEED_PASSWORD");
     }
 
     @Test
@@ -94,6 +95,7 @@ class LocalConfigFailFastTest {
         environment.setProperty("DB_USERNAME", "medical");
         environment.setProperty("DB_PASSWORD", SECRET_VALUE);
         environment.setProperty("KUADOR_JWT_SECRET", SECRET_VALUE + SECRET_VALUE);
+        environment.setProperty("KUADOR_TOTP_ENCRYPTION_KEY", SECRET_VALUE + SECRET_VALUE);
         environment.setProperty("LOCAL_SEED_PASSWORD", SECRET_VALUE);
         return environment;
     }

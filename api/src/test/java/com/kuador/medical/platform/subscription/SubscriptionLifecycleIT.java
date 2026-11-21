@@ -139,7 +139,7 @@ class SubscriptionLifecycleIT {
                 .containsEntry("to", "SUSPENDED").containsEntry("actor", null));
         assertThat(transitions(clinic.id(), "SCHEDULER")).as("concurrent and repeated runs apply it once").isOne();
         assertThat(audited(clinic.id(), "SUBSCRIPTION_STATUS_CHANGED", null)).isOne();
-        assertThat(emails.awaitSentTo(clinic.ownerEmail(), 1)).singleElement()
+        assertThat(subscriptionEmails(clinic.ownerEmail(), 1)).singleElement()
                 .satisfies(email -> assertThat(email.subject()).contains("suspendida"));
     }
 
@@ -156,7 +156,7 @@ class SubscriptionLifecycleIT {
         assertThat(subscription).containsEntry("status", "PAST_DUE").containsEntry("accessMode", "FULL");
         assertThat(Instant.parse(subscription.get("graceEndsAt").toString()))
                 .isEqualTo(startOfDay(LocalDate.now(GUAYAQUIL).minusDays(1).plusDays(setting("GRACE_DAYS"))));
-        assertThat(emails.awaitSentTo(clinic.ownerEmail(), 1)).singleElement()
+        assertThat(subscriptionEmails(clinic.ownerEmail(), 1)).singleElement()
                 .satisfies(email -> assertThat(email.subject()).contains("vencida"));
     }
 
@@ -213,7 +213,7 @@ class SubscriptionLifecycleIT {
         assertThat(Instant.parse(active.get("currentPeriodStart").toString()))
                 .isEqualTo(startOfDay(LocalDate.now(GUAYAQUIL)));
         assertThat(audited(clinic.id(), "SUBSCRIPTION_STATUS_CHANGED", admin.accountId())).isEqualTo(2);
-        assertThat(emails.awaitSentTo(clinic.ownerEmail(), 2)).extracting(EmailMessage::subject)
+        assertThat(subscriptionEmails(clinic.ownerEmail(), 2)).extracting(EmailMessage::subject)
                 .anySatisfy(subject -> assertThat(subject).contains("reactivada"));
         assertThat(events.stream(SubscriptionStatusChanged.class)
                 .filter(event -> event.tenantId().equals(clinic.id()))).hasSize(2);
@@ -372,7 +372,7 @@ class SubscriptionLifecycleIT {
         Instant appliesFrom = ((Timestamp) notice.get("applies_from")).toInstant();
         assertThat(notice).containsEntry("amount", "59.00");
         assertThat(appliesFrom).isAfterOrEqualTo(startOfDay(LocalDate.now(GUAYAQUIL).plusDays(setting("PRICE_CHANGE_NOTICE_DAYS"))));
-        assertThat(emails.awaitSentTo(clinic.ownerEmail(), 1)).singleElement().satisfies(email -> assertThat(email.body())
+        assertThat(subscriptionEmails(clinic.ownerEmail(), 1)).singleElement().satisfies(email -> assertThat(email.body())
                 .contains("USD 49.00").contains("USD 59.00"));
         assertThat(audited(clinic.id(), "PRICE_CHANGE_NOTICE_SENT", null)).isOne();
 
@@ -462,7 +462,8 @@ class SubscriptionLifecycleIT {
         assertThat(output.getAll()).doesNotContain(clinic.ownerEmail()).doesNotContain(clinic.legalName())
                 .doesNotContain("Motivo con detalle reservado");
         assertThat(jdbc.queryForList("select distinct target_type from audit_event where tenant_id = ?", String.class,
-                clinic.id())).containsOnly("TENANT", "SUBSCRIPTION");
+                clinic.id())).as("onboarding also audits the OWNER account (MEDK-67)")
+                .containsOnly("TENANT", "ACCOUNT", "SUBSCRIPTION");
     }
 
     // ------------------------------------------------------------------ helpers
@@ -528,6 +529,13 @@ class SubscriptionLifecycleIT {
 
     private MvcTestResult getRaw(UUID tenantId) {
         return api.get(TENANTS + "/" + tenantId + "/subscription", admin.token());
+    }
+
+    /** Emails of the lifecycle to the OWNER, leaving out the invitation sent at onboarding (MEDK-67). */
+    private List<EmailMessage> subscriptionEmails(String ownerEmail, int count) {
+        return emails.awaitSentTo(ownerEmail, count + 1).stream()
+                .filter(email -> !email.subject().startsWith("Activa tu cuenta"))
+                .toList();
     }
 
     private int transitions(UUID tenantId, String cause) {

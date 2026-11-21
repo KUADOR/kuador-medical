@@ -38,7 +38,7 @@ Boundaries are verified by `ModularityTests` (Spring Modulith, ADR-009).
 
 ### Local profile (MEDK-29)
 
-- **Fail fast.** `shared.config.LocalEnvironmentValidator` stops the start-up when `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `KUADOR_JWT_SECRET` or `LOCAL_SEED_PASSWORD` is missing or blank, naming the variables and never their values.
+- **Fail fast.** `shared.config.LocalEnvironmentValidator` stops the start-up when `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `KUADOR_JWT_SECRET`, `KUADOR_TOTP_ENCRYPTION_KEY` or `LOCAL_SEED_PASSWORD` is missing or blank, naming the variables and never their values.
 - **Seed.** Only `local` adds the Flyway location `classpath:db/localseed`: `db.localseed.LocalSeedMigration` (repeatable, idempotent) creates the fictitious clinics A and B, each with one branch, OWNER/ADMIN and one OWNER test user whose password is `LOCAL_SEED_PASSWORD` (stored as an Argon2id hash). Ids and emails are constants of that class.
 - **Listens on** `SERVER_ADDRESS:SERVER_PORT` (default `0.0.0.0:8080`) so a physical device on the LAN can reach it.
 - **Actuator** exposes only `GET /actuator/health` (public, components without details) in every profile.

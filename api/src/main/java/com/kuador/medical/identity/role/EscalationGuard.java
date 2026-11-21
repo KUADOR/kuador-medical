@@ -1,6 +1,7 @@
 package com.kuador.medical.identity.role;
 
 import com.kuador.medical.identity.Permission;
+import com.kuador.medical.identity.owner.LastOwnerGuard;
 import com.kuador.medical.shared.web.ApiException;
 import com.kuador.medical.shared.web.ErrorCode;
 import java.util.HashSet;
@@ -127,8 +128,8 @@ public final class EscalationGuard {
         if ((ownerNow || ownerAfter) && !actor.owner()) {
             throw escalation("Only an OWNER can assign or remove the OWNER role.");
         }
-        if (ownerNow && !ownerAfter && activeOwners <= 1) {
-            throw ApiException.conflict(ErrorCode.LAST_OWNER, "The clinic would be left without an OWNER.");
+        if (ownerNow && !ownerAfter) {
+            LastOwnerGuard.check(true, true, activeOwners);
         }
         for (Slot slot : changed(current, requested)) {
             if (!actor.permissionsIn().apply(slot.branchId()).containsAll(slot.role().permissions())) {

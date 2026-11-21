@@ -26,6 +26,9 @@ public final class PublicEndpoints {
             "POST /api/v1/auth/invitations/preview",
             "POST /api/v1/auth/invitations/accept",
             "POST /api/v1/auth/email-verification/confirm",
+            // OWNER invitation of a clinic onboarded by the SUPER_ADMIN (MEDK-67).
+            "POST /api/v1/public/owner-invitations/preview",
+            "POST /api/v1/public/owner-invitations/accept",
             // Clinic self-signup and patient self-registration.
             "POST /api/v1/tenants/signup",
             "POST /api/v1/public/clinics/{publicCode}/patient-registrations",
