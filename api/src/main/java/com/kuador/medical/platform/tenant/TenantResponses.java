@@ -36,16 +36,26 @@ final class TenantResponses {
         }
     }
 
-    /**
-     * {@code TenantOwner}. The invitation and the second factor belong to MEDK-67: until then
-     * there is no invitation to show and the second factor is not enabled.
-     */
+    /** {@code TenantOwner}: invitation and second factor of the initial OWNER (MEDK-67). */
     record OwnerResponse(
-            String fullName, String maskedEmail, boolean twoFactorEnabled, @Nullable Object invitation) {
+            String fullName, String maskedEmail, boolean twoFactorEnabled, @Nullable InvitationResponse invitation) {
 
         @Override
         public String toString() {
             return "OwnerResponse[redacted]";
+        }
+    }
+
+    /** {@code OwnerInvitation}. */
+    record InvitationResponse(
+            com.kuador.medical.identity.OwnerOnboarding.InvitationStatus status,
+            String maskedEmail,
+            Instant sentAt,
+            Instant expiresAt) {
+
+        static @Nullable InvitationResponse of(com.kuador.medical.identity.OwnerOnboarding.@Nullable Invitation invitation) {
+            return invitation == null ? null : new InvitationResponse(
+                    invitation.status(), invitation.maskedEmail(), invitation.sentAt(), invitation.expiresAt());
         }
     }
 

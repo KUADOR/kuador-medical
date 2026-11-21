@@ -399,7 +399,8 @@ class PlatformTenantsIT {
             assertThat(logs).doesNotContain(personal);
         }
         assertThat(jdbc.queryForList("select target_type from audit_event where tenant_id = ?::uuid", String.class, id))
-                .as("the audit keeps identifiers only").containsOnly("TENANT");
+                .as("the audit keeps identifiers only (the clinic and, since MEDK-67, its invited OWNER account)")
+                .containsOnly("TENANT", "ACCOUNT");
     }
 
     // ------------------------------------------------------------------ helpers

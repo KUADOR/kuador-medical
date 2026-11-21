@@ -1,5 +1,7 @@
 package com.kuador.medical.shared.security;
 
+import java.util.Optional;
+
 /**
  * Answers who is calling, for the access interceptor. The identity module provides the real
  * implementation (token, scope and effective permissions resolved on each request); until then
@@ -19,5 +21,14 @@ public interface AccessChecker {
      */
     default boolean isPasswordChangeRequired() {
         return false;
+    }
+
+    /**
+     * What the authenticated caller must do before operating when its session has not passed the
+     * second factor (ADR-019): {@code ENROLLMENT_REQUIRED} or {@code VERIFICATION_REQUIRED}. While
+     * present, only handlers marked {@link AllowedWhileTwoFactorPending} answer.
+     */
+    default Optional<String> pendingTwoFactorStep() {
+        return Optional.empty();
     }
 }

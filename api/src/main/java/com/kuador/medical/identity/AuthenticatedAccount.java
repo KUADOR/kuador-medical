@@ -14,6 +14,8 @@ import org.jspecify.annotations.Nullable;
  *                    not operate by branch, the clinic has none, or for {@code PLATFORM}
  * @param roles       role names ({@code SUPER_ADMIN} for the platform account)
  * @param permissions effective permission codes, in catalog order
+ * @param twoFactorPending what the session must do before operating when it has not passed the
+ *                    second factor (ADR-019); {@code null} when nothing is pending
  */
 public record AuthenticatedAccount(
         UUID accountId,
@@ -23,7 +25,8 @@ public record AuthenticatedAccount(
         @Nullable UUID branchId,
         List<String> roles,
         List<String> permissions,
-        boolean mustChangePassword) {
+        boolean mustChangePassword,
+        @Nullable TwoFactorStep twoFactorPending) {
 
     public AuthenticatedAccount {
         Objects.requireNonNull(accountId, "accountId");
@@ -36,6 +39,19 @@ public record AuthenticatedAccount(
         }
         roles = List.copyOf(roles);
         permissions = List.copyOf(permissions);
+    }
+
+    /** A caller with nothing pending on the second factor. */
+    public AuthenticatedAccount(
+            UUID accountId,
+            String displayName,
+            AccountScope scope,
+            @Nullable UUID tenantId,
+            @Nullable UUID branchId,
+            List<String> roles,
+            List<String> permissions,
+            boolean mustChangePassword) {
+        this(accountId, displayName, scope, tenantId, branchId, roles, permissions, mustChangePassword, null);
     }
 
     public boolean hasPermission(String permission) {

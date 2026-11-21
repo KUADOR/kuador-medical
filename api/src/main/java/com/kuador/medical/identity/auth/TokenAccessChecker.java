@@ -29,4 +29,9 @@ class TokenAccessChecker implements AccessChecker, CurrentUser {
     public boolean isPasswordChangeRequired() {
         return current().map(AuthenticatedAccount::mustChangePassword).orElse(false);
     }
+
+    @Override
+    public Optional<String> pendingTwoFactorStep() {
+        return current().map(AuthenticatedAccount::twoFactorPending).map(Enum::name);
+    }
 }

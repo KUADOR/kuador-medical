@@ -43,6 +43,7 @@ class ProblemDetailsHandler extends ResponseEntityExceptionHandler {
                     .map(error -> Map.of("field", error.field(), "code", error.code()))
                     .toList());
         }
+        ex.properties().forEach(problem::setProperty);
         HttpHeaders headers = new HttpHeaders();
         if (ex.status() == HttpStatus.UNAUTHORIZED) {
             headers.set(HttpHeaders.WWW_AUTHENTICATE, "Bearer");
