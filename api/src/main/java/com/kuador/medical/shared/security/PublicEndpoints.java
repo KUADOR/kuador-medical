@@ -32,6 +32,8 @@ public final class PublicEndpoints {
             // Clinic self-signup and patient self-registration.
             "POST /api/v1/tenants/signup",
             "POST /api/v1/public/clinics/{publicCode}/patient-registrations",
+            // Download link of a data export, signed and short-lived (MEDK-70): opened by the browser.
+            "GET /api/v1/public/tenant-exports/download",
             // Status, without business data.
             "GET /api/v1/system/info",
             "GET /actuator/health");

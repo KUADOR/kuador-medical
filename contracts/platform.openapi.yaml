@@ -1604,10 +1604,12 @@ paths:
       operationId: requestTenantExport
       summary: Request a data export of the current clinic
       description: |
-        Starts an asynchronous export of the clinic data in the chosen format; each
-        module adds its own data. Allowed while the clinic is read-only (`SUSPENDED`,
-        or `CANCELLED` during retention). The file is available until `expiresAt`.
-        Audited (who exported and when).
+        Starts an export of the clinic data in the chosen format; each module adds its
+        own data. The file is generated right after the request is recorded, so the
+        response is usually already `READY` (or `FAILED`); clients poll
+        `GET /tenant/exports/{exportId}` while it is `PENDING`. Allowed while the clinic
+        is read-only (`SUSPENDED`, or `CANCELLED` during retention). The file is kept
+        until `expiresAt` (7 days). Audited (who exported and when).
       x-required-permission: tenant.data.export
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -1659,8 +1661,11 @@ paths:
       operationId: getTenantExport
       summary: Get a data export of the current clinic
       description: |
-        Returns the status of an export. When `READY`, `downloadUrl` is a short-lived
-        URL to download the file. Exports of another clinic respond `404`.
+        Returns the status of an export. When `READY`, `downloadUrl` is a new signed
+        URL, valid for 5 minutes, to download the file without an access token
+        (`GET /public/tenant-exports/download`); each download is audited. Past
+        `expiresAt` the export is `EXPIRED` and its file is deleted. Exports of another
+        clinic respond `404`.
       x-required-permission: tenant.data.export
       responses:
         '200':
@@ -1677,11 +1682,62 @@ paths:
                     status: READY
                     createdAt: '2030-07-01T15:00:00Z'
                     expiresAt: '2030-07-08T15:00:00Z'
-                    downloadUrl: https://files.medical-kuador.invalid/exports/2c3d4e5f-6a7b-4c8d-9e0f-1a2b3c4d5e6f?signature=example
+                    downloadUrl: https://app.medical-kuador.invalid/api/v1/public/tenant-exports/download?grant=example-signed-grant
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /public/tenant-exports/download:
+    get:
+      tags: [Clinic subscription]
+      operationId: downloadTenantExport
+      summary: Download the file of a data export
+      description: |
+        Target of `downloadUrl` (MEDK-70): opened by the browser without an access
+        token, like a presigned URL. The `grant` is opaque, signed by the API
+        (HMAC-SHA256) and valid for 5 minutes; it names the clinic, the export and the
+        account that obtained it, so the clinic never travels as a parameter of its
+        own (ADR-007) and the download is audited with that account. `JSON` exports are
+        one `application/json` document; `CSV` exports are an `application/zip` with
+        one UTF-8 CSV file per section. An invalid, expired or tampered grant, an
+        expired export or a purged clinic respond `404`. Never cached (`no-store`).
+      x-required-permission: public
+      x-public: true
+      security: []
+      parameters:
+        - name: grant
+          in: query
+          required: true
+          description: Signed grant taken from `downloadUrl`. Opaque; never logged.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 200
+      responses:
+        '200':
+          description: The file, as an attachment.
+          headers:
+            Content-Disposition:
+              description: '`attachment` with the file name, for example `kuador-medical-export-2030-07-01.json`.'
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                description: |
+                  `format` (`kuador-medical-export`), `version`, `clinicId`, `generatedAt`
+                  and `sections`: one array of rows per section, for example
+                  `platform.clinic` or `platform.subscription`; each module adds its own.
+            application/zip:
+              schema:
+                type: string
+                format: binary
         '404':
           $ref: '#/components/responses/NotFound'
         '500':

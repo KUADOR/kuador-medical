@@ -48,5 +48,7 @@ public enum ErrorCode {
     // MEDK-69 plan changes, capabilities and read-only mode (ADR-017)
     TENANT_READ_ONLY,
     MODULE_NOT_IN_PLAN,
-    PLAN_CHANGE_NOT_ALLOWED
+    PLAN_CHANGE_NOT_ALLOWED,
+    // MEDK-70 data export and purge (ADR-018)
+    PURGE_NOT_ALLOWED
 }
