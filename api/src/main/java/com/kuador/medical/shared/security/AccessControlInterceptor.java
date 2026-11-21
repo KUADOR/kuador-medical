@@ -18,7 +18,9 @@ import org.springframework.web.servlet.HandlerInterceptor;
  * level ({@link PublicEndpoint}, {@link AuthenticatedEndpoint} or {@link RequiresPermission}),
  * whose capability is enabled (ADR-004) and whose requirement the caller meets. An authenticated
  * caller that must change its password only reaches handlers marked
- * {@link AllowedWhilePasswordChangeRequired}; public handlers ignore the caller.
+ * {@link AllowedWhilePasswordChangeRequired}, and one whose session has not passed the second
+ * factor only those marked {@link AllowedWhileTwoFactorPending} (ADR-019); public handlers ignore
+ * the caller.
  */
 public class AccessControlInterceptor implements HandlerInterceptor {
 
@@ -69,14 +71,21 @@ public class AccessControlInterceptor implements HandlerInterceptor {
         if (!accessChecker.isAuthenticated()) {
             throw ApiException.unauthenticated();
         }
+        Optional<String> twoFactorStep = accessChecker.pendingTwoFactorStep();
+        if (twoFactorStep.isPresent() && !isMarked(method, AllowedWhileTwoFactorPending.class)) {
+            throw ApiException.twoFactorRequired(twoFactorStep.get());
+        }
         if (accessChecker.isPasswordChangeRequired() && !allowedWhilePasswordChangeRequired(method)) {
             throw ApiException.passwordChangeRequired();
         }
     }
 
     private static boolean allowedWhilePasswordChangeRequired(HandlerMethod method) {
-        return method.hasMethodAnnotation(AllowedWhilePasswordChangeRequired.class)
-                || method.getBeanType().isAnnotationPresent(AllowedWhilePasswordChangeRequired.class);
+        return isMarked(method, AllowedWhilePasswordChangeRequired.class);
+    }
+
+    private static boolean isMarked(HandlerMethod method, Class<? extends java.lang.annotation.Annotation> marker) {
+        return method.hasMethodAnnotation(marker) || method.getBeanType().isAnnotationPresent(marker);
     }
 
     private static AccessRule accessRuleOf(HandlerMethod method) {

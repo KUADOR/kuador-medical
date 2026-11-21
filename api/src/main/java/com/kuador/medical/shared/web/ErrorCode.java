@@ -37,5 +37,10 @@ public enum ErrorCode {
     CONTACT_CHANNEL_UNAVAILABLE,
     // MEDK-49 platform and subscriptions (contracts/platform.openapi.yaml)
     PLAN_ARCHIVED,
-    RUC_ALREADY_REGISTERED
+    RUC_ALREADY_REGISTERED,
+    // MEDK-67 OWNER invitation and mandatory second factor (ADR-019)
+    INVITATION_INVALID_OR_EXPIRED,
+    TWO_FACTOR_REQUIRED,
+    TWO_FACTOR_CODE_INVALID,
+    TWO_FACTOR_ALREADY_ENABLED
 }

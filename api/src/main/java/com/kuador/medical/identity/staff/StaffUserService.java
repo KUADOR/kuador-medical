@@ -7,6 +7,7 @@ import com.kuador.medical.identity.AccountKind;
 import com.kuador.medical.identity.AuthenticatedAccount;
 import com.kuador.medical.identity.ClinicAccountStatus;
 import com.kuador.medical.identity.PlanLimits;
+import com.kuador.medical.identity.owner.LastOwnerGuard;
 import com.kuador.medical.identity.account.ClinicAccount;
 import com.kuador.medical.identity.account.ClinicAccountRepository;
 import com.kuador.medical.identity.account.ClinicAccountStore;
@@ -174,9 +175,7 @@ class StaffUserService {
             if (!assignments.isOwner(caller.accountId())) {
                 throw new ApiException(HttpStatus.FORBIDDEN, ErrorCode.PRIVILEGE_ESCALATION, "Only an OWNER can disable an OWNER.");
             }
-            if (account.isActive() && assignments.activeOwnerCount() <= 1) {
-                throw ApiException.conflict(ErrorCode.LAST_OWNER, "The clinic would be left without an OWNER.");
-            }
+            LastOwnerGuard.check(true, account.isActive(), assignments.activeOwnerCount());
         }
         if (account.getStatus() != ClinicAccountStatus.DISABLED) {
             account.disable(caller.accountId());

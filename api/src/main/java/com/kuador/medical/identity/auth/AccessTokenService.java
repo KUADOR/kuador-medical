@@ -27,7 +27,8 @@ import org.springframework.stereotype.Component;
  *
  * Claims: {@code use=access}, {@code sub} (account), {@code scope}, {@code tid} (clinic, only
  * TENANT), {@code bid} (active branch, when there is one) and {@code permissions} of that
- * assignment (ADR-013). Pre-auth and refresh tokens are opaque and live elsewhere.
+ * assignment (ADR-013), and {@code tfa}: the second factor verified by the session (ADR-019), if
+ * any. Pre-auth and refresh tokens are opaque and live elsewhere.
  */
 @Component
 public class AccessTokenService {
@@ -39,6 +40,7 @@ public class AccessTokenService {
     private static final String TENANT_CLAIM = "tid";
     private static final String BRANCH_CLAIM = "bid";
     private static final String PERMISSIONS_CLAIM = "permissions";
+    private static final String TWO_FACTOR_CLAIM = "tfa";
 
     private final JWSSigner signer;
     private final JWSVerifier verifier;
@@ -75,6 +77,9 @@ public class AccessTokenService {
         if (grant.branchId() != null) {
             claims.claim(BRANCH_CLAIM, grant.branchId().toString());
         }
+        if (grant.twoFactorId() != null) {
+            claims.claim(TWO_FACTOR_CLAIM, grant.twoFactorId().toString());
+        }
         return sign(claims, properties.ttl());
     }
 
@@ -85,10 +90,11 @@ public class AccessTokenService {
             AccountScope scope = AccountScope.valueOf(stringClaim(claims, SCOPE_CLAIM));
             UUID tenant = uuidClaim(claims, TENANT_CLAIM);
             UUID branch = uuidClaim(claims, BRANCH_CLAIM);
+            UUID twoFactor = uuidClaim(claims, TWO_FACTOR_CLAIM);
             if ((scope == AccountScope.TENANT) != (tenant != null) || (branch != null && tenant == null)) {
                 return Optional.empty();
             }
-            return Optional.of(new AccessTokenClaims(accountId, scope, tenant, branch));
+            return Optional.of(new AccessTokenClaims(accountId, scope, tenant, branch, twoFactor));
         }));
     }
 

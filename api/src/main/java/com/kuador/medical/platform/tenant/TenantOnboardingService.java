@@ -4,6 +4,7 @@ import com.kuador.medical.audit.AuditAction;
 import com.kuador.medical.audit.AuditRecorder;
 import com.kuador.medical.audit.AuditTarget;
 import com.kuador.medical.identity.AuthenticatedAccount;
+import com.kuador.medical.identity.OwnerOnboarding;
 import com.kuador.medical.platform.idempotency.PlatformIdempotentCreations;
 import com.kuador.medical.platform.plan.PlanCatalog;
 import com.kuador.medical.platform.plan.PlanCatalog.OfferedPlan;
@@ -66,6 +67,7 @@ class TenantOnboardingService {
     private final AuditRecorder audit;
     private final ApplicationEventPublisher events;
     private final JdbcTemplate jdbc;
+    private final OwnerOnboarding owners;
     private final Clock clock = Clock.systemUTC();
 
     TenantOnboardingService(
@@ -78,7 +80,8 @@ class TenantOnboardingService {
             PlatformIdempotentCreations idempotency,
             AuditRecorder audit,
             ApplicationEventPublisher events,
-            JdbcTemplate jdbc) {
+            JdbcTemplate jdbc,
+            OwnerOnboarding owners) {
         this.entityManager = entityManager;
         this.transaction = new TransactionTemplate(transactionManager);
         this.readOnly = new TransactionTemplate(transactionManager);
@@ -91,6 +94,7 @@ class TenantOnboardingService {
         this.audit = audit;
         this.events = events;
         this.jdbc = jdbc;
+        this.owners = owners;
     }
 
     /** {@code POST /platform/tenants}. */
@@ -118,7 +122,9 @@ class TenantOnboardingService {
         entityManager.persist(Tenant.onboard(id, request.data(), request.owner().fullName().strip(),
                 request.owner().email().strip(), actor.accountId(), now));
         flush();
-        events.publishEvent(new TenantCreated(id));
+        // Identity seeds the roles and invites the OWNER in this transaction (MEDK-67).
+        events.publishEvent(new TenantCreated(id, new TenantCreated.InitialOwner(
+                request.owner().fullName().strip(), request.owner().email().strip())));
         subscriptions.open(plan, request.billingPeriod(), now);
         flush();
         audit.record(AuditAction.TENANT_ONBOARDED, id, actor.accountId(), AuditTarget.tenant(id));
@@ -213,6 +219,7 @@ class TenantOnboardingService {
         String planName = plans.find(subscription.getPlanId()).map(OfferedPlan::name).orElseThrow(ApiException::notFound);
         ClinicData data = tenant.data();
         String ownerEmail = Objects.requireNonNull(tenant.getOwnerEmail());
+        OwnerOnboarding.OwnerStatus owner = owners.status();
         return new TenantResponse(
                 tenant.getId(),
                 data.legalName(),
@@ -226,7 +233,8 @@ class TenantOnboardingService {
                 data.contactEmail(),
                 data.mspEstablishmentNumber(),
                 new OwnerResponse(Objects.requireNonNull(tenant.getOwnerFullName()),
-                        TenantResponses.maskEmail(ownerEmail), false, null),
+                        TenantResponses.maskEmail(ownerEmail), owner.twoFactorEnabled(),
+                        TenantResponses.InvitationResponse.of(owner.invitation())),
                 new SubscriptionSummary(
                         subscription.getStatus(),
                         subscription.getPlanId(),

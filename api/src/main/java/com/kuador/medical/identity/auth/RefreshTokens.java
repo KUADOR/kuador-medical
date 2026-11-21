@@ -29,8 +29,12 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Component
 class RefreshTokens {
 
-    /** The session a refresh token belongs to. {@code tenantId} is null for the platform account. */
-    record Session(@Nullable UUID tenantId, UUID userId, @Nullable UUID branchId, UUID familyId) {}
+    /**
+     * The session a refresh token belongs to. {@code tenantId} is null for the platform account;
+     * {@code twoFactorId} is the second factor the session verified (ADR-019), if any.
+     */
+    record Session(
+            @Nullable UUID tenantId, UUID userId, @Nullable UUID branchId, UUID familyId, @Nullable UUID twoFactorId) {}
 
     private final JdbcTemplate jdbc;
     private final JwtProperties properties;
@@ -52,14 +56,16 @@ class RefreshTokens {
     }
 
     /** Stores a new refresh token of the session (joins the transaction of the caller). */
-    IssuedToken issue(@Nullable UUID tenantId, UUID userId, @Nullable UUID branchId, UUID familyId) {
+    IssuedToken issue(
+            @Nullable UUID tenantId, UUID userId, @Nullable UUID branchId, UUID familyId, @Nullable UUID twoFactorId) {
         String token = SecureTokens.newToken();
         Instant now = clock.instant();
         jdbc.update("""
-                insert into identity_refresh_token (id, tenant_id, user_id, branch_id, family_id, token_hash, expires_at, created_at)
-                values (?, ?, ?, ?, ?, ?, ?, ?)""",
+                insert into identity_refresh_token
+                    (id, tenant_id, user_id, branch_id, family_id, token_hash, expires_at, created_at, two_factor_id)
+                values (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 UUID.randomUUID(), tenantId, userId, branchId, familyId, SecureTokens.hash(token),
-                at(now.plus(properties.refreshTtl())), at(now));
+                at(now.plus(properties.refreshTtl())), at(now), twoFactorId);
         return new IssuedToken(token, properties.refreshTtl().toSeconds());
     }
 
@@ -72,12 +78,13 @@ class RefreshTokens {
     Session rotate(String token) {
         Optional<Session> rotated = ownTransaction.execute(status -> {
             List<StoredToken> found = jdbc.query("""
-                    select id, tenant_id, user_id, branch_id, family_id, expires_at, revoked_at
+                    select id, tenant_id, user_id, branch_id, family_id, expires_at, revoked_at, two_factor_id
                     from identity_refresh_token where token_hash = ? for update""",
                     (row, index) -> new StoredToken(
                             row.getObject(1, UUID.class),
                             new Session(row.getObject(2, UUID.class), row.getObject(3, UUID.class),
-                                    row.getObject(4, UUID.class), row.getObject(5, UUID.class)),
+                                    row.getObject(4, UUID.class), row.getObject(5, UUID.class),
+                                    row.getObject(8, UUID.class)),
                             row.getObject(6, OffsetDateTime.class).toInstant(),
                             row.getObject(7, OffsetDateTime.class) != null),
                     SecureTokens.hash(token));
@@ -113,9 +120,9 @@ class RefreshTokens {
         return ownTransaction.execute(status -> jdbc.query("""
                 update identity_refresh_token set revoked_at = ?
                 where token_hash = ? and revoked_at is null
-                returning tenant_id, user_id, branch_id, family_id""",
+                returning tenant_id, user_id, branch_id, family_id, two_factor_id""",
                 (row, index) -> new Session(row.getObject(1, UUID.class), row.getObject(2, UUID.class),
-                        row.getObject(3, UUID.class), row.getObject(4, UUID.class)),
+                        row.getObject(3, UUID.class), row.getObject(4, UUID.class), row.getObject(5, UUID.class)),
                 at(clock.instant()), SecureTokens.hash(token)).stream().findFirst());
     }
 

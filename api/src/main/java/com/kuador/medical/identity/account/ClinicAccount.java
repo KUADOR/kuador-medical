@@ -37,7 +37,8 @@ public class ClinicAccount implements Persistable<UUID> {
     @Column(name = "tenant_id", nullable = false, updatable = false)
     private UUID tenantId;
 
-    @Column(name = "email_normalized", nullable = false, updatable = false)
+    /** Fixed once the account is active; only an invited OWNER's email can be corrected (MEDK-67). */
+    @Column(name = "email_normalized", nullable = false)
     private String email;
 
     @Column(name = "password_hash")
@@ -166,6 +167,30 @@ public class ClinicAccount implements Persistable<UUID> {
         account.passwordHash = passwordHash;
         account.jobTitle = "";
         return account;
+    }
+
+    /**
+     * The initial OWNER of a clinic onboarded by the SUPER_ADMIN (MEDK-67), waiting for its
+     * invitation: it chooses its password, accepts the terms and enrolls TOTP.
+     */
+    public static ClinicAccount invitedOwner(String email, String fullName) {
+        String name = fullName.strip();
+        int space = name.indexOf(' ');
+        String first = space < 0 ? name : name.substring(0, space);
+        String last = space < 0 ? "" : name.substring(space + 1).strip();
+        ClinicAccount account = new ClinicAccount(
+                UUID.randomUUID(), AccountKind.STAFF, email, first, last, ClinicAccountStatus.INVITED, null);
+        account.jobTitle = "";
+        return account;
+    }
+
+    /** Corrects the email of an account that has not accepted its invitation yet. */
+    public void correctInvitedEmail(String newEmail, UUID actor) {
+        if (status != ClinicAccountStatus.INVITED) {
+            throw ApiException.conflict(ErrorCode.ACCOUNT_ALREADY_ACTIVE, "Only an invited account can change its email.");
+        }
+        this.email = EmailAddresses.normalize(newEmail);
+        touch(actor);
     }
 
     /** Sets the first password of an invited account and activates it. */

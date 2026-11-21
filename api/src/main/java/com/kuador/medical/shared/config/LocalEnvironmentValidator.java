@@ -19,7 +19,8 @@ public class LocalEnvironmentValidator implements EnvironmentPostProcessor, Orde
 
     /** Variables the local profile reads without a default. Names only: values are never logged. */
     static final List<String> REQUIRED_VARIABLES =
-            List.of("DB_URL", "DB_USERNAME", "DB_PASSWORD", "KUADOR_JWT_SECRET", "LOCAL_SEED_PASSWORD");
+            List.of("DB_URL", "DB_USERNAME", "DB_PASSWORD", "KUADOR_JWT_SECRET", "KUADOR_TOTP_ENCRYPTION_KEY",
+                    "LOCAL_SEED_PASSWORD");
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {

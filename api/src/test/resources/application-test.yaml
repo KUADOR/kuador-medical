@@ -11,6 +11,9 @@ kuador:
   jwt:
     # Random per test context: no signing key is ever stored in the repository.
     secret: ${random.uuid}${random.uuid}
+  two-factor:
+    # Random per test context, like the signing key.
+    encryption-key: ${random.uuid}${random.uuid}
   bootstrap-admin:
     email: bootstrap-admin@example.test
     password: ${random.uuid}
