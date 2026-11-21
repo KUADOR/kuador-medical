@@ -37,5 +37,7 @@ public enum ErrorCode {
     CONTACT_CHANNEL_UNAVAILABLE,
     // MEDK-49 platform and subscriptions (contracts/platform.openapi.yaml)
     PLAN_ARCHIVED,
-    RUC_ALREADY_REGISTERED
+    RUC_ALREADY_REGISTERED,
+    INVALID_SUBSCRIPTION_TRANSITION,
+    REACTIVATION_WINDOW_CLOSED
 }

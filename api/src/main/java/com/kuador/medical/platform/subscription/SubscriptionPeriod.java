@@ -42,6 +42,10 @@ class SubscriptionPeriod {
     @Column(nullable = false, updatable = false, length = 3)
     private String currency;
 
+    /** Set by the database; orders periods that start on the same day. */
+    @Column(name = "created_at", insertable = false, updatable = false)
+    private Instant createdAt;
+
     protected SubscriptionPeriod() {}
 
     SubscriptionPeriod(UUID subscriptionId, UUID planId, Instant periodStart, Instant periodEnd, BigDecimal amount,
@@ -53,5 +57,25 @@ class SubscriptionPeriod {
         this.periodEnd = periodEnd;
         this.amount = amount;
         this.currency = currency;
+    }
+
+    UUID getPlanId() {
+        return planId;
+    }
+
+    Instant getPeriodStart() {
+        return periodStart;
+    }
+
+    Instant getPeriodEnd() {
+        return periodEnd;
+    }
+
+    BigDecimal getAmount() {
+        return amount;
+    }
+
+    String getCurrency() {
+        return currency;
     }
 }

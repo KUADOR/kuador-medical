@@ -110,6 +110,12 @@ kuador:
       cron: ${KUADOR_ADULTHOOD_CRON:0 5 * * * *}
       # Upper bound of the ShedLock lock if a replica dies while running the job.
       lock-at-most-for: ${KUADOR_ADULTHOOD_LOCK_AT_MOST_FOR:PT1H}
+  platform:
+    subscription-lifecycle:
+      # Subscription lifecycle job (MEDK-68, ADR-016): deadlines of trial, period, grace and
+      # suspension, and price change notices. Hourly by default (cron in UTC); idempotent. "-" disables it.
+      cron: ${KUADOR_LIFECYCLE_JOB_CRON:0 15 * * * *}
+      lock-at-most-for: ${KUADOR_LIFECYCLE_JOB_LOCK_AT_MOST_FOR:PT1H}
   sms:
     # SMS provider [POR DEFINIR]. Empty provider: SMS invitations stay disabled.
     provider: ${KUADOR_SMS_PROVIDER:}

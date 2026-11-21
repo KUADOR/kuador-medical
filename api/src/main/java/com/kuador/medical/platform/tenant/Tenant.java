@@ -151,8 +151,13 @@ public class Tenant {
         return ownerFullName;
     }
 
-    @Nullable String getOwnerEmail() {
+    public @Nullable String getOwnerEmail() {
         return ownerEmail;
+    }
+
+    /** When the clinic was purged (MEDK-70); {@code null} while its data exists. */
+    public @Nullable Instant getPurgedAt() {
+        return purgedAt;
     }
 
     Instant getCreatedAt() {
