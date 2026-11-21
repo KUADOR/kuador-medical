@@ -248,3 +248,40 @@ export function planSubPath(
 ): `/platform/plans/${string}/${typeof resource}` {
   return `${planPath(id)}/${resource}`;
 }
+
+// ---------------------------------------------------------------- platform contract: OWNER (MEDK-74)
+export type OwnerInvitationPreview = Platform['OwnerInvitationPreview'];
+export type OwnerInvitationTokenRequest = Platform['OwnerInvitationTokenRequest'];
+export type AcceptOwnerInvitationRequest = Platform['AcceptOwnerInvitationRequest'];
+/** Tokens returned by the invitation and second factor operations (shape of AuthenticatedResult). */
+export type PlatformSession = Platform['Session'];
+export type TwoFactorEnrollment = Platform['TwoFactorEnrollment'];
+export type TwoFactorCodeRequest = Platform['TwoFactorCodeRequest'];
+/** What a session that has not passed the second factor must do (Problem.twoFactor). */
+export type TwoFactorStep = NonNullable<Problem['twoFactor']>;
+export type SubscriptionStatus = Platform['SubscriptionStatus'];
+export type AccessMode = Platform['AccessMode'];
+export type NoticeKind = Platform['NoticeKind'];
+export type SubscriptionNotice = Platform['Notice'];
+export type LimitUsage = Platform['LimitUsage'];
+export type ClinicSubscription = Platform['ClinicSubscription'];
+export type ExportFormat = Platform['ExportFormat'];
+export type ExportStatus = Platform['ExportStatus'];
+export type CreateExportRequest = Platform['CreateExportRequest'];
+export type TenantExport = Platform['TenantExport'];
+
+/** Paths of the platform contract used by the OWNER flows (MEDK-74). */
+export const OwnerPaths = {
+  invitationPreview: '/public/owner-invitations/preview',
+  invitationAccept: '/public/owner-invitations/accept',
+  twoFactorEnrollment: '/auth/two-factor/enrollment',
+  twoFactorEnrollmentConfirm: '/auth/two-factor/enrollment/confirm',
+  twoFactorVerify: '/auth/two-factor/verify',
+  subscription: '/tenant/subscription',
+  exports: '/tenant/exports',
+} as const satisfies Record<string, keyof PlatformContractPaths>;
+
+/** GET /tenant/exports/{exportId}. */
+export function tenantExportPath(id: string): `/tenant/exports/${string}` {
+  return `${OwnerPaths.exports}/${encodeURIComponent(id)}`;
+}

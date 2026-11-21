@@ -18,6 +18,7 @@ export const AppRoutes = {
   newPatient: '/patients/new',
   selfRegistrationSettings: '/patients/self-registration',
   myGuardianLinks: '/my-contacts',
+  dataExport: '/data-export',
 } as const;
 
 /** Detail page of a patient. */
@@ -108,6 +109,13 @@ export const MENU_ITEMS: readonly MenuItem[] = [
     icon: 'settings',
     permissions: ['platform.settings.manage'],
   },
+  {
+    // OWNER data export (MEDK-74): also allowed while the clinic is read-only (ADR-017).
+    label: 'Exportar datos',
+    link: AppRoutes.dataExport,
+    icon: 'file-text',
+    permissions: ['tenant.data.export'],
+  },
 ];
 
 /** True when the session grants every permission and the module of the requirement. */
@@ -160,6 +168,9 @@ const NO_RETURN_PREFIXES: readonly string[] = [
   AuthRoutes.resetPassword,
   AuthRoutes.invitation,
   AuthRoutes.verifyEmail,
+  AuthRoutes.ownerInvitation,
+  AuthRoutes.twoFactorEnroll,
+  AuthRoutes.twoFactorVerify,
 ];
 
 /**

@@ -7,6 +7,7 @@ import {
   pendingPasswordChangeGuard,
   requireAccess,
   requirePermissions,
+  twoFactorStepGuard,
 } from './core/session/auth.guards';
 import { Modules } from './core/session/navigation';
 import { AcceptInvitationPage } from './features/auth/accept-invitation/accept-invitation.page';
@@ -72,6 +73,33 @@ export const routes: Routes = [
     path: 'invitation',
     component: AcceptInvitationPage,
     title: `Activar cuenta · ${APP_TITLE}`,
+  },
+  {
+    // OWNER invitation of a new clinic (MEDK-49): /owner-invitation#t=<token> (ADR-014).
+    path: 'owner-invitation',
+    loadComponent: () =>
+      import('./features/onboarding/owner-invitation.page').then((m) => m.OwnerInvitationPage),
+    title: `Activar cuenta de la clínica · ${APP_TITLE}`,
+  },
+  {
+    // Mandatory TOTP second factor of the OWNER (ADR-019).
+    path: 'two-factor/enroll',
+    // Lazy: the QR encoder is only needed by this page.
+    loadComponent: () =>
+      import('./features/auth/two-factor/two-factor-enroll.page').then(
+        (m) => m.TwoFactorEnrollPage,
+      ),
+    canActivate: [twoFactorStepGuard('ENROLLMENT_REQUIRED')],
+    title: `Activar verificación en dos pasos · ${APP_TITLE}`,
+  },
+  {
+    path: 'two-factor/verify',
+    loadComponent: () =>
+      import('./features/auth/two-factor/two-factor-verify.page').then(
+        (m) => m.TwoFactorVerifyPage,
+      ),
+    canActivate: [twoFactorStepGuard('VERIFICATION_REQUIRED')],
+    title: `Verificación en dos pasos · ${APP_TITLE}`,
   },
   {
     path: 'email-verification',
@@ -186,6 +214,14 @@ export const routes: Routes = [
     component: MyGuardianLinksPage,
     canActivate: [requireAccess({ kinds: ['PATIENT'] })],
     title: `Mis contactos autorizados · ${APP_TITLE}`,
+  },
+  {
+    // Allowed also while the clinic is read-only (ADR-017).
+    path: 'data-export',
+    loadComponent: () =>
+      import('./features/tenant-export/tenant-export.page').then((m) => m.TenantExportPage),
+    canActivate: [requirePermissions('tenant.data.export')],
+    title: `Exportar datos · ${APP_TITLE}`,
   },
   {
     path: 'platform/permissions',

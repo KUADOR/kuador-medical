@@ -13,6 +13,7 @@ import { AuthService } from './core/session/auth.service';
 import { AppRoutes, menuFor } from './core/session/navigation';
 import { SessionStore } from './core/session/session.store';
 import { KdButton, KdNav, type KdNavItem, KdShell } from './design-system';
+import { SubscriptionBanner } from './core/subscription/subscription-banner';
 import { BranchSwitcher } from './features/auth/branch-switcher/branch-switcher';
 
 /** Public entry of the menu, for visitors and every account. */
@@ -25,7 +26,7 @@ const STATUS_ITEM: KdNavItem = {
 @Component({
   selector: 'mk-root',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, RouterLink, KdShell, KdNav, KdButton, BranchSwitcher],
+  imports: [RouterOutlet, RouterLink, KdShell, KdNav, KdButton, BranchSwitcher, SubscriptionBanner],
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })

@@ -10,6 +10,12 @@ export const AuthRoutes = {
   invitation: '/invitation',
   /** Target of the self-registration verification email: /email-verification#t=<token> (ADR-014). */
   verifyEmail: '/email-verification',
+  /** Target of the OWNER invitation email: /owner-invitation#t=<token> (ADR-014, MEDK-49). */
+  ownerInvitation: '/owner-invitation',
+  /** Mandatory TOTP enrollment of an OWNER session (ADR-019). */
+  twoFactorEnroll: '/two-factor/enroll',
+  /** TOTP verification after the login of an OWNER (ADR-019). */
+  twoFactorVerify: '/two-factor/verify',
   changePassword: '/change-password',
   forbidden: '/forbidden',
 } as const;
