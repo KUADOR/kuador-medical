@@ -45,7 +45,7 @@ cd movil && flutter test         # probar
 Requisitos: Docker con Compose v2, JDK 25, Node.js `^22.22.3` o `^24.15.0`, Flutter estable y, para el móvil, Android SDK con emulador (JDK 17+ para compilar Android). Procedimiento completo, variables, puertos (5432, 8080, 4200), dispositivo físico y solución de problemas en `docs/deployment.md` § «Paso a paso › Entorno local».
 
 ```bash
-# 1. Variables (una vez): completar DB_PASSWORD, KUADOR_JWT_SECRET y LOCAL_SEED_PASSWORD. Nunca commitear .env
+# 1. Variables (una vez): completar DB_PASSWORD, KUADOR_JWT_SECRET, KUADOR_TOTP_ENCRYPTION_KEY y LOCAL_SEED_PASSWORD. Nunca commitear .env
 cp .env.example .env
 
 # 2. Base de datos: PostgreSQL 18 en 127.0.0.1:${DB_PORT:-5432}; espera a «healthy»

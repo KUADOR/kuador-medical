@@ -78,6 +78,18 @@ kuador:
     refresh-ttl: ${KUADOR_JWT_REFRESH_TTL:P7D}
     # Short-lived token between login and clinic/branch selection (ADR-012).
     pre-auth-ttl: ${KUADOR_JWT_PRE_AUTH_TTL:PT5M}
+  two-factor:
+    # Secret (ADR-019): encrypts the TOTP secrets (AES-256-GCM), at least 32 bytes. The api refuses
+    # to start without it. Changing it invalidates every enrolled second factor (reset them).
+    encryption-key: ${KUADOR_TOTP_ENCRYPTION_KEY:}
+    # Wrong codes allowed before a temporary lock of the second factor.
+    max-failures: ${KUADOR_TWO_FACTOR_MAX_FAILURES:5}
+    lock-duration: ${KUADOR_TWO_FACTOR_LOCK_DURATION:PT15M}
+  legal:
+    # Versions of the terms of service and of the data policy the OWNER accepts (MEDK-67).
+    # [POR DEFINIR: texto final de términos y política de datos, provisto por Kuador]
+    terms-version: ${KUADOR_TERMS_VERSION:2026-11}
+    data-policy-version: ${KUADOR_DATA_POLICY_VERSION:2026-11}
   login-throttle:
     # Failed logins allowed per email + IP and per account inside the window, then a temporary lock.
     max-failures: ${KUADOR_LOGIN_MAX_FAILURES:5}

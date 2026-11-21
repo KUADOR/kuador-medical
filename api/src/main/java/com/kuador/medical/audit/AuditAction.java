@@ -50,5 +50,14 @@ public enum AuditAction {
     PLATFORM_SETTINGS_UPDATED,
     // MEDK-66 clinic onboarding and administration by the SUPER_ADMIN (event of the clinic)
     TENANT_ONBOARDED,
-    TENANT_UPDATED
+    TENANT_UPDATED,
+    // MEDK-67 OWNER invitation, terms acceptance and second factor (ADR-019)
+    OWNER_INVITATION_SENT,
+    OWNER_INVITATION_ACCEPTED,
+    TERMS_ACCEPTED,
+    TWO_FACTOR_ENABLED,
+    /** Reset by a SUPER_ADMIN with a reason (plan D7). */
+    TWO_FACTOR_RESET,
+    /** Too many wrong codes: the second factor is locked for a while. */
+    TWO_FACTOR_LOCKED
 }

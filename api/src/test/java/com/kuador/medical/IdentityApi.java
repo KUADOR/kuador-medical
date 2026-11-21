@@ -73,9 +73,72 @@ public final class IdentityApi {
         return session(email, password).get("accessToken").toString();
     }
 
-    /** Logs in (choosing the first branch when asked) and returns the AUTHENTICATED body. */
-    @SuppressWarnings("unchecked")
+    /**
+     * Logs in (choosing the first branch when asked) and returns the AUTHENTICATED body of a
+     * session that passed the second factor when the account needs it (OWNER, ADR-019): like the
+     * app, it enrolls TOTP the first time and verifies a code on later logins.
+     */
     public Map<String, Object> session(String email, String password) {
+        return completeTwoFactor(rawSession(email, password));
+    }
+
+    /**
+     * Completes the second factor of an AUTHENTICATED body when {@code GET /me} asks for it, and
+     * returns the body of the verified session (or the same body when nothing is pending).
+     */
+    public Map<String, Object> completeTwoFactor(Map<String, Object> session) {
+        String access = session.get("accessToken").toString();
+        MvcTestResult me = me(access);
+        if (me.getResponse().getStatus() != HttpStatus.UNAUTHORIZED.value()) {
+            return session;
+        }
+        Map<String, Object> problem = body(me);
+        assertThat(problem).containsEntry("code", "TWO_FACTOR_REQUIRED");
+        String account = claims(access).get("sub").toString();
+        MvcTestResult result;
+        if ("ENROLLMENT_REQUIRED".equals(problem.get("twoFactor"))) {
+            MvcTestResult started = post("/api/v1/auth/two-factor/enrollment", access, Map.of());
+            assertThat(started).hasStatus(HttpStatus.OK);
+            String secret = body(started).get("secret").toString();
+            TWO_FACTOR_SECRETS.put(account, secret);
+            result = post("/api/v1/auth/two-factor/enrollment/confirm", access, Map.of("code", nextCode(account, secret)));
+        } else {
+            String secret = TWO_FACTOR_SECRETS.get(account);
+            assertThat(secret).as("the test enrolled this account through IdentityApi").isNotNull();
+            result = post("/api/v1/auth/two-factor/verify", access, Map.of("code", nextCode(account, secret)));
+        }
+        assertThat(result).hasStatus(HttpStatus.OK);
+        return body(result);
+    }
+
+    /** TOTP secrets enrolled by tests, per account id: plays the authenticator app of each OWNER. */
+    private static final Map<String, String> TWO_FACTOR_SECRETS = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** Last time step used per account: the api rejects a code of a step already used. */
+    private static final Map<String, Long> USED_STEPS = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** A code of the window (previous, current or next step) not used yet; waits for the next step if needed. */
+    private static synchronized String nextCode(String account, String secret) {
+        while (true) {
+            long now = TotpCodes.currentStep();
+            // From the current step, so that a step change during the request stays in the window.
+            long candidate = Math.max(now, USED_STEPS.getOrDefault(account, Long.MIN_VALUE) + 1);
+            if (candidate <= now + 1) {
+                USED_STEPS.put(account, candidate);
+                return TotpCodes.code(secret, candidate);
+            }
+            try {
+                Thread.sleep(1_000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException(e);
+            }
+        }
+    }
+
+    /** Logs in (choosing the first branch when asked) and returns the AUTHENTICATED body as the login answers it. */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> rawSession(String email, String password) {
         MvcTestResult result = login(email, password);
         assertThat(result).hasStatus(HttpStatus.OK);
         Map<String, Object> body = body(result);

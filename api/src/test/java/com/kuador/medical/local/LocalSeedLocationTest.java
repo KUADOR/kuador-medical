@@ -35,7 +35,8 @@ class LocalSeedLocationTest {
     @Test
     void localProfileTakesSecretsOnlyFromVariablesWithoutDefaults() throws IOException {
         String local = read("application-local.yaml");
-        for (String variable : List.of("DB_URL", "DB_USERNAME", "DB_PASSWORD", "KUADOR_JWT_SECRET", "LOCAL_SEED_PASSWORD")) {
+        for (String variable : List.of("DB_URL", "DB_USERNAME", "DB_PASSWORD", "KUADOR_JWT_SECRET",
+                "KUADOR_TOTP_ENCRYPTION_KEY", "LOCAL_SEED_PASSWORD")) {
             assertThat(local).as(variable).contains("${" + variable + "}");
         }
         assertThat(local).contains("${SERVER_PORT:8080}", "${SERVER_ADDRESS:0.0.0.0}");

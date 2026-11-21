@@ -56,6 +56,24 @@ final class TenantRequests {
         }
     }
 
+    /** {@code ResendOwnerInvitationRequest}: optionally to a corrected email. */
+    record ResendOwnerInvitation(@Nullable UUID id, @Email @Size(max = 254) @Nullable String email) {
+
+        @Override
+        public String toString() {
+            return "ResendOwnerInvitation[redacted]";
+        }
+    }
+
+    /** {@code ReasonRequest}: kept with the action; must not contain clinical data. */
+    record Reason(@NotBlank @Size(max = 500) String reason) {
+
+        @Override
+        public String toString() {
+            return "Reason[redacted]";
+        }
+    }
+
     static @Nullable String blankToNull(@Nullable String value) {
         return value == null || value.isBlank() ? null : value.strip();
     }
