@@ -18,7 +18,7 @@ import {
   CANCELLED_RETENTION_OVER,
   DOWNGRADE_PREVIEW,
   PLANS,
-  PLATFORM_ADMIN,
+  TENANTS_ADMIN,
   PREMIUM_PLAN_ID,
   STANDARD_PLAN_ID,
   SUSPENDED_SUBSCRIPTION,
@@ -44,7 +44,7 @@ describe('TenantDetailPage', () => {
   async function open(
     subscription: Subscription = ACTIVE_SUBSCRIPTION,
     tenant: Tenant = TENANT,
-    account: CurrentSession = PLATFORM_ADMIN,
+    account: CurrentSession = TENANTS_ADMIN,
   ) {
     await signIn(app, account);
     await app.harness.navigateByUrl(`/platform/tenants/${TENANT_ID}`);
@@ -164,7 +164,7 @@ describe('TenantDetailPage', () => {
   });
 
   it('shows a Spanish message when the clinic does not exist', async () => {
-    await signIn(app, PLATFORM_ADMIN);
+    await signIn(app, TENANTS_ADMIN);
     await app.harness.navigateByUrl(`/platform/tenants/${TENANT_ID}`);
     await app.settle();
     const { body, init } = problem(404, 'NOT_FOUND');

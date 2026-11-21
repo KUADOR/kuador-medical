@@ -10,7 +10,7 @@ import {
 } from '../../../../testing/app-harness';
 import { expectMigratedScreen } from '../../../../testing/migrated-screen';
 import {
-  PLATFORM_ADMIN,
+  TENANTS_ADMIN,
   TENANTS_ONLY_ADMIN,
   TENANT_PAGE,
 } from '../../../../testing/platform-tenant-fixtures';
@@ -26,7 +26,7 @@ describe('TenantsListPage', () => {
 
   afterEach(() => app.backend.verify());
 
-  async function open(account = PLATFORM_ADMIN) {
+  async function open(account = TENANTS_ADMIN) {
     await signIn(app, account);
     await app.harness.navigateByUrl('/platform/tenants');
     await app.settle();
@@ -96,7 +96,7 @@ describe('TenantsListPage', () => {
   });
 
   it('pages through the results', async () => {
-    await signIn(app, PLATFORM_ADMIN);
+    await signIn(app, TENANTS_ADMIN);
     await app.harness.navigateByUrl('/platform/tenants');
     await app.settle();
     app.backend
@@ -117,7 +117,7 @@ describe('TenantsListPage', () => {
   });
 
   it('shows a Spanish message when the list fails', async () => {
-    await signIn(app, PLATFORM_ADMIN);
+    await signIn(app, TENANTS_ADMIN);
     await app.harness.navigateByUrl('/platform/tenants');
     await app.settle();
     const { body, init } = problem(500, 'INTERNAL_ERROR');
@@ -146,7 +146,7 @@ describe('TenantsListPage', () => {
   });
 
   it('is in the menu of the SUPER_ADMIN only', () => {
-    expect(menuFor(PLATFORM_ADMIN).map((item) => item.label)).toContain('Clínicas');
+    expect(menuFor(TENANTS_ADMIN).map((item) => item.label)).toContain('Clínicas');
     expect(menuFor(FULL_ACCOUNT).map((item) => item.label)).not.toContain('Clínicas');
   });
 

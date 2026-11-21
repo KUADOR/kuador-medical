@@ -43,25 +43,23 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   LAST_LEGAL_GUARDIAN: 'Un paciente menor de edad debe conservar al menos un representante legal.',
   CONTACT_CHANNEL_UNAVAILABLE:
     'El paciente no tiene un correo o teléfono registrado para enviarle la invitación.',
-  // Platform and subscriptions (MEDK-49).
+  // Platform and subscriptions contract (MEDK-49).
   TENANT_READ_ONLY:
-    'La suscripción de la clínica está suspendida o cancelada: solo se pueden consultar y exportar datos.',
-  MODULE_NOT_IN_PLAN: 'El plan de la clínica no incluye este módulo.',
+    'Tu clínica está en modo solo lectura por el estado de su suscripción: puedes consultar y exportar, pero no crear ni editar.',
+  MODULE_NOT_IN_PLAN: 'El plan de tu clínica no incluye este módulo.',
   INVALID_SUBSCRIPTION_TRANSITION:
-    'La suscripción no puede pasar a ese estado desde su estado actual. Recarga para ver su estado.',
+    'La suscripción no puede pasar a ese estado desde su estado actual.',
   REACTIVATION_WINDOW_CLOSED:
-    'Ya no se puede reactivar la clínica: terminó su período de retención o sus datos fueron purgados.',
+    'Ya no se puede reactivar la clínica: terminó su período de retención.',
   INVITATION_INVALID_OR_EXPIRED:
-    'El enlace de invitación no es válido: venció, ya fue usado o fue reemplazado por otro.',
+    'La invitación no es válida: venció, ya se usó o fue reemplazada por una nueva.',
   TWO_FACTOR_REQUIRED: 'Debes completar la verificación en dos pasos para continuar.',
-  TWO_FACTOR_CODE_INVALID: 'El código de verificación no es correcto o ya venció.',
-  TWO_FACTOR_ALREADY_ENABLED: 'La verificación en dos pasos ya está configurada.',
+  TWO_FACTOR_CODE_INVALID: 'El código no es correcto o ya venció. Escribe el código actual.',
+  TWO_FACTOR_ALREADY_ENABLED: 'La verificación en dos pasos ya está activada.',
   RUC_ALREADY_REGISTERED: 'Ya existe una clínica registrada con ese RUC.',
-  PLAN_ARCHIVED: 'El plan elegido está desactivado para nuevas ventas. Elige otro plan.',
-  PLAN_CHANGE_NOT_ALLOWED:
-    'No se puede cambiar el plan: la suscripción no lo permite en su estado actual o ya tiene ese plan y periodicidad.',
-  PURGE_NOT_ALLOWED:
-    'No se puede purgar la clínica: debe estar cancelada, con la retención terminada y sin otra solicitud pendiente.',
+  PLAN_ARCHIVED: 'El plan está archivado: no se puede editar ni elegir.',
+  PLAN_CHANGE_NOT_ALLOWED: 'El estado actual de la suscripción no permite ese cambio de plan.',
+  PURGE_NOT_ALLOWED: 'Todavía no se puede borrar definitivamente esta clínica.',
 };
 
 /** Messages for field-level validation codes (Problem.errors[].code). */
@@ -75,9 +73,12 @@ export const FIELD_ERROR_MESSAGES: Readonly<Record<string, string>> = {
   DUPLICATE: 'Este valor ya está registrado.',
   UNKNOWN_BRANCH: 'La sucursal no existe en tu clínica.',
   UNKNOWN_ROLE: 'El rol no existe en tu clínica.',
-  MISMATCH: 'El valor no coincide.',
+  UNKNOWN_MODULE: 'El módulo no existe en el catálogo del sistema.',
+  UNKNOWN_LIMIT: 'El límite no existe en el catálogo del sistema.',
   IN_THE_PAST: 'La fecha no puede ser anterior a hoy.',
-  OUTDATED_VERSION: 'Otra persona modificó estos datos. Recarga para ver los cambios.',
+  TRIAL_PLAN_REQUIRED: 'El plan de prueba no se puede archivar: siempre debe existir uno.',
+  MISMATCH: 'El valor no coincide.',
+  OUTDATED_VERSION: 'Los datos cambiaron mientras los editabas. Recarga para ver los cambios.',
 };
 
 export const NETWORK_ERROR_MESSAGE =

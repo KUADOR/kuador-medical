@@ -10,7 +10,7 @@ import {
   toProblem,
 } from './error-messages';
 
-// Mirrors the ErrorCode enum of contracts/platform.openapi.yaml (superset of the other contracts).
+// Mirrors the ErrorCode enum of contracts/platform.openapi.yaml (a superset of the others).
 const CONTRACT_CODES: ErrorCode[] = [
   'VALIDATION',
   'EMAIL_TAKEN',

@@ -120,10 +120,10 @@ export class TenantDetailPage implements OnInit {
   protected readonly state = signal<LoadState>({ kind: 'loading' });
   protected readonly notice = signal<string | null>(inject(NoticeService).take());
   protected readonly canPurge = computed(() =>
-    this.session.permissions().has('platform.tenants.purge'),
+    this.session.hasPermission('platform.tenants.purge'),
   );
   protected readonly canManagePlans = computed(() =>
-    this.session.permissions().has('platform.plans.manage'),
+    this.session.hasPermission('platform.plans.manage'),
   );
 
   protected readonly tenant = computed(() => {

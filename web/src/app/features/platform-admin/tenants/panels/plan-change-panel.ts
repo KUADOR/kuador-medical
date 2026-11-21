@@ -17,10 +17,11 @@ import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angula
 import type {
   BillingPeriod,
   PlanChangePreview,
-  PlatformPlan,
+  Plan,
   Subscription,
 } from '../../../../core/api/api-types';
 import { errorMessage, toProblem } from '../../../../core/errors/error-messages';
+import { PlansService } from '../../../../core/platform/plans.service';
 import {
   PlatformCreationKey,
   PlatformTenantsService,
@@ -35,7 +36,7 @@ import {
   KdInput,
   KdLoadingState,
 } from '../../../../design-system';
-import { isRetryable } from '../tenant-form.page';
+import { isRetryable } from '../../../../core/errors/retryable';
 import {
   BILLING_PERIODS,
   BILLING_PERIOD_LABELS,
@@ -49,9 +50,7 @@ import {
 } from '../tenant-labels';
 
 type PlansState =
-  | { kind: 'loading' }
-  | { kind: 'ready'; plans: PlatformPlan[] }
-  | { kind: 'failed'; message: string };
+  { kind: 'loading' } | { kind: 'ready'; plans: Plan[] } | { kind: 'failed'; message: string };
 
 /**
  * Plan change of a clinic (FR-012, FR-013): first a preview that changes nothing (kind, when it
@@ -76,6 +75,7 @@ type PlansState =
 })
 export class PlanChangePanel implements OnInit {
   private readonly tenants = inject(PlatformTenantsService);
+  private readonly plansService = inject(PlansService);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly injector = inject(Injector);
   private readonly destroyRef = inject(DestroyRef);
@@ -140,7 +140,7 @@ export class PlanChangePanel implements OnInit {
 
   protected loadPlans(): void {
     this.plansState.set({ kind: 'loading' });
-    this.tenants.plans('ACTIVE').subscribe({
+    this.plansService.list('ACTIVE').subscribe({
       next: (plans) => this.plansState.set({ kind: 'ready', plans }),
       error: (error: unknown) =>
         this.plansState.set({ kind: 'failed', message: errorMessage(error) }),

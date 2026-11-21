@@ -27,7 +27,7 @@ import {
   KdField,
   KdInput,
 } from '../../../../design-system';
-import { isRetryable } from '../tenant-form.page';
+import { isRetryable } from '../../../../core/errors/retryable';
 import { INVITATION_STATUS_LABELS, TENANT_LIMITS, formatDateTime } from '../tenant-labels';
 
 type Busy = 'resend' | 'reset' | null;

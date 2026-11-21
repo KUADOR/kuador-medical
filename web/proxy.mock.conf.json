@@ -27,17 +27,13 @@
     "target": "http://localhost:4011",
     "secure": false,
     "changeOrigin": true,
-    "pathRewrite": {
-      "^/api/v1": ""
-    }
+    "pathRewrite": { "^/api/v1": "" }
   },
   "/api/v1/patient-registration-settings": {
     "target": "http://localhost:4011",
     "secure": false,
     "changeOrigin": true,
-    "pathRewrite": {
-      "^/api/v1": ""
-    }
+    "pathRewrite": { "^/api/v1": "" }
   },
   "/api/v1/public": {
     "target": "http://localhost:4011",
@@ -71,15 +67,15 @@
       "^/api/v1": ""
     }
   },
-  "/api/v1/platform/tenants": {
-    "target": "http://localhost:4012",
+  "^/api/v1/platform/permissions$": {
+    "target": "http://localhost:4010",
     "secure": false,
     "changeOrigin": true,
     "pathRewrite": {
       "^/api/v1": ""
     }
   },
-  "/api/v1/platform/plans": {
+  "/api/v1/platform": {
     "target": "http://localhost:4012",
     "secure": false,
     "changeOrigin": true,

@@ -1,0 +1,68 @@
+<kd-page
+  heading="Ajustes de plataforma"
+  headingId="platform-settings-title"
+  description="Plazos del ciclo de vida de las suscripciones de todas las clínicas. Los valores nuevos aplican a los plazos que se calculen desde ahora; las fechas ya fijadas en una suscripción no cambian."
+>
+  @switch (state().kind) {
+    @case ('loading') {
+      <kd-loading-state label="Cargando ajustes…" />
+    }
+    @case ('failed') {
+      <kd-alert tone="error" data-testid="load-error">{{ loadFailure() }}</kd-alert>
+      <kd-actions>
+        <button kdButton type="button" icon="refresh-cw" (click)="load()">Volver a intentar</button>
+      </kd-actions>
+    }
+    @default {
+      <div aria-live="polite">
+        @if (notice(); as message) {
+          <kd-alert tone="ok" data-testid="notice">{{ message }}</kd-alert>
+        }
+      </div>
+
+      <form class="platform-settings" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        @if (failure(); as message) {
+          <kd-alert tone="error" data-testid="form-error" tabindex="-1">
+            <p class="platform-settings__message">{{ message }}</p>
+            @if (versionConflict()) {
+              <kd-actions>
+                <button kdButton type="button" icon="refresh-cw" (click)="load()">
+                  Recargar los ajustes
+                </button>
+              </kd-actions>
+            }
+          </kd-alert>
+        }
+
+        <fieldset kdFieldGroup [boxed]="true" legend="Plazos">
+          @for (field of fields; track field.key) {
+            <kd-field
+              [label]="field.label + ' (' + field.unit + ')'"
+              [hint]="
+                field.hint + ' Entre ' + field.min + ' y ' + field.max + ' ' + field.unit + '.'
+              "
+            >
+              <input
+                kdInput
+                type="number"
+                inputmode="numeric"
+                step="1"
+                [id]="'setting-' + field.key"
+                [min]="field.min"
+                [max]="field.max"
+                [formControlName]="field.key"
+                data-testid="setting"
+              />
+            </kd-field>
+          }
+        </fieldset>
+
+        <kd-actions>
+          <button kdButton variant="primary" icon="check" type="submit" [disabled]="saving()">
+            {{ saving() ? 'Guardando…' : 'Guardar ajustes' }}
+          </button>
+        </kd-actions>
+      </form>
+    }
+  }
+</kd-page>

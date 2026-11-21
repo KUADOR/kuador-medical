@@ -3,7 +3,7 @@
 import type {
   CurrentSession,
   PlanChangePreview,
-  PlatformPlan,
+  Plan,
   Subscription,
   Tenant,
   TenantPage,
@@ -11,20 +11,20 @@ import type {
 import { SUPER_ADMIN } from './fixtures';
 
 /** SUPER_ADMIN with the platform permissions of the clinics panel. */
-export const PLATFORM_ADMIN: CurrentSession = {
+export const TENANTS_ADMIN: CurrentSession = {
   ...SUPER_ADMIN,
   permissions: [
     'platform.permissions.read',
     'platform.plans.manage',
     'platform.tenants.manage',
     'platform.tenants.purge',
-  ],
+  ] as unknown as CurrentSession['permissions'],
 };
 
 /** Platform account that manages clinics but cannot purge them nor read plans. */
 export const TENANTS_ONLY_ADMIN: CurrentSession = {
   ...SUPER_ADMIN,
-  permissions: ['platform.tenants.manage'],
+  permissions: ['platform.tenants.manage'] as unknown as CurrentSession['permissions'],
 };
 
 export const TENANT_ID = '5b0c8f2e-3a51-4d6e-9f0a-1c2b3d4e5f60';
@@ -40,7 +40,7 @@ const LIMITS = {
   MAX_STORAGE_MB: 10240,
 };
 
-export const TRIAL_PLAN: PlatformPlan = {
+export const TRIAL_PLAN: Plan = {
   id: TRIAL_PLAN_ID,
   code: 'TRIAL',
   name: 'Prueba',
@@ -55,7 +55,7 @@ export const TRIAL_PLAN: PlatformPlan = {
   version: 0,
 };
 
-export const STANDARD_PLAN: PlatformPlan = {
+export const STANDARD_PLAN: Plan = {
   id: STANDARD_PLAN_ID,
   code: 'STANDARD',
   name: 'Standard',
@@ -87,7 +87,7 @@ export const STANDARD_PLAN: PlatformPlan = {
   version: 3,
 };
 
-export const PREMIUM_PLAN: PlatformPlan = {
+export const PREMIUM_PLAN: Plan = {
   ...STANDARD_PLAN,
   id: PREMIUM_PLAN_ID,
   code: 'PREMIUM',
@@ -95,7 +95,7 @@ export const PREMIUM_PLAN: PlatformPlan = {
   currentPrices: [{ ...STANDARD_PLAN.currentPrices[0], id: 'p-premium', amount: '99.00' }],
 };
 
-export const PLANS: PlatformPlan[] = [TRIAL_PLAN, STANDARD_PLAN, PREMIUM_PLAN];
+export const PLANS: Plan[] = [TRIAL_PLAN, STANDARD_PLAN, PREMIUM_PLAN];
 
 export const TENANT: Tenant = {
   id: TENANT_ID,

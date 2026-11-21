@@ -11,7 +11,7 @@ import { expectMigratedScreen } from '../../../../testing/migrated-screen';
 import {
   ACTIVE_SUBSCRIPTION,
   PLANS,
-  PLATFORM_ADMIN,
+  TENANTS_ADMIN,
   STANDARD_PLAN_ID,
   TENANT,
   TENANTS_ONLY_ADMIN,
@@ -29,7 +29,7 @@ describe('TenantFormPage', () => {
   afterEach(() => app.backend.verify());
 
   async function open() {
-    await signIn(app, PLATFORM_ADMIN);
+    await signIn(app, TENANTS_ADMIN);
     await app.harness.navigateByUrl('/platform/tenants/new');
     await app.settle();
     app.backend.expectOne('/api/v1/platform/plans?status=ACTIVE').flush(PLANS);

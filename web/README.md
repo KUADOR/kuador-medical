@@ -21,10 +21,10 @@ Requires Node.js `^22.22.3` or `^24.15.0`.
 | Script | What it does |
 |---|---|
 | `npm start` | Dev server on `http://localhost:4200`, proxying `/api` and `/actuator` (paths unchanged) to the real API at `API_PROXY_TARGET`, default `http://localhost:8080` (`proxy.conf.mjs`, development configuration only). E.g. `API_PROXY_TARGET=http://localhost:9090 npm start`. |
-| `npm run mock` | Prism mocks: `identity.openapi.yaml` on `http://localhost:4010`, `user-registration.openapi.yaml` on `http://localhost:4011` and `platform.openapi.yaml` on `http://localhost:4012` (`/platform/tenants` and `/platform/plans` go there in `start:mock`). |
-| `npm run start:mock` | Dev server proxying `/api/v1` to the mocks, stripping the prefix (`proxy.mock.conf.json`): `/auth/*` (except `/auth/password`), `/me`, `/public/*`, `/patients`, `/patient-registration-settings`, `/staff-users`, `/roles` and `/permissions` go to 4011, the rest to 4010. |
+| `npm run mock` | Prism mocks: `identity.openapi.yaml` on `http://localhost:4010`, `user-registration.openapi.yaml` on `http://localhost:4011` and `platform.openapi.yaml` on `http://localhost:4012`. |
+| `npm run start:mock` | Dev server proxying `/api/v1` to the mocks, stripping the prefix (`proxy.mock.conf.json`): `/auth/*` (except `/auth/password`), `/me`, `/public/*`, `/patients`, `/patient-registration-settings`, `/staff-users`, `/roles` and `/permissions` go to 4011, `/platform/*` (except `/platform/permissions`) to 4012, the rest to 4010. |
 | `npm run dev:mock` | `mock` and `start:mock` together. |
-| `npm run api:generate` | Regenerates `identity.schema.d.ts` and `user-registration.schema.d.ts` in `src/app/core/api/`. |
+| `npm run api:generate` | Regenerates `identity.schema.d.ts`, `user-registration.schema.d.ts` and `platform.schema.d.ts` in `src/app/core/api/`. |
 | `npm run api:check` | Fails if the generated types are out of date with the contracts. |
 | `npm run icons:generate` | Regenerates `src/app/design-system/icon/icons.generated.ts` from `design/icons/*.svg`; `npm run icons:check` (also a guard test) fails if it is stale. |
 | `npm run lint` | Style guards (ADR-007): Stylelint (no hex, named colors or color functions; no `px` outside `src/app/design-system/` and the generated `tokens.css`; no remote URLs) and angular-eslint (no inline styles in templates or components). Runs before `build` and `test`. |

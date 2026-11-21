@@ -76,8 +76,8 @@ export class TenantsListPage {
   /** Onboarding needs the plans to choose from (platform.plans.manage). */
   protected readonly canCreate = computed(
     () =>
-      this.session.permissions().has('platform.tenants.manage') &&
-      this.session.permissions().has('platform.plans.manage'),
+      this.session.hasPermission('platform.tenants.manage') &&
+      this.session.hasPermission('platform.plans.manage'),
   );
 
   protected readonly filters = inject(NonNullableFormBuilder).group({

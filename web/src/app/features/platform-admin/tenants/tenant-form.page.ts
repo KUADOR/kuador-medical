@@ -8,7 +8,6 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { HttpErrorResponse } from '@angular/common/http';
 import {
   AbstractControl,
   FormGroup,
@@ -21,11 +20,13 @@ import type {
   BillingPeriod,
   ClinicType,
   CreateTenantRequest,
-  PlatformPlan,
+  Plan,
 } from '../../../core/api/api-types';
 import { ERROR_MESSAGES, errorMessage, toProblem } from '../../../core/errors/error-messages';
 import { applyServerErrors, controlErrorMessage, notBlank } from '../../../core/forms/form-errors';
+import { isRetryable } from '../../../core/errors/retryable';
 import { NoticeService } from '../../../core/notice/notice.service';
+import { PlansService } from '../../../core/platform/plans.service';
 import {
   PlatformCreationKey,
   PlatformTenantsService,
@@ -57,9 +58,7 @@ import {
 } from './tenant-labels';
 
 type LoadState =
-  | { kind: 'loading' }
-  | { kind: 'ready'; plans: PlatformPlan[] }
-  | { kind: 'failed'; message: string };
+  { kind: 'loading' } | { kind: 'ready'; plans: Plan[] } | { kind: 'failed'; message: string };
 
 /** Ids and Spanish names of the form controls, in screen order, for the error summary. */
 export const TENANT_FIELDS: readonly { path: string; id: string; label: string }[] = [
@@ -105,6 +104,7 @@ export const TENANT_FIELDS: readonly { path: string; id: string; label: string }
 })
 export class TenantFormPage {
   private readonly tenants = inject(PlatformTenantsService);
+  private readonly plansService = inject(PlansService);
   private readonly router = inject(Router);
   private readonly notices = inject(NoticeService);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
@@ -178,7 +178,7 @@ export class TenantFormPage {
 
   protected load(): void {
     this.state.set({ kind: 'loading' });
-    this.tenants.plans('ACTIVE').subscribe({
+    this.plansService.list('ACTIVE').subscribe({
       next: (plans) => this.state.set({ kind: 'ready', plans }),
       error: (error: unknown) => this.state.set({ kind: 'failed', message: errorMessage(error) }),
     });
@@ -307,9 +307,4 @@ export function tenantRequest(value: {
     billingPeriod: value.billingPeriod,
     owner: { fullName: value.owner.fullName.trim(), email: value.owner.email.trim() },
   };
-}
-
-/** Network failures and server errors may have reached the API: retry with the same key. */
-export function isRetryable(error: unknown): boolean {
-  return error instanceof HttpErrorResponse && (error.status === 0 || error.status >= 500);
 }

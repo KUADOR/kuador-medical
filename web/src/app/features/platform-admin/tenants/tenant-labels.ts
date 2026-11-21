@@ -6,7 +6,7 @@ import type {
   LimitCode,
   ModuleCode,
   PlanChangeKind,
-  PlatformPlan,
+  Plan,
   Subscription,
   SubscriptionStatus,
   TransitionCause,
@@ -181,7 +181,7 @@ export function clinicName(tenant: { legalName: string; tradeName?: string | nul
 }
 
 /** "Standard · Mensual 49,00 USD · Anual 490,00 USD" (prices without VAT). */
-export function planOptionLabel(plan: PlatformPlan): string {
+export function planOptionLabel(plan: Plan): string {
   if (plan.trial) {
     return `${plan.name} · prueba sin costo`;
   }

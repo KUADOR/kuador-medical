@@ -8,9 +8,7 @@ import {
   PlanChange,
   PlanChangeRequest,
   PlanChangePreview,
-  PlanStatus,
   PlatformPaths,
-  PlatformPlan,
   PriceLockRequest,
   PurgeRequest,
   Subscription,
@@ -53,12 +51,6 @@ function idempotency(key: PlatformCreationKey): { headers: HttpHeaders } {
 export class PlatformTenantsService {
   private readonly http = inject(HttpClient);
   private readonly config = inject(AppConfigService);
-
-  /** GET /platform/plans (platform.plans.manage): plans to offer at onboarding and plan change. */
-  plans(status?: PlanStatus): Observable<PlatformPlan[]> {
-    const params = status ? new HttpParams().set('status', status) : undefined;
-    return this.http.get<PlatformPlan[]>(this.config.apiUrl(PlatformPaths.plans), { params });
-  }
 
   /** GET /platform/tenants: search by name or RUC, filter by subscription status, paging. */
   list(query: TenantQuery = {}): Observable<TenantPage> {

@@ -20,7 +20,7 @@ import {
   newPlatformCreationKey,
 } from '../../../../core/platform/platform-tenants.service';
 import { KdActions, KdAlert, KdButton, KdField, KdInput } from '../../../../design-system';
-import { isRetryable } from '../tenant-form.page';
+import { isRetryable } from '../../../../core/errors/retryable';
 import { TENANT_LIMITS, formatDate, formatDateTime, purgeAvailable } from '../tenant-labels';
 
 export const RUC_MISMATCH_MESSAGE = 'El RUC no coincide con el de la clínica.';
