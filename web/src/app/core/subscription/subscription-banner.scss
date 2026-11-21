@@ -1,0 +1,12 @@
+// Notice of the subscription status (MEDK-74). Tokens only (ADR-007).
+:host {
+  display: block;
+}
+
+:host:not(:empty) {
+  margin-bottom: var(--kd-space-6);
+}
+
+.subscription-banner__text {
+  margin: 0 0 var(--kd-space-2);
+}

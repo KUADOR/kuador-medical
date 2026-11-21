@@ -1,5 +1,6 @@
 import type { UrlTree } from '@angular/router';
 import { Router } from '@angular/router';
+import type { TwoFactorStep } from '../api/api-types';
 import { AuthRoutes, RETURN_URL_PARAM } from './auth-routes';
 import type { LoginOutcome } from './auth.service';
 import { landingUrl, safeReturnUrl } from './navigation';
@@ -21,6 +22,8 @@ export function nextUrlAfterLogin(
       return router.createUrlTree([AuthRoutes.loginClinic], { queryParams });
     case 'BRANCH_SELECTION_REQUIRED':
       return router.createUrlTree([AuthRoutes.loginBranch], { queryParams });
+    case 'TWO_FACTOR_REQUIRED':
+      return router.createUrlTree([twoFactorRoute(outcome.step)], { queryParams });
     case 'AUTHENTICATED': {
       const account = outcome.account;
       if (!account) {
@@ -32,6 +35,11 @@ export function nextUrlAfterLogin(
       return router.parseUrl(target);
     }
   }
+}
+
+/** Page of a pending second factor step: enrollment or verification (ADR-019). */
+export function twoFactorRoute(step: TwoFactorStep): string {
+  return step === 'ENROLLMENT_REQUIRED' ? AuthRoutes.twoFactorEnroll : AuthRoutes.twoFactorVerify;
 }
 
 /** Reads the one-time token of an email link: `#t=<token>` (ADR-014). */

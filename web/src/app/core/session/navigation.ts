@@ -1,5 +1,5 @@
 import type { IconName } from '../../design-system';
-import type { AccountKind, CurrentSession, PermissionCode } from '../api/api-types';
+import type { AccessPermission, AccountKind, CurrentSession } from '../api/api-types';
 import { AuthRoutes } from './auth-routes';
 
 /** Client routes of the authenticated pages. */
@@ -15,6 +15,7 @@ export const AppRoutes = {
   newPatient: '/patients/new',
   selfRegistrationSettings: '/patients/self-registration',
   myGuardianLinks: '/my-contacts',
+  dataExport: '/data-export',
 } as const;
 
 /** Detail page of a patient. */
@@ -36,7 +37,7 @@ export const Modules = {
 /** What a page or menu entry needs; the API enforces it again (ADR-008, Constitution VII). */
 export interface AccessRequirement {
   /** Every permission listed must be granted by the active assignment. */
-  permissions?: readonly PermissionCode[];
+  permissions?: readonly AccessPermission[];
   /** Module that the clinic plan must enable. Platform pages do not need one. */
   module?: string;
   /** Account kinds allowed (e.g. only PATIENT accounts). Any kind when absent. */
@@ -88,6 +89,13 @@ export const MENU_ITEMS: readonly MenuItem[] = [
     icon: 'clipboard-list',
     permissions: ['platform.permissions.read'],
   },
+  {
+    // OWNER data export (MEDK-74): also allowed while the clinic is read-only (ADR-017).
+    label: 'Exportar datos',
+    link: AppRoutes.dataExport,
+    icon: 'file-text',
+    permissions: ['tenant.data.export'],
+  },
 ];
 
 /** True when the session grants every permission and the module of the requirement. */
@@ -95,7 +103,7 @@ export function canAccess(account: CurrentSession | null, requirement: AccessReq
   if (!account) {
     return false;
   }
-  const granted = new Set(account.permissions);
+  const granted = new Set<string>(account.permissions);
   const permissionsOk = (requirement.permissions ?? []).every((code) => granted.has(code));
   const moduleOk =
     !requirement.module || (account.enabledModules ?? []).includes(requirement.module);
@@ -140,6 +148,9 @@ const NO_RETURN_PREFIXES: readonly string[] = [
   AuthRoutes.resetPassword,
   AuthRoutes.invitation,
   AuthRoutes.verifyEmail,
+  AuthRoutes.ownerInvitation,
+  AuthRoutes.twoFactorEnroll,
+  AuthRoutes.twoFactorVerify,
 ];
 
 /**

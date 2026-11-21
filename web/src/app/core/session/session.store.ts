@@ -2,10 +2,12 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import {
+  AccessPermission,
   AuthenticatedResult,
   CurrentSession,
   PermissionCode,
   SessionPaths,
+  TwoFactorStep,
 } from '../api/api-types';
 import { AppConfigService } from '../config/app-config.service';
 
@@ -21,6 +23,11 @@ export interface StoredSession {
   /** Epoch ms when the refresh token expires. */
   refreshExpiresAt: number;
   mustChangePassword: boolean;
+  /**
+   * Second factor still pending for this session (ADR-019): the api answers every operation but
+   * /auth/two-factor/** with 401 TWO_FACTOR_REQUIRED until it is enrolled or verified.
+   */
+  twoFactor?: TwoFactorStep | null;
 }
 
 /**
@@ -45,6 +52,8 @@ export class SessionStore {
   readonly mustChangePassword = computed(
     () => this.current()?.mustChangePassword ?? this.tokens()?.mustChangePassword ?? false,
   );
+  /** Pending second factor step of the session, or null when it passed it (or needs none). */
+  readonly twoFactorStep = computed<TwoFactorStep | null>(() => this.tokens()?.twoFactor ?? null);
   readonly permissions = computed(() => new Set(this.current()?.permissions ?? []));
   readonly modules = computed(() => new Set(this.current()?.enabledModules ?? []));
 
@@ -75,9 +84,14 @@ export class SessionStore {
     return this.accessToken() !== null || this.refreshToken() !== null;
   }
 
-  /** Starts a session from an AUTHENTICATED login step (login, clinic, branch, invitation). */
-  start(result: AuthenticatedResult): void {
-    this.store(result, result.mustChangePassword);
+  /**
+   * Starts a session from an AUTHENTICATED login step (login, clinic, branch, invitation).
+   * `twoFactor` is the second factor step the session still needs, when already known (an
+   * accepted OWNER invitation always needs the enrollment); tokens issued after the second
+   * factor (enrollment confirmation, verification) pass none.
+   */
+  start(result: AuthenticatedResult, twoFactor: TwoFactorStep | null = null): void {
+    this.store(result, result.mustChangePassword, twoFactor);
     this.resetAccount();
   }
 
@@ -86,7 +100,7 @@ export class SessionStore {
    * the clinic and branch stay the same.
    */
   replaceTokens(result: AuthenticatedResult): void {
-    this.store(result, result.mustChangePassword);
+    this.store(result, result.mustChangePassword, this.twoFactorStep());
   }
 
   /**
@@ -94,7 +108,8 @@ export class SessionStore {
    * Concurrent callers (the shell and a guard after a reload) share the same request.
    */
   ensureAccount(): Promise<CurrentSession | null> {
-    if (!this.hasUsableSession()) {
+    if (!this.hasUsableSession() || this.twoFactorStep()) {
+      // A session without the second factor cannot read GET /me (401 TWO_FACTOR_REQUIRED).
       return Promise.resolve(null);
     }
     const cached = this.current();
@@ -135,14 +150,26 @@ export class SessionStore {
     }
   }
 
+  /**
+   * Marks the session as blocked until the second factor is enrolled or verified
+   * (401 TWO_FACTOR_REQUIRED). The tokens stay: the /auth/two-factor/** operations use them.
+   */
+  markTwoFactorRequired(step: TwoFactorStep): void {
+    const session = this.tokens();
+    if (session && session.twoFactor !== step) {
+      this.persist({ ...session, twoFactor: step });
+      this.resetAccount();
+    }
+  }
+
   /** Clears the pending password change after POST /auth/password and reloads GET /me next time. */
   markPasswordChanged(): void {
     this.updateMustChange(false);
     this.resetAccount();
   }
 
-  hasPermission(code: PermissionCode): boolean {
-    return this.permissions().has(code);
+  hasPermission(code: AccessPermission): boolean {
+    return (this.permissions() as ReadonlySet<string>).has(code);
   }
 
   hasModule(module: string): boolean {
@@ -155,7 +182,11 @@ export class SessionStore {
     sessionStorage.removeItem(STORAGE_KEY);
   }
 
-  private store(result: AuthenticatedResult, mustChangePassword: boolean): void {
+  private store(
+    result: AuthenticatedResult,
+    mustChangePassword: boolean,
+    twoFactor: TwoFactorStep | null,
+  ): void {
     const now = Date.now();
     this.persist({
       accessToken: result.accessToken,
@@ -163,6 +194,7 @@ export class SessionStore {
       refreshToken: result.refreshToken,
       refreshExpiresAt: now + result.refreshExpiresIn * 1000,
       mustChangePassword,
+      twoFactor,
     });
   }
 
@@ -211,8 +243,13 @@ function readStoredSession(): StoredSession | null {
       refreshToken: parsed.refreshToken,
       refreshExpiresAt: parsed.refreshExpiresAt,
       mustChangePassword: parsed.mustChangePassword === true,
+      twoFactor: isTwoFactorStep(parsed.twoFactor) ? parsed.twoFactor : null,
     };
   } catch {
     return null;
   }
+}
+
+function isTwoFactorStep(value: unknown): value is TwoFactorStep {
+  return value === 'ENROLLMENT_REQUIRED' || value === 'VERIFICATION_REQUIRED';
 }

@@ -1,4 +1,28 @@
 {
+  "/api/v1/public/owner-invitations": {
+    "target": "http://localhost:4012",
+    "secure": false,
+    "changeOrigin": true,
+    "pathRewrite": {
+      "^/api/v1": ""
+    }
+  },
+  "/api/v1/auth/two-factor": {
+    "target": "http://localhost:4012",
+    "secure": false,
+    "changeOrigin": true,
+    "pathRewrite": {
+      "^/api/v1": ""
+    }
+  },
+  "/api/v1/tenant/": {
+    "target": "http://localhost:4012",
+    "secure": false,
+    "changeOrigin": true,
+    "pathRewrite": {
+      "^/api/v1": ""
+    }
+  },
   "^/api/v1/auth/password$": {
     "target": "http://localhost:4010",
     "secure": false,
@@ -61,6 +85,22 @@
   },
   "/api/v1/permissions": {
     "target": "http://localhost:4011",
+    "secure": false,
+    "changeOrigin": true,
+    "pathRewrite": {
+      "^/api/v1": ""
+    }
+  },
+  "^/api/v1/platform/permissions$": {
+    "target": "http://localhost:4010",
+    "secure": false,
+    "changeOrigin": true,
+    "pathRewrite": {
+      "^/api/v1": ""
+    }
+  },
+  "/api/v1/platform": {
+    "target": "http://localhost:4012",
     "secure": false,
     "changeOrigin": true,
     "pathRewrite": {

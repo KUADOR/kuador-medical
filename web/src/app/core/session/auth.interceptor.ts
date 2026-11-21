@@ -20,7 +20,9 @@ import { TokenRefresher } from './token-refresher';
  * public auth operations) and keeps the session alive:
  * - an expired access token is refreshed before the request is sent;
  * - a 401 is answered with one refresh and one retry; if that fails the session ends;
- * - 403 PASSWORD_CHANGE_REQUIRED sends to the password change.
+ * - 403 PASSWORD_CHANGE_REQUIRED sends to the password change;
+ * - 401 TWO_FACTOR_REQUIRED keeps the session and marks the pending second factor (ADR-019): the
+ *   guards send to its enrollment or verification page.
  */
 export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const config = inject(AppConfigService);
@@ -51,6 +53,13 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
     }
   };
 
+  const reactToTwoFactor = (error: unknown) => {
+    const problem = toProblem(error);
+    if (problem?.code === 'TWO_FACTOR_REQUIRED') {
+      session.markTwoFactorRequired(problem.twoFactor ?? 'VERIFICATION_REQUIRED');
+    }
+  };
+
   // A valid token is used right away; only an expired one waits for the refresh.
   const current = session.accessToken();
   const token$: Observable<string | null> = !hadSession
@@ -77,6 +86,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
     // Also covers the retried request after a refresh.
     catchError((error: unknown) => {
       reactToForbidden(error);
+      reactToTwoFactor(error);
       return throwError(() => error);
     }),
   );
@@ -119,14 +129,15 @@ function retryAfterRefresh(
 
 /**
  * 401 that means "this access token is not accepted". INVALID_CREDENTIALS on POST /auth/password
- * is a wrong current password, not a dead session.
+ * is a wrong current password, not a dead session; TWO_FACTOR_REQUIRED is a valid session that
+ * still has to pass the second factor (a refresh would not change that).
  */
 function isSessionRejected(error: unknown): boolean {
-  return (
-    error instanceof HttpErrorResponse &&
-    error.status === 401 &&
-    toProblem(error)?.code !== 'INVALID_CREDENTIALS'
-  );
+  if (!(error instanceof HttpErrorResponse) || error.status !== 401) {
+    return false;
+  }
+  const code = toProblem(error)?.code;
+  return code !== 'INVALID_CREDENTIALS' && code !== 'TWO_FACTOR_REQUIRED';
 }
 
 function sessionEnded(request: HttpRequest<unknown>): HttpErrorResponse {

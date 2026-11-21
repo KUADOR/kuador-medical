@@ -7,6 +7,7 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import type { AuthenticatedResult, CurrentSession } from '../app/core/api/api-types';
 import { routes } from '../app/app.routes';
 import { authInterceptor } from '../app/core/session/auth.interceptor';
+import { subscriptionInterceptor } from '../app/core/subscription/subscription.interceptor';
 import { SessionStore } from '../app/core/session/session.store';
 import { LOGIN } from './fixtures';
 
@@ -26,7 +27,7 @@ export async function createAppHarness(): Promise<AppHarness> {
   TestBed.configureTestingModule({
     providers: [
       provideRouter(routes, withComponentInputBinding()),
-      provideHttpClient(withInterceptors([authInterceptor])),
+      provideHttpClient(withInterceptors([authInterceptor, subscriptionInterceptor])),
       provideHttpClientTesting(),
     ],
   });

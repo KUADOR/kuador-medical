@@ -21,6 +21,12 @@ export function controlErrorMessage(control: AbstractControl | null): string | n
   if (errors['email']) {
     return 'Escribe un correo válido, por ejemplo nombre@clinica.com.';
   }
+  if (errors['totpCode']) {
+    return 'Escribe los 6 dígitos que muestra tu app de autenticación.';
+  }
+  if (errors['mustAccept']) {
+    return 'Debes aceptarlo para continuar.';
+  }
   if (errors['minlength']) {
     return `Debe tener al menos ${errors['minlength'].requiredLength} caracteres.`;
   }
@@ -124,3 +130,16 @@ export function applyServerErrors(form: FormGroup, error: unknown): FieldError[]
 export function focusFirstInvalid(host: HTMLElement): void {
   host.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
 }
+
+/** TOTP code of the contract: exactly 6 digits (spaces typed between groups are ignored). */
+export const totpCode: ValidatorFn = (control): ValidationErrors | null => {
+  const value: unknown = control.value;
+  if (typeof value !== 'string' || value === '') {
+    return null;
+  }
+  return /^\d{6}$/.test(value.replace(/\s/g, '')) ? null : { totpCode: true };
+};
+
+/** A checkbox the person must tick (terms, data policy, data responsibility). */
+export const mustAccept: ValidatorFn = (control): ValidationErrors | null =>
+  control.value === true ? null : { mustAccept: true };

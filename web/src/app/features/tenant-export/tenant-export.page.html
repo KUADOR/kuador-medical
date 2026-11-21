@@ -1,0 +1,106 @@
+<kd-page
+  heading="Exportar datos de la clínica"
+  headingId="tenant-export-title"
+  description="Descarga una copia de los datos de tu clínica en un archivo. El enlace de descarga vence después de unos días."
+>
+  @if (readOnly()) {
+    <kd-alert tone="info" data-testid="read-only-info">
+      Aunque la clínica esté en modo solo lectura, puedes exportar sus datos.
+    </kd-alert>
+  }
+
+  @if (failure(); as message) {
+    <kd-alert tone="error" data-testid="form-error">{{ message }}</kd-alert>
+  }
+
+  @if (current(); as job) {
+    @switch (job.status) {
+      @case ('PENDING') {
+        <kd-loading-state
+          label="Preparando la exportación. Puede tardar unos minutos; esta página se actualiza sola."
+          data-testid="export-pending"
+        />
+        <kd-actions>
+          <button
+            kdButton
+            type="button"
+            icon="refresh-cw"
+            [disabled]="checking()"
+            (click)="check()"
+          >
+            Actualizar estado
+          </button>
+        </kd-actions>
+      }
+      @case ('READY') {
+        <kd-alert tone="ok" heading="La exportación está lista" data-testid="export-ready">
+          @if (formatDay(job.expiresAt); as until) {
+            El enlace de descarga vence el {{ until }}.
+          } @else {
+            Descárgala pronto: el enlace vence en unos días.
+          }
+        </kd-alert>
+        <kd-actions>
+          @if (job.downloadUrl) {
+            <a
+              kdButton
+              variant="primary"
+              icon="file-text"
+              data-testid="export-download"
+              rel="noopener"
+              [href]="job.downloadUrl"
+              >Descargar archivo</a
+            >
+          }
+          <button kdButton type="button" (click)="startOver()">Nueva exportación</button>
+        </kd-actions>
+      }
+      @case ('FAILED') {
+        <kd-alert tone="error" data-testid="export-failed">
+          No se pudo generar la exportación. Intenta de nuevo; si vuelve a fallar, comunícate con
+          Kuador.
+        </kd-alert>
+        <kd-actions>
+          <button kdButton type="button" icon="refresh-cw" (click)="startOver()">
+            Intentar de nuevo
+          </button>
+        </kd-actions>
+      }
+      @case ('EXPIRED') {
+        <kd-alert tone="warning" data-testid="export-expired">
+          El enlace de esta exportación venció. Solicita una nueva.
+        </kd-alert>
+        <kd-actions>
+          <button kdButton type="button" (click)="startOver()">Nueva exportación</button>
+        </kd-actions>
+      }
+    }
+  } @else {
+    <form class="tenant-export__form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <kd-field label="Formato">
+        <select kdInput id="export-format" formControlName="format">
+          @for (format of formats; track format[0]) {
+            <option [value]="format[0]">{{ format[1] }}</option>
+          }
+        </select>
+      </kd-field>
+
+      <kd-field
+        label="Acepto que la clínica es la responsable de los datos exportados y que Kuador es solo el encargado de su tratamiento"
+      >
+        <input
+          kdInput
+          id="export-responsibility"
+          type="checkbox"
+          formControlName="acceptResponsibility"
+        />
+      </kd-field>
+
+      <kd-actions>
+        <button kdButton variant="primary" type="submit" [disabled]="submitting()">
+          {{ submitting() ? 'Solicitando…' : 'Solicitar exportación' }}
+        </button>
+      </kd-actions>
+    </form>
+  }
+</kd-page>
