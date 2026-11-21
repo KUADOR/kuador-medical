@@ -1,79 +1,60 @@
-<section class="page page--narrow" aria-labelledby="invitation-title">
-  <h1 id="invitation-title">Activar tu cuenta</h1>
-
+<kd-page heading="Activar tu cuenta" headingId="invitation-title" width="narrow">
   @switch (state()) {
     @case ('loading') {
-      <p role="status" data-testid="loading">Revisando la invitación…</p>
+      <kd-loading-state label="Revisando la invitación…" data-testid="loading" />
     }
     @case ('invalid') {
-      <p class="alert" role="alert" data-testid="link-error">{{ invalidMessage }}</p>
+      <kd-alert tone="error" data-testid="link-error">{{ invalidMessage }}</kd-alert>
     }
     @case ('error') {
-      <p class="alert" role="alert" data-testid="form-error">{{ loadError() }}</p>
-      <div class="actions">
-        <button type="button" class="button button--secondary" (click)="load()">
-          Intentar de nuevo
-        </button>
-      </div>
+      <kd-alert tone="error" data-testid="form-error">{{ loadError() }}</kd-alert>
+      <kd-actions>
+        <button kdButton type="button" icon="refresh-cw" (click)="load()">Intentar de nuevo</button>
+      </kd-actions>
     }
     @case ('ready') {
       @if (preview(); as invitation) {
-        <p class="alert alert--info" data-testid="invitation-summary">
+        <kd-alert tone="info" data-testid="invitation-summary">
           Te invitaron a <strong>{{ invitation.clinicName }}</strong> con el correo
           <strong>{{ invitation.maskedEmail }}</strong>. Elige una contraseña para activar tu
           cuenta.
-        </p>
+        </kd-alert>
       }
-      <form class="form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <form class="account-form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
         @if (failure(); as message) {
-          <p class="alert" role="alert" data-testid="form-error">{{ message }}</p>
+          <kd-alert tone="error" data-testid="form-error">{{ message }}</kd-alert>
         }
 
-        <div class="field">
-          <label for="invitation-password">Contraseña</label>
+        <kd-field label="Contraseña" [hint]="'Al menos ' + passwordMinLength + ' caracteres.'">
           <input
+            kdInput
             id="invitation-password"
             type="password"
             formControlName="password"
             autocomplete="new-password"
-            [attr.aria-invalid]="error('password') ? 'true' : null"
-            [attr.aria-describedby]="
-              error('password')
-                ? 'invitation-password-hint invitation-password-error'
-                : 'invitation-password-hint'
-            "
           />
-          <p id="invitation-password-hint" class="field__hint">
-            Al menos {{ passwordMinLength }} caracteres.
-          </p>
-          @if (error('password'); as message) {
-            <p id="invitation-password-error" class="field__error">{{ message }}</p>
-          }
-        </div>
+        </kd-field>
 
-        <div class="field">
-          <label for="invitation-confirm">Repite la contraseña</label>
+        <kd-field label="Repite la contraseña">
           <input
+            kdInput
             id="invitation-confirm"
             type="password"
             formControlName="confirmPassword"
             autocomplete="new-password"
-            [attr.aria-invalid]="error('confirmPassword') ? 'true' : null"
-            [attr.aria-describedby]="error('confirmPassword') ? 'invitation-confirm-error' : null"
           />
-          @if (error('confirmPassword'); as message) {
-            <p id="invitation-confirm-error" class="field__error">{{ message }}</p>
-          }
-        </div>
+        </kd-field>
 
-        <div class="actions">
-          <button type="submit" class="button" [disabled]="submitting()">
+        <kd-actions>
+          <button kdButton variant="primary" type="submit" [disabled]="submitting()">
             {{ submitting() ? 'Activando…' : 'Activar cuenta' }}
           </button>
-        </div>
+        </kd-actions>
       </form>
     }
   }
 
-  <p><a [routerLink]="loginLink">Ir a ingresar</a></p>
-</section>
+  <kd-actions>
+    <a kdButton variant="tertiary" [routerLink]="loginLink">Ir a ingresar</a>
+  </kd-actions>
+</kd-page>

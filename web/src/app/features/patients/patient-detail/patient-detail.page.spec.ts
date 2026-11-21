@@ -21,10 +21,9 @@ import {
 } from '../../../../testing/app-harness';
 import { expectNoAxeViolations } from '../../../../testing/axe';
 import { polyfillDialog } from '../../../../testing/design-system';
+import { LEGACY_CLASSES } from '../../../../testing/legacy-classes';
 import type { CurrentSession, GuardianLink, Patient } from '../../../core/api/api-types';
 
-/** Legacy global classes replaced by the design system (MEDK-43). */
-const LEGACY_CLASSES = ['button', 'alert', 'card', 'card-list'];
 
 describe('PatientDetailPage', () => {
   let app: AppHarness;

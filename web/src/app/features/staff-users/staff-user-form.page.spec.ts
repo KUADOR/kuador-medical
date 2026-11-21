@@ -20,6 +20,7 @@ import {
   submit,
   type,
 } from '../../../testing/app-harness';
+import { expectMigratedScreen } from '../../../testing/migrated-screen';
 import { ASSIGNMENT_REQUIRED_MESSAGE } from './staff-user-form.page';
 
 const ROLES = [OWNER_ROLE, ADMIN_ROLE, RECEPTION_ROLE, DOCTOR_ROLE];
@@ -66,6 +67,21 @@ describe('StaffUserFormPage', () => {
     }
     await app.settle();
   }
+
+  it('uses only the design system (MEDK-44)', async () => {
+    await open();
+    expectMigratedScreen(app.page());
+
+    submit(app.page());
+    await app.settle();
+    expectMigratedScreen(app.page());
+
+    (byTestId(app.page(), 'mode-per-branch') as HTMLInputElement).click();
+    await app.settle();
+    expectMigratedScreen(app.page());
+    expect(app.page().querySelector(`label[for="staff-assignments-branch-${MAIN_BRANCH.id}"]`))
+      .not.toBeNull();
+  });
 
   it('invites with the same role in every branch, a client id and an idempotency key', async () => {
     await open();
@@ -150,12 +166,12 @@ describe('StaffUserFormPage', () => {
   it('requires the professional registration for a clinical role', async () => {
     await open();
     await fillPerson();
-    expect(byTestId(app.page(), 'registration-hint')?.textContent).toContain(
+    expect(app.page().querySelector('#staff-registration-hint')?.textContent).toContain(
       'Obligatorio solo para roles clínicos',
     );
     select('#staff-assignments-role', DOCTOR_ROLE.id);
     await app.settle();
-    expect(byTestId(app.page(), 'registration-hint')?.textContent).toContain(
+    expect(app.page().querySelector('#staff-registration-hint')?.textContent).toContain(
       'Obligatorio: elegiste un rol clínico',
     );
     expect(options('#staff-assignments-role')).toContain('Médico (rol clínico)');

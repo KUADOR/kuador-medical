@@ -16,6 +16,16 @@ import { errorMessage } from '../../core/errors/error-messages';
 import { NoticeService } from '../../core/notice/notice.service';
 import { permissionLabel } from '../../core/roles/permission-labels';
 import { RolesService, isOwnerRole } from '../../core/roles/roles.service';
+import {
+  KdActions,
+  KdAlert,
+  KdBadge,
+  KdButton,
+  KdCard,
+  KdEmptyState,
+  KdLoadingState,
+  KdPage,
+} from '../../design-system';
 
 type LoadState =
   { kind: 'loading' } | { kind: 'loaded'; roles: Role[] } | { kind: 'failed'; message: string };
@@ -33,8 +43,19 @@ export function sortRoles(roles: readonly Role[]): Role[] {
 @Component({
   selector: 'mk-roles-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink],
+  imports: [
+    RouterLink,
+    KdActions,
+    KdAlert,
+    KdBadge,
+    KdButton,
+    KdCard,
+    KdEmptyState,
+    KdLoadingState,
+    KdPage,
+  ],
   templateUrl: './roles.page.html',
+  styleUrl: './roles.page.scss',
 })
 export class RolesPage {
   private readonly rolesService = inject(RolesService);

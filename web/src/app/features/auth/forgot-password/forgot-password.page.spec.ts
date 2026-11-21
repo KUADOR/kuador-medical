@@ -8,6 +8,7 @@ import {
   type,
 } from '../../../../testing/app-harness';
 import { RESET_REQUESTED_MESSAGE } from './forgot-password.page';
+import { expectMigratedScreen } from '../../../../testing/migrated-screen';
 
 describe('ForgotPasswordPage', () => {
   let app: AppHarness;
@@ -51,5 +52,24 @@ describe('ForgotPasswordPage', () => {
     expect(byTestId(app.page(), 'form-error')?.textContent?.trim()).toBe(
       ERROR_MESSAGES.TOO_MANY_ATTEMPTS,
     );
+  });
+
+  it('uses only the design system (MEDK-44)', async () => {
+    expectMigratedScreen(app.page());
+
+    submit(app.page());
+    await app.settle();
+    expect(app.page().querySelector('#forgot-email')?.getAttribute('aria-describedby')).toBe(
+      'forgot-email-error',
+    );
+    expectMigratedScreen(app.page());
+
+    type(app.page(), '#forgot-email', 'person@example.com');
+    submit(app.page());
+    app.backend
+      .expectOne('/api/v1/auth/password-reset/request')
+      .flush(null, { status: 202, statusText: 'Accepted' });
+    await app.settle();
+    expectMigratedScreen(app.page());
   });
 });

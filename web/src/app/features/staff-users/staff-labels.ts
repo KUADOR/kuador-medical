@@ -1,4 +1,5 @@
 import type { AccountStatus, StaffUser } from '../../core/api/api-types';
+import type { KdBadgeTone } from '../../design-system';
 
 /** Spanish names of the account statuses of the contract. */
 export const ACCOUNT_STATUS_LABELS: Record<AccountStatus, string> = {
@@ -6,6 +7,14 @@ export const ACCOUNT_STATUS_LABELS: Record<AccountStatus, string> = {
   PENDING_EMAIL_VERIFICATION: 'Verificación de correo pendiente',
   ACTIVE: 'Activo',
   DISABLED: 'Deshabilitado',
+};
+
+/** Badge tone of each account status; the label always says the status (R-08). */
+export const ACCOUNT_STATUS_TONES: Record<AccountStatus, KdBadgeTone> = {
+  INVITED: 'info',
+  PENDING_EMAIL_VERIFICATION: 'warning',
+  ACTIVE: 'ok',
+  DISABLED: 'neutral',
 };
 
 export const ACCOUNT_STATUSES = Object.keys(ACCOUNT_STATUS_LABELS) as AccountStatus[];

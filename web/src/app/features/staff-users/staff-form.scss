@@ -1,0 +1,9 @@
+// Forms of the staff screens (MEDK-44): invitation and record edit. Tokens only (ADR-007).
+.staff-form {
+  display: grid;
+  gap: var(--kd-space-4);
+  padding: var(--kd-space-4);
+  border: var(--kd-border-hairline);
+  border-radius: var(--kd-radius-lg);
+  background: var(--kd-surface-raised);
+}

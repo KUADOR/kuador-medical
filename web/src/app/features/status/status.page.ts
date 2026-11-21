@@ -2,6 +2,15 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import type { HealthStatus, SystemInfo } from '../../core/api/api-types';
 import { errorMessage } from '../../core/errors/error-messages';
 import { SystemInfoService } from '../../core/system/system-info.service';
+import {
+  KdActions,
+  KdAlert,
+  KdBadge,
+  KdButton,
+  KdDetails,
+  KdLoadingState,
+  KdPage,
+} from '../../design-system';
 
 type LoadState =
   { kind: 'loading' } | { kind: 'loaded'; info: SystemInfo } | { kind: 'failed'; message: string };
@@ -15,6 +24,7 @@ const HEALTH_LABELS: Record<HealthStatus, string> = {
 @Component({
   selector: 'mk-status-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [KdActions, KdAlert, KdBadge, KdButton, KdDetails, KdLoadingState, KdPage],
   templateUrl: './status.page.html',
   styleUrl: './status.page.scss',
 })

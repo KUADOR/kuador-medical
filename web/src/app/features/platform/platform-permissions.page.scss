@@ -1,0 +1,5 @@
+// Layout of the permission catalog (MEDK-44). Tokens only (ADR-007).
+.platform-permissions__content {
+  display: grid;
+  gap: var(--kd-space-3);
+}

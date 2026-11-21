@@ -8,6 +8,7 @@ import {
 } from '../../../testing/app-harness';
 import { ERROR_MESSAGES } from '../../core/errors/error-messages';
 import { problem } from '../../../testing/fixtures';
+import { expectMigratedScreen } from '../../../testing/migrated-screen';
 
 describe('PlatformPermissionsPage', () => {
   let app: AppHarness;
@@ -44,6 +45,26 @@ describe('PlatformPermissionsPage', () => {
     await app.settle();
 
     expect(byTestId(app.page(), 'load-error')?.textContent?.trim()).toBe(ERROR_MESSAGES.FORBIDDEN);
+  });
+
+  it('uses only the design system (MEDK-44)', async () => {
+    await signIn(app, SUPER_ADMIN);
+    await app.harness.navigateByUrl('/platform/permissions');
+    app.backend.expectOne('/api/v1/platform/permissions').flush(FULL_CATALOG);
+    await app.settle();
+
+    expectMigratedScreen(app.page());
+    expect(app.page().querySelector('kd-table table')).not.toBeNull();
+  });
+
+  it('keeps the failed state inside the design system (MEDK-44)', async () => {
+    await signIn(app, SUPER_ADMIN);
+    await app.harness.navigateByUrl('/platform/permissions');
+    const { body, init } = problem(500, 'INTERNAL_ERROR');
+    app.backend.expectOne('/api/v1/platform/permissions').flush(body, init);
+    await app.settle();
+
+    expectMigratedScreen(app.page());
   });
 
   it('is closed to clinic accounts', async () => {

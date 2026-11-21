@@ -11,6 +11,7 @@ import { startWith, switchMap } from 'rxjs';
 import type { GuardianPersonInput } from '../../../core/api/api-types';
 import { DOCUMENT_TYPES } from '../../../core/catalogs/patient-catalogs';
 import { controlErrorMessage, e164Phone, notBlank } from '../../../core/forms/form-errors';
+import { KdField, KdInput } from '../../../design-system';
 
 export type GuardianPersonGroup = FormGroup<{
   documentType: FormControl<string>;
@@ -58,44 +59,27 @@ export function optional(text: string): string | undefined {
 @Component({
   selector: 'mk-guardian-person-fields',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, KdField, KdInput],
   template: `
     <ng-container [formGroup]="group()">
-      <div class="field">
-        <label [for]="id('documentType')">Tipo de documento</label>
-        <select
-          [id]="id('documentType')"
-          formControlName="documentType"
-          [attr.aria-invalid]="error('documentType') ? 'true' : null"
-          [attr.aria-describedby]="error('documentType') ? id('documentType-error') : null"
-        >
+      <kd-field label="Tipo de documento" [error]="error('documentType')">
+        <select kdInput [id]="id('documentType')" formControlName="documentType">
           @for (option of documentTypes; track option.code) {
             <option [value]="option.code">{{ option.label }}</option>
           }
         </select>
-        @if (error('documentType'); as message) {
-          <p [id]="id('documentType-error')" class="field__error">{{ message }}</p>
-        }
-      </div>
+      </kd-field>
 
       @for (field of textFields; track field.name) {
-        <div class="field">
-          <label [for]="id(field.name)">{{ field.label }}</label>
+        <kd-field [label]="field.label" [hint]="field.hint ?? null" [error]="error(field.name)">
           <input
+            kdInput
             [id]="id(field.name)"
             [type]="field.type"
             [formControlName]="field.name"
             [attr.autocomplete]="field.autocomplete"
-            [attr.aria-invalid]="error(field.name) ? 'true' : null"
-            [attr.aria-describedby]="describedBy(field.name, field.hint)"
           />
-          @if (field.hint) {
-            <p [id]="id(field.name + '-hint')" class="field__hint">{{ field.hint }}</p>
-          }
-          @if (error(field.name); as message) {
-            <p [id]="id(field.name + '-error')" class="field__error">{{ message }}</p>
-          }
-        </div>
+        </kd-field>
       }
     </ng-container>
   `,
@@ -139,13 +123,5 @@ export class GuardianPersonFields {
     this.changes();
     const control = this.group().controls[name];
     return control.touched ? controlErrorMessage(control) : null;
-  }
-
-  protected describedBy(name: PersonField, hint?: string): string | null {
-    const ids = [
-      hint ? this.id(`${name}-hint`) : null,
-      this.error(name) ? this.id(`${name}-error`) : null,
-    ];
-    return ids.filter(Boolean).join(' ') || null;
   }
 }

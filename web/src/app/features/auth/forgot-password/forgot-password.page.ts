@@ -10,9 +10,17 @@ import {
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { errorMessage } from '../../../core/errors/error-messages';
-import { controlErrorMessage, focusFirstInvalid } from '../../../core/forms/form-errors';
+import { focusFirstInvalid } from '../../../core/forms/form-errors';
 import { AuthRoutes } from '../../../core/session/auth-routes';
 import { AuthService } from '../../../core/session/auth.service';
+import {
+  KdActions,
+  KdAlert,
+  KdButton,
+  KdField,
+  KdInput,
+  KdPage,
+} from '../../../design-system';
 
 /** Same text whether or not the email exists: the page never reveals registered accounts. */
 export const RESET_REQUESTED_MESSAGE =
@@ -22,45 +30,54 @@ export const RESET_REQUESTED_MESSAGE =
 @Component({
   selector: 'mk-forgot-password-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    KdActions,
+    KdAlert,
+    KdButton,
+    KdField,
+    KdInput,
+    KdPage,
+  ],
   template: `
-    <section class="page page--narrow" aria-labelledby="forgot-title">
-      <h1 id="forgot-title">Recuperar contraseña</h1>
-
+    <kd-page
+      heading="Recuperar contraseña"
+      headingId="forgot-title"
+      width="narrow"
+      [description]="sent() ? null : 'Escribe el correo de tu cuenta y te enviaremos un enlace.'"
+    >
       @if (sent()) {
-        <p class="alert alert--success" role="status" data-testid="notice">{{ sentMessage }}</p>
+        <kd-alert tone="ok" data-testid="notice">{{ sentMessage }}</kd-alert>
       } @else {
-        <p class="hint">Escribe el correo de tu cuenta y te enviaremos un enlace.</p>
-        <form class="form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        <form class="account-form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
           @if (failure(); as message) {
-            <p class="alert" role="alert" data-testid="form-error">{{ message }}</p>
+            <kd-alert tone="error" data-testid="form-error">{{ message }}</kd-alert>
           }
-          <div class="field">
-            <label for="forgot-email">Correo</label>
+          <kd-field label="Correo">
             <input
+              kdInput
               id="forgot-email"
               type="email"
               formControlName="email"
               autocomplete="username"
               inputmode="email"
-              [attr.aria-invalid]="error() ? 'true' : null"
-              [attr.aria-describedby]="error() ? 'forgot-email-error' : null"
             />
-            @if (error(); as message) {
-              <p id="forgot-email-error" class="field__error">{{ message }}</p>
-            }
-          </div>
-          <div class="actions">
-            <button type="submit" class="button" [disabled]="submitting()">
+          </kd-field>
+          <kd-actions>
+            <button kdButton variant="primary" type="submit" [disabled]="submitting()">
               {{ submitting() ? 'Enviando…' : 'Enviar enlace' }}
             </button>
-          </div>
+          </kd-actions>
         </form>
       }
 
-      <p><a [routerLink]="loginLink">Volver a ingresar</a></p>
-    </section>
+      <kd-actions>
+        <a kdButton variant="tertiary" [routerLink]="loginLink">Volver a ingresar</a>
+      </kd-actions>
+    </kd-page>
   `,
+  styleUrl: './forgot-password.page.scss',
 })
 export class ForgotPasswordPage {
   private readonly auth = inject(AuthService);
@@ -75,11 +92,6 @@ export class ForgotPasswordPage {
   protected readonly form = inject(NonNullableFormBuilder).group({
     email: ['', [Validators.required, Validators.email, Validators.maxLength(254)]],
   });
-
-  protected error(): string | null {
-    const control = this.form.controls.email;
-    return control.touched ? controlErrorMessage(control) : null;
-  }
 
   protected async submit(): Promise<void> {
     if (this.submitting()) {

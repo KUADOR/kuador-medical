@@ -13,13 +13,20 @@ import { ERROR_MESSAGES, errorMessage, toProblem } from '../../../core/errors/er
 import {
   PASSWORD_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
-  controlErrorMessage,
   focusFirstInvalid,
   matchingFields,
 } from '../../../core/forms/form-errors';
 import { NoticeService } from '../../../core/notice/notice.service';
 import { AuthRoutes } from '../../../core/session/auth-routes';
 import { AuthService } from '../../../core/session/auth.service';
+import {
+  KdActions,
+  KdAlert,
+  KdButton,
+  KdField,
+  KdInput,
+  KdPage,
+} from '../../../design-system';
 import { takeLinkToken } from '../one-time-link';
 
 export const PASSWORD_RESET_DONE_MESSAGE =
@@ -29,8 +36,18 @@ export const PASSWORD_RESET_DONE_MESSAGE =
 @Component({
   selector: 'mk-reset-password-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    KdActions,
+    KdAlert,
+    KdButton,
+    KdField,
+    KdInput,
+    KdPage,
+  ],
   templateUrl: './reset-password.page.html',
+  styleUrl: './reset-password.page.scss',
 })
 export class ResetPasswordPage {
   private readonly auth = inject(AuthService);
@@ -62,11 +79,6 @@ export class ResetPasswordPage {
     },
     { validators: matchingFields('newPassword', 'confirmPassword') },
   );
-
-  protected error(name: 'newPassword' | 'confirmPassword'): string | null {
-    const control = this.form.controls[name];
-    return control.touched ? controlErrorMessage(control) : null;
-  }
 
   protected async submit(): Promise<void> {
     if (this.submitting() || !this.token) {

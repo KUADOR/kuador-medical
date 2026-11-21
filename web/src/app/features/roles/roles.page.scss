@@ -1,0 +1,55 @@
+// Layout of the roles list (MEDK-44). Tokens only (ADR-007).
+.roles__content {
+  display: grid;
+  gap: var(--kd-space-3);
+}
+
+.roles__list {
+  display: grid;
+  gap: var(--kd-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.roles__badges,
+.roles__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kd-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.roles__badges:empty {
+  display: none;
+}
+
+.roles__text {
+  margin: 0;
+  font: var(--kd-type-body-sm);
+  color: var(--kd-text-muted);
+}
+
+// Inline delete confirmation: a raised panel with the error tone as its edge (R-03, R-08).
+.roles__confirm {
+  display: grid;
+  gap: var(--kd-space-3);
+  padding: var(--kd-space-4);
+  border: var(--kd-border-hairline);
+  border-left: var(--kd-space-1) solid var(--kd-color-error);
+  border-radius: var(--kd-radius-lg);
+  background: var(--kd-surface-raised);
+}
+
+.roles__confirm-title {
+  margin: 0;
+  font: var(--kd-type-title);
+}
+
+.roles__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kd-space-2);
+}

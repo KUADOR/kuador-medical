@@ -1,24 +1,25 @@
-<section class="page" aria-labelledby="platform-permissions-title">
-  <h1 id="platform-permissions-title">Catálogo de permisos</h1>
-  <p class="hint">
-    Permisos fijos del sistema. Las clínicas arman sus roles solo con los permisos de alcance
-    «Clínica»; los de «Plataforma» nunca se asignan a un rol de clínica.
-  </p>
-
-  <div [attr.aria-busy]="state().kind === 'loading'">
+<kd-page
+  heading="Catálogo de permisos"
+  headingId="platform-permissions-title"
+  width="wide"
+  description="Permisos fijos del sistema. Las clínicas arman sus roles solo con los permisos de alcance «Clínica»; los de «Plataforma» nunca se asignan a un rol de clínica."
+>
+  <div class="platform-permissions__content" [attr.aria-busy]="state().kind === 'loading'">
     @switch (state().kind) {
       @case ('loading') {
-        <p class="hint">Cargando catálogo…</p>
+        <kd-loading-state label="Cargando catálogo…" />
       }
       @case ('failed') {
-        <p class="alert" role="alert" data-testid="load-error">{{ failure() }}</p>
-        <div class="actions">
-          <button type="button" class="button" (click)="load()">Volver a intentar</button>
-        </div>
+        <kd-alert tone="error" data-testid="load-error">{{ failure() }}</kd-alert>
+        <kd-actions>
+          <button kdButton type="button" icon="refresh-cw" (click)="load()">
+            Volver a intentar
+          </button>
+        </kd-actions>
       }
       @default {
-        <div class="table-wrapper">
-          <table class="table">
+        <kd-table label="Catálogo completo de permisos">
+          <table>
             <caption class="visually-hidden">
               Catálogo completo de permisos
             </caption>
@@ -45,8 +46,8 @@
               }
             </tbody>
           </table>
-        </div>
+        </kd-table>
       }
     }
   </div>
-</section>
+</kd-page>

@@ -1,0 +1,12 @@
+// Layout of the public self-registration form (MEDK-44). Tokens only (ADR-007).
+.sr-form {
+  display: grid;
+  gap: var(--kd-space-4);
+}
+
+.sr-login {
+  margin: 0;
+  padding-top: var(--kd-space-4);
+  border-top: var(--kd-border-hairline);
+  color: var(--kd-text-muted);
+}

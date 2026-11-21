@@ -1,0 +1,9 @@
+// Layout of the patient registration and edit form (MEDK-44). Tokens only (ADR-007).
+.patient-form__form {
+  display: grid;
+  gap: var(--kd-space-4);
+}
+
+.patient-form__message {
+  margin: 0;
+}

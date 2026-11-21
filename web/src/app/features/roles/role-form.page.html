@@ -1,22 +1,23 @@
-<section class="page" aria-labelledby="role-form-title">
-  <p><a [routerLink]="rolesLink">← Volver a roles</a></p>
-  <h1 id="role-form-title">{{ heading() }}</h1>
+<kd-page [heading]="heading()" headingId="role-form-title">
+  <a kdPageBefore kdButton variant="tertiary" icon="arrow-left" [routerLink]="rolesLink"
+    >Volver a roles</a
+  >
 
   @switch (state().kind) {
     @case ('loading') {
-      <p class="hint" aria-live="polite">Cargando…</p>
+      <kd-loading-state label="Cargando…" />
     }
     @case ('failed') {
-      <p class="alert" role="alert" data-testid="load-error">{{ loadFailure()?.message }}</p>
+      <kd-alert tone="error" data-testid="load-error">{{ loadFailure()?.message }}</kd-alert>
       @if (!loadFailure()?.notFound) {
-        <div class="actions">
-          <button type="button" class="button" (click)="load()">Volver a intentar</button>
-        </div>
+        <kd-actions>
+          <button kdButton type="button" icon="refresh-cw" (click)="load()">Volver a intentar</button>
+        </kd-actions>
       }
     }
     @default {
       @if (readOnly()) {
-        <p class="alert alert--info" data-testid="read-only">
+        <kd-alert tone="info" data-testid="read-only">
           @switch (readOnlyReason()) {
             @case ('owner') {
               OWNER es el rol protegido de la clínica: tiene todos los permisos y no se puede editar
@@ -30,76 +31,59 @@
               No tienes permiso para editar roles: solo puedes consultarlo.
             }
           }
-        </p>
+        </kd-alert>
       }
 
-      <form class="form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <form class="role-form__form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
         @if (failure(); as message) {
-          <div class="alert" role="alert" data-testid="form-error" tabindex="-1">
-            <p>{{ message }}</p>
+          <kd-alert tone="error" data-testid="form-error" tabindex="-1">
+            <p class="role-form__message">{{ message }}</p>
             @if (versionConflict()) {
-              <button type="button" class="button button--secondary" (click)="load()">
-                Recargar el rol
-              </button>
+              <kd-actions>
+                <button kdButton type="button" icon="refresh-cw" (click)="load()">
+                  Recargar el rol
+                </button>
+              </kd-actions>
             }
-          </div>
+          </kd-alert>
         }
 
-        <div class="field">
-          <label for="role-name">Nombre</label>
+        <kd-field label="Nombre">
           <input
+            kdInput
             id="role-name"
             type="text"
             formControlName="name"
             autocomplete="off"
             [attr.maxlength]="nameMaxLength"
-            [attr.aria-invalid]="error('name') ? 'true' : null"
-            [attr.aria-describedby]="error('name') ? 'role-name-error' : null"
           />
-          @if (error('name'); as message) {
-            <p id="role-name-error" class="field__error">{{ message }}</p>
-          }
-        </div>
+        </kd-field>
 
-        <div class="field">
-          <label for="role-description">Descripción (opcional)</label>
+        <kd-field label="Descripción (opcional)">
           <textarea
+            kdInput
             id="role-description"
             formControlName="description"
             [attr.maxlength]="descriptionMaxLength"
-            [attr.aria-invalid]="error('description') ? 'true' : null"
-            [attr.aria-describedby]="error('description') ? 'role-description-error' : null"
           ></textarea>
-          @if (error('description'); as message) {
-            <p id="role-description-error" class="field__error">{{ message }}</p>
-          }
-        </div>
+        </kd-field>
 
-        <label class="checkbox" for="role-clinical">
-          <input
-            id="role-clinical"
-            type="checkbox"
-            formControlName="clinical"
-            aria-describedby="role-clinical-hint"
-          />
-          <span>
-            Rol clínico
-            <span id="role-clinical-hint" class="checkbox__code"
-              >Quien tenga este rol necesita un registro profesional (por ejemplo, médicos u
-              odontólogos).</span
-            >
-          </span>
-        </label>
+        <kd-field
+          label="Rol clínico"
+          hint="Quien tenga este rol necesita un registro profesional (por ejemplo, médicos u odontólogos)."
+        >
+          <input kdInput id="role-clinical" type="checkbox" formControlName="clinical" />
+        </kd-field>
 
         <fieldset
-          class="field"
-          [attr.aria-invalid]="error('permissions') ? 'true' : null"
-          [attr.aria-describedby]="
-            error('permissions') ? 'role-permissions-error' : 'role-permissions-hint'
-          "
+          kdFieldGroup
+          [boxed]="true"
+          legend="Permisos"
+          groupId="role-permissions"
+          projectedHintId="role-permissions-hint"
+          [error]="error('permissions')"
         >
-          <legend>Permisos</legend>
-          <p id="role-permissions-hint" class="field__hint">
+          <p kdFieldGroupHint id="role-permissions-hint">
             Elige qué puede hacer quien tenga este rol. Los permisos vienen del catálogo fijo del
             sistema.
             @if (!readOnly() && locked().size) {
@@ -107,11 +91,11 @@
             }
           </p>
           @for (group of groups(); track group.module) {
-            <fieldset class="field" data-testid="permission-group">
-              <legend>{{ group.label }}</legend>
+            <fieldset kdFieldGroup [legend]="group.label" data-testid="permission-group">
               @for (option of group.permissions; track option.code) {
-                <label class="checkbox">
+                <kd-field [label]="permissionLabel(option)" [hint]="option.code">
                   <input
+                    kdInput
                     type="checkbox"
                     [value]="option.code"
                     [checked]="selected().has(option.code)"
@@ -119,30 +103,23 @@
                     (change)="toggle(option.code, $event)"
                     data-testid="permission"
                   />
-                  <span>
-                    {{ permissionLabel(option) }}
-                    <span class="checkbox__code">{{ option.code }}</span>
-                  </span>
-                </label>
+                </kd-field>
               }
             </fieldset>
           } @empty {
-            <p class="hint">No hay permisos disponibles.</p>
-          }
-          @if (error('permissions'); as message) {
-            <p id="role-permissions-error" class="field__error">{{ message }}</p>
+            <p class="role-form__message">No hay permisos disponibles.</p>
           }
         </fieldset>
 
         @if (!readOnly()) {
-          <div class="actions">
-            <button type="submit" class="button" [disabled]="submitting()">
+          <kd-actions>
+            <button kdButton variant="primary" icon="check" type="submit" [disabled]="submitting()">
               {{ submitting() ? 'Guardando…' : isNew() ? 'Crear rol' : 'Guardar cambios' }}
             </button>
-            <a class="button button--secondary" [routerLink]="rolesLink">Cancelar</a>
-          </div>
+            <a kdButton variant="tertiary" [routerLink]="rolesLink">Cancelar</a>
+          </kd-actions>
         }
       </form>
     }
   }
-</section>
+</kd-page>

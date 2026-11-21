@@ -10,6 +10,7 @@ import {
   type,
 } from '../../../../testing/app-harness';
 import { INVITATION_INVALID_MESSAGE } from './accept-invitation.page';
+import { expectMigratedScreen } from '../../../../testing/migrated-screen';
 
 const TOKEN = 'invitation-token-0123456789';
 const PREVIEW = {
@@ -122,5 +123,22 @@ describe('AcceptInvitationPage', () => {
     await app.settle();
 
     expect(byTestId(app.page(), 'form-error')?.textContent).toContain('No pudimos conectar');
+  });
+
+  it('uses only the design system (MEDK-44)', async () => {
+    await open();
+    expectMigratedScreen(app.page());
+    const preview = app.backend.expectOne('/api/v1/auth/invitations/preview');
+    preview.flush(PREVIEW);
+    await app.settle();
+    expectMigratedScreen(app.page());
+
+    fill('short');
+    submit(app.page());
+    await app.settle();
+    expect(app.page().querySelector('#invitation-password')?.getAttribute('aria-describedby')).toBe(
+      'invitation-password-hint invitation-password-error',
+    );
+    expectMigratedScreen(app.page());
   });
 });

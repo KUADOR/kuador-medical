@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input, model } from '@angular/core';
 import type { BranchSummary, Role } from '../../../core/api/api-types';
+import { KdField, KdFieldGroup, KdIcon, KdInput } from '../../../design-system';
 import { AssignmentDraft, AssignmentMode, assignableRoles } from './role-assignments';
 
 /**
@@ -9,21 +10,19 @@ import { AssignmentDraft, AssignmentMode, assignableRoles } from './role-assignm
 @Component({
   selector: 'mk-role-assignments-editor',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [KdField, KdFieldGroup, KdIcon, KdInput],
   template: `
     <fieldset
-      class="field"
-      [attr.aria-describedby]="error() ? idPrefix() + '-error' : idPrefix() + '-hint'"
+      kdFieldGroup
+      legend="Roles por sucursal"
+      [groupId]="idPrefix()"
+      hint="Por defecto la persona tiene el mismo rol en todas las sucursales. Puedes darle un rol distinto en cada una (por ejemplo, ADMIN en la matriz y Médico en otra)."
       data-testid="assignments-editor"
     >
-      <legend>Roles por sucursal</legend>
-      <p [id]="idPrefix() + '-hint'" class="field__hint">
-        Por defecto la persona tiene el mismo rol en todas las sucursales. Puedes darle un rol
-        distinto en cada una (por ejemplo, ADMIN en la matriz y Médico en otra).
-      </p>
-
-      <div class="radio-group">
-        <label class="checkbox">
+      <div class="assignments__modes">
+        <kd-field label="El mismo rol en todas las sucursales">
           <input
+            kdInput
             type="radio"
             [name]="idPrefix() + '-mode'"
             value="ALL_BRANCHES"
@@ -32,10 +31,10 @@ import { AssignmentDraft, AssignmentMode, assignableRoles } from './role-assignm
             (change)="setMode('ALL_BRANCHES')"
             data-testid="mode-all"
           />
-          <span>El mismo rol en todas las sucursales</span>
-        </label>
-        <label class="checkbox">
+        </kd-field>
+        <kd-field label="Un rol distinto por sucursal">
           <input
+            kdInput
             type="radio"
             [name]="idPrefix() + '-mode'"
             value="PER_BRANCH"
@@ -44,17 +43,17 @@ import { AssignmentDraft, AssignmentMode, assignableRoles } from './role-assignm
             (change)="setMode('PER_BRANCH')"
             data-testid="mode-per-branch"
           />
-          <span>Un rol distinto por sucursal</span>
-        </label>
+        </kd-field>
       </div>
 
       @if (draft().mode === 'ALL_BRANCHES') {
-        <div class="field">
-          <label [for]="idPrefix() + '-role'">Rol</label>
+        <kd-field label="Rol">
           <select
+            kdInput
             [id]="idPrefix() + '-role'"
             [disabled]="disabled()"
             [attr.aria-invalid]="error() ? 'true' : null"
+            [attr.aria-describedby]="error() ? idPrefix() + '-error' : null"
             (change)="setRole($event)"
             data-testid="all-branches-role"
           >
@@ -65,61 +64,44 @@ import { AssignmentDraft, AssignmentMode, assignableRoles } from './role-assignm
               </option>
             }
           </select>
-        </div>
+        </kd-field>
       } @else {
-        <div class="table-wrapper">
-          <table class="table">
-            <caption class="visually-hidden">
-              Rol en cada sucursal
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">Sucursal</th>
-                <th scope="col">Rol</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (branch of branches(); track branch.id) {
-                <tr>
-                  <th scope="row">
-                    <label [for]="idPrefix() + '-branch-' + branch.id">{{ branch.name }}</label>
-                  </th>
-                  <td>
-                    <select
-                      [id]="idPrefix() + '-branch-' + branch.id"
-                      [disabled]="disabled()"
-                      [attr.aria-invalid]="error() ? 'true' : null"
-                      [attr.data-branch]="branch.id"
-                      (change)="setBranchRole(branch.id, $event)"
-                      data-testid="branch-role"
-                    >
-                      <option value="" [selected]="!draft().byBranch[branch.id]">Sin acceso</option>
-                      @for (role of options(); track role.id) {
-                        <option
-                          [value]="role.id"
-                          [selected]="role.id === draft().byBranch[branch.id]"
-                        >
-                          {{ roleLabel(role) }}
-                        </option>
-                      }
-                    </select>
-                  </td>
-                </tr>
-              } @empty {
-                <tr>
-                  <td colspan="2">No hay sucursales disponibles.</td>
-                </tr>
-              }
-            </tbody>
-          </table>
+        <div class="assignments__branches" role="group" aria-label="Rol en cada sucursal">
+          @for (branch of branches(); track branch.id) {
+            <kd-field [label]="branch.name">
+              <select
+                kdInput
+                [id]="idPrefix() + '-branch-' + branch.id"
+                [disabled]="disabled()"
+                [attr.aria-invalid]="error() ? 'true' : null"
+                [attr.aria-describedby]="error() ? idPrefix() + '-error' : null"
+                [attr.data-branch]="branch.id"
+                (change)="setBranchRole(branch.id, $event)"
+                data-testid="branch-role"
+              >
+                <option value="" [selected]="!draft().byBranch[branch.id]">Sin acceso</option>
+                @for (role of options(); track role.id) {
+                  <option [value]="role.id" [selected]="role.id === draft().byBranch[branch.id]">
+                    {{ roleLabel(role) }}
+                  </option>
+                }
+              </select>
+            </kd-field>
+          } @empty {
+            <p class="assignments__empty">No hay sucursales disponibles.</p>
+          }
         </div>
       }
 
       @if (error(); as message) {
-        <p [id]="idPrefix() + '-error'" class="field__error">{{ message }}</p>
+        <p [id]="idPrefix() + '-error'" class="assignments__error">
+          <kd-icon name="circle-alert" [size]="20" />
+          <span>{{ message }}</span>
+        </p>
       }
     </fieldset>
   `,
+  styleUrl: './role-assignments-editor.scss',
 })
 export class RoleAssignmentsEditor {
   readonly draft = model.required<AssignmentDraft>();

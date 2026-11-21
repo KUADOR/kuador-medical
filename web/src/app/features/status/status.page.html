@@ -1,62 +1,52 @@
-<section class="status" aria-labelledby="status-title">
-  <h1 id="status-title">Estado del sistema</h1>
-
-  <div class="status__body" aria-live="polite" [attr.aria-busy]="loading()">
+<kd-page heading="Estado del sistema" headingId="status-title">
+  <div class="status" aria-live="polite" [attr.aria-busy]="loading()">
     @if (loading()) {
-      <p class="status__hint">Consultando el estado del sistema…</p>
+      <kd-loading-state label="Consultando el estado del sistema…" />
     }
 
     @if (info(); as info) {
-      <dl class="status__list">
-        <div class="status__row">
-          <dt>Aplicación</dt>
-          <dd data-testid="app-name">{{ info.name }}</dd>
-        </div>
-        <div class="status__row">
-          <dt>Versión</dt>
-          <dd data-testid="app-version">{{ info.version }}</dd>
-        </div>
-        <div class="status__row">
-          <dt>Servicio</dt>
-          <dd>
-            <span
-              class="badge"
-              [class.badge--down]="info.status === 'DOWN'"
-              data-testid="app-status"
-            >
-              {{ healthLabels[info.status] }}
-            </span>
-          </dd>
-        </div>
-        <div class="status__row">
-          <dt>Base de datos</dt>
-          <dd>
-            <span
-              class="badge"
-              [class.badge--down]="info.database === 'DOWN'"
-              data-testid="db-status"
-            >
-              {{ healthLabels[info.database] }}
-            </span>
-          </dd>
-        </div>
+      <dl kdDetails class="status__list">
+        <dt>Aplicación</dt>
+        <dd data-testid="app-name">{{ info.name }}</dd>
+        <dt>Versión</dt>
+        <dd data-testid="app-version">{{ info.version }}</dd>
+        <dt>Servicio</dt>
+        <dd>
+          <kd-badge
+            [tone]="info.status === 'DOWN' ? 'error' : 'ok'"
+            [icon]="info.status === 'DOWN' ? 'circle-alert' : 'circle-check'"
+            data-testid="app-status"
+          >
+            {{ healthLabels[info.status] }}
+          </kd-badge>
+        </dd>
+        <dt>Base de datos</dt>
+        <dd>
+          <kd-badge
+            [tone]="info.database === 'DOWN' ? 'error' : 'ok'"
+            [icon]="info.database === 'DOWN' ? 'circle-alert' : 'circle-check'"
+            data-testid="db-status"
+          >
+            {{ healthLabels[info.database] }}
+          </kd-badge>
+        </dd>
       </dl>
     }
 
     @if (degraded()) {
-      <p class="status__alert" role="alert" data-testid="degraded">
+      <kd-alert tone="error" data-testid="degraded">
         Algunos servicios no están disponibles en este momento. Intenta de nuevo en unos minutos.
-      </p>
+      </kd-alert>
     }
 
     @if (failure(); as message) {
-      <p class="status__alert" role="alert" data-testid="error">{{ message }}</p>
+      <kd-alert tone="error" data-testid="error">{{ message }}</kd-alert>
     }
   </div>
 
-  <div>
-    <button type="button" class="button" (click)="load()" [disabled]="loading()">
+  <kd-actions>
+    <button kdButton type="button" icon="refresh-cw" (click)="load()" [disabled]="loading()">
       Volver a consultar
     </button>
-  </div>
-</section>
+  </kd-actions>
+</kd-page>

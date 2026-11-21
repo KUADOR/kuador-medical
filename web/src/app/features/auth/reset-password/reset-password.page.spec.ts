@@ -10,6 +10,7 @@ import {
   type,
 } from '../../../../testing/app-harness';
 import { PASSWORD_RESET_DONE_MESSAGE } from './reset-password.page';
+import { expectMigratedScreen } from '../../../../testing/migrated-screen';
 
 const TOKEN = 'reset-token-0123456789abcdef';
 
@@ -94,5 +95,29 @@ describe('ResetPasswordPage', () => {
 
     expect(app.page().querySelector('#new-password')?.getAttribute('aria-invalid')).toBe('true');
     expect(app.page().textContent).toContain(ERROR_MESSAGES.WEAK_PASSWORD);
+  });
+
+  it('uses only the design system (MEDK-44)', async () => {
+    await open();
+    expect(app.page().querySelector('#new-password')?.getAttribute('aria-describedby')).toBe(
+      'new-password-hint',
+    );
+    expectMigratedScreen(app.page());
+
+    fill('short', 'different');
+    submit(app.page());
+    await app.settle();
+    expect(app.page().querySelector('#new-password')?.getAttribute('aria-describedby')).toBe(
+      'new-password-hint new-password-error',
+    );
+    expect(app.page().querySelector('#confirm-password-error')?.textContent).toContain(
+      'Las contraseñas no coinciden.',
+    );
+    expectMigratedScreen(app.page());
+  });
+
+  it('uses only the design system on an invalid link (MEDK-44)', async () => {
+    await open('/password-reset');
+    expectMigratedScreen(app.page());
   });
 });

@@ -1,0 +1,31 @@
+// Staff list (MEDK-44): filters panel, results and paging. Tokens only (ADR-007).
+.staff-description,
+.staff-range {
+  margin: 0;
+  font: var(--kd-type-body);
+  color: var(--kd-text-muted);
+}
+
+.staff-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(calc(var(--kd-space-12) * 4), 1fr));
+  align-items: end;
+  gap: var(--kd-space-3) var(--kd-space-4);
+  padding: var(--kd-space-4);
+  border: var(--kd-border-hairline);
+  border-radius: var(--kd-radius-lg);
+  background: var(--kd-surface-raised);
+}
+
+.staff-results {
+  display: grid;
+  gap: var(--kd-space-3);
+}
+
+.staff-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--kd-space-3);
+}

@@ -22,6 +22,7 @@ import {
   type,
 } from '../../../testing/app-harness';
 import type { StaffUser } from '../../core/api/api-types';
+import { expectMigratedScreen } from '../../../testing/migrated-screen';
 
 function page(items: StaffUser[], pageNumber = 0, totalItems = items.length) {
   return { page: pageNumber, size: 20, totalItems, items };
@@ -61,6 +62,16 @@ describe('StaffUsersPage', () => {
     expect(byTestId(doctor, 'status')?.textContent?.trim()).toBe('Invitación pendiente');
     expect(byTestId(rows()[1], 'status')?.textContent?.trim()).toBe('Activo');
     expect(byTestId(app.page(), 'range')?.textContent).toContain('Mostrando 1–2 de 2');
+  });
+
+  it('uses only the design system (MEDK-44)', async () => {
+    await open();
+    expectMigratedScreen(app.page());
+
+    buttonByText(app.page(), 'Limpiar').click();
+    app.backend.expectOne((r) => r.url === '/api/v1/staff-users').flush(page([]));
+    await app.settle();
+    expectMigratedScreen(app.page());
   });
 
   it('offers to invite only with identity.users.manage and roles.read', async () => {

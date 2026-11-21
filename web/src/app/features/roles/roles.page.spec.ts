@@ -21,6 +21,7 @@ import {
   signIn,
 } from '../../../testing/app-harness';
 import { TestBed } from '@angular/core/testing';
+import { expectMigratedScreen } from '../../../testing/migrated-screen';
 import { sortRoles } from './roles.page';
 
 describe('RolesPage', () => {
@@ -40,7 +41,7 @@ describe('RolesPage', () => {
   }
 
   function actions(card: HTMLElement): string[] {
-    return Array.from(card.querySelectorAll('.actions a, .actions button')).map(
+    return Array.from(card.querySelectorAll('.kd-card__actions a, .kd-card__actions button')).map(
       (element) => element.textContent?.trim().split(/\s+/)[0] ?? '',
     );
   }
@@ -160,6 +161,32 @@ describe('RolesPage', () => {
     app.backend.expectOne('/api/v1/roles').flush([OWNER_ROLE]);
     await app.settle();
     expect(allByTestId(app.page(), 'role')).toHaveLength(1);
+  });
+
+  it('uses only the design system (MEDK-44)', async () => {
+    TestBed.inject(NoticeService).show('Se creó el rol «Caja».');
+    await open();
+    expectMigratedScreen(app.page());
+
+    buttonByText(roleCard('Recepción'), 'Eliminar').click();
+    await app.settle();
+    expectMigratedScreen(app.page());
+    expect(app.page().querySelector('[role="alertdialog"] .kd-button--danger')).not.toBeNull();
+  });
+
+  it('keeps the empty and failed states inside the design system (MEDK-44)', async () => {
+    await open(FULL_ACCOUNT, []);
+    expect(byTestId(app.page(), 'empty')?.textContent).toContain('todavía no tiene roles');
+    expectMigratedScreen(app.page());
+  });
+
+  it('keeps the failed state inside the design system (MEDK-44)', async () => {
+    await signIn(app, FULL_ACCOUNT);
+    await app.harness.navigateByUrl('/roles');
+    app.backend.expectOne('/api/v1/roles').error(new ProgressEvent('error'));
+    await app.settle();
+
+    expectMigratedScreen(app.page());
   });
 
   it('is closed to the SUPER_ADMIN, who has no clinic permissions', async () => {

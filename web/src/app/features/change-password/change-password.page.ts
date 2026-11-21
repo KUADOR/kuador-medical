@@ -24,10 +24,17 @@ import {
   PASSWORD_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
   applyServerErrors,
-  controlErrorMessage,
   focusFirstInvalid,
   matchingFields,
 } from '../../core/forms/form-errors';
+import {
+  KdActions,
+  KdAlert,
+  KdButton,
+  KdField,
+  KdInput,
+  KdPage,
+} from '../../design-system';
 
 type PasswordField = 'currentPassword' | 'newPassword' | 'confirmPassword';
 
@@ -53,8 +60,9 @@ const differentFromCurrent: ValidatorFn = (group): ValidationErrors | null => {
 @Component({
   selector: 'mk-change-password-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, KdActions, KdAlert, KdButton, KdField, KdInput, KdPage],
   templateUrl: './change-password.page.html',
+  styleUrl: './change-password.page.scss',
 })
 export class ChangePasswordPage {
   private readonly auth = inject(AuthService);
@@ -81,11 +89,6 @@ export class ChangePasswordPage {
     },
     { validators: [differentFromCurrent, matchingFields('newPassword', 'confirmPassword')] },
   );
-
-  protected error(name: PasswordField): string | null {
-    const control = this.form.controls[name];
-    return control.touched ? controlErrorMessage(control) : null;
-  }
 
   protected async submit(): Promise<void> {
     if (this.submitting()) {

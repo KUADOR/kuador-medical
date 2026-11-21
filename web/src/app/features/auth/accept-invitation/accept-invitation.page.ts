@@ -14,7 +14,6 @@ import { ERROR_MESSAGES, errorMessage, toProblem } from '../../../core/errors/er
 import {
   PASSWORD_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
-  controlErrorMessage,
   focusFirstInvalid,
   matchingFields,
 } from '../../../core/forms/form-errors';
@@ -22,6 +21,15 @@ import { NoticeService } from '../../../core/notice/notice.service';
 import { AuthRoutes } from '../../../core/session/auth-routes';
 import { AuthService } from '../../../core/session/auth.service';
 import { nextUrlAfterLogin } from '../../../core/session/login-navigation';
+import {
+  KdActions,
+  KdAlert,
+  KdButton,
+  KdField,
+  KdInput,
+  KdLoadingState,
+  KdPage,
+} from '../../../design-system';
 import { takeLinkToken } from '../one-time-link';
 
 export const INVITATION_INVALID_MESSAGE =
@@ -36,8 +44,19 @@ type State = 'loading' | 'ready' | 'invalid' | 'error';
 @Component({
   selector: 'mk-accept-invitation-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    KdActions,
+    KdAlert,
+    KdButton,
+    KdField,
+    KdInput,
+    KdLoadingState,
+    KdPage,
+  ],
   templateUrl: './accept-invitation.page.html',
+  styleUrl: './accept-invitation.page.scss',
 })
 export class AcceptInvitationPage {
   private readonly auth = inject(AuthService);
@@ -72,11 +91,6 @@ export class AcceptInvitationPage {
 
   constructor() {
     void this.load();
-  }
-
-  protected error(name: 'password' | 'confirmPassword'): string | null {
-    const control = this.form.controls[name];
-    return control.touched ? controlErrorMessage(control) : null;
   }
 
   protected async load(): Promise<void> {

@@ -28,6 +28,16 @@ import {
 } from '../../../core/catalogs/patient-catalogs';
 import { ERROR_MESSAGES, errorMessage, toProblem } from '../../../core/errors/error-messages';
 import {
+  KdActions,
+  KdAlert,
+  KdButton,
+  KdField,
+  KdFieldGroup,
+  KdInput,
+  KdLoadingState,
+  KdPage,
+} from '../../../design-system';
+import {
   applyServerErrors,
   controlErrorMessage,
   e164Phone,
@@ -83,8 +93,21 @@ const EDITABLE_FIELDS = [
 @Component({
   selector: 'mk-patient-form-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, RouterLink, GuardianPersonFields],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    GuardianPersonFields,
+    KdActions,
+    KdAlert,
+    KdButton,
+    KdField,
+    KdFieldGroup,
+    KdInput,
+    KdLoadingState,
+    KdPage,
+  ],
   templateUrl: './patient-form.page.html',
+  styleUrl: './patient-form.page.scss',
 })
 export class PatientFormPage implements OnInit {
   private readonly patients = inject(PatientsService);

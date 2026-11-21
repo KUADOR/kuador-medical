@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { KdButton, KdPage } from '../../design-system';
 
 /**
  * Simple informative page driven by route data (title, message).
@@ -8,15 +9,12 @@ import { RouterLink } from '@angular/router';
 @Component({
   selector: 'mk-message-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink],
+  imports: [RouterLink, KdButton, KdPage],
   template: `
-    <section class="message" aria-labelledby="message-title">
-      <h1 id="message-title">{{ heading() }}</h1>
-      <p>{{ message() }}</p>
-      <p><a routerLink="/">Ir al estado del sistema</a></p>
-    </section>
+    <kd-page [heading]="heading()" [description]="message()" headingId="message-title">
+      <p><a kdButton icon="house" routerLink="/">Ir al estado del sistema</a></p>
+    </kd-page>
   `,
-  styleUrl: './message.page.scss',
 })
 export class MessagePage {
   /** Bound from route data through withComponentInputBinding(). */

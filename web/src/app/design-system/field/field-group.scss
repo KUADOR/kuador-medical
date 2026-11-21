@@ -1,0 +1,51 @@
+:host {
+  display: grid;
+  gap: var(--kd-space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+:host(.kd-field-group--boxed) {
+  gap: var(--kd-space-3);
+  padding: var(--kd-space-4);
+  border: var(--kd-border-hairline);
+  border-radius: var(--kd-radius-lg);
+}
+
+.kd-field-group__legend {
+  padding: 0;
+  font: var(--kd-type-label);
+  color: var(--kd-text-default);
+}
+
+:host(.kd-field-group--boxed) .kd-field-group__legend {
+  padding: 0 var(--kd-space-1);
+  font: var(--kd-type-subtitle);
+}
+
+.kd-field-group__hint,
+:host ::ng-deep [kdFieldGroupHint] {
+  margin: 0;
+  font: var(--kd-type-body-sm);
+  color: var(--kd-text-muted);
+}
+
+.kd-field-group__controls {
+  display: grid;
+  gap: var(--kd-space-2);
+}
+
+:host(.kd-field-group--boxed) .kd-field-group__controls {
+  gap: var(--kd-space-4);
+}
+
+.kd-field-group__error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--kd-space-1);
+  margin: 0;
+  font: var(--kd-type-label);
+  color: var(--kd-color-error);
+}

@@ -11,6 +11,7 @@ import {
   createAppHarness,
   signIn,
 } from '../../../../testing/app-harness';
+import { expectMigratedScreen } from '../../../../testing/migrated-screen';
 
 describe('SelfRegistrationSettingsPage', () => {
   let app: AppHarness;
@@ -94,5 +95,34 @@ describe('SelfRegistrationSettingsPage', () => {
     expect(byTestId(app.page(), 'self-registration-switch')).toBeNull();
     expect(byTestId(app.page(), 'read-only')).not.toBeNull();
     expect(byTestId(app.page(), 'public-link')).not.toBeNull();
+  });
+
+  it('uses only the design system (MEDK-44)', async () => {
+    await open(PATIENTS_ADMIN_ACCOUNT, { ...REGISTRATION_SETTINGS, selfRegistrationEnabled: true });
+    expectMigratedScreen(app.page());
+    expect(toggle().getAttribute('aria-labelledby')).toBe('switch-label');
+    expect(app.page().querySelector('label[for="public-link"]')?.textContent?.trim()).toBe(
+      'Enlace público de registro',
+    );
+  });
+
+  it('uses only the design system when read-only (MEDK-44)', async () => {
+    await open(PATIENTS_READER_ACCOUNT);
+    expectMigratedScreen(app.page());
+  });
+
+  it('keeps the retry of a failed load (MEDK-44)', async () => {
+    await signIn(app, PATIENTS_ADMIN_ACCOUNT);
+    await app.harness.navigateByUrl('/patients/self-registration');
+    const { body, init } = problem(500, 'INTERNAL_ERROR');
+    app.backend.expectOne('/api/v1/patient-registration-settings').flush(body, init);
+    await app.settle();
+    expect(byTestId(app.page(), 'load-error')).not.toBeNull();
+    expectMigratedScreen(app.page());
+
+    buttonByText(app.page(), 'Volver a intentar').click();
+    app.backend.expectOne('/api/v1/patient-registration-settings').flush(REGISTRATION_SETTINGS);
+    await app.settle();
+    expect(toggle()).not.toBeNull();
   });
 });

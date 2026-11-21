@@ -7,6 +7,17 @@ import { PatientsService } from '../../../core/patients/patients.service';
 import { selfRegistrationUrl } from '../../../core/session/auth-routes';
 import { AppRoutes } from '../../../core/session/navigation';
 import { SessionStore } from '../../../core/session/session.store';
+import {
+  KdAlert,
+  KdBadge,
+  KdButton,
+  KdErrorState,
+  KdField,
+  KdInput,
+  KdLoadingState,
+  KdPage,
+  KdSwitch,
+} from '../../../design-system';
 
 type LoadState =
   | { kind: 'loading' }
@@ -21,8 +32,20 @@ type LoadState =
 @Component({
   selector: 'mk-self-registration-settings-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink],
+  imports: [
+    RouterLink,
+    KdAlert,
+    KdBadge,
+    KdButton,
+    KdErrorState,
+    KdField,
+    KdInput,
+    KdLoadingState,
+    KdPage,
+    KdSwitch,
+  ],
   templateUrl: './self-registration-settings.page.html',
+  styleUrl: './self-registration-settings.page.scss',
 })
 export class SelfRegistrationSettingsPage {
   private readonly patients = inject(PatientsService);

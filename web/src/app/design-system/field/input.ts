@@ -5,6 +5,7 @@ import {
   ElementRef,
   computed,
   inject,
+  input,
   signal,
 } from '@angular/core';
 import { NgControl, Validators } from '@angular/forms';
@@ -32,10 +33,12 @@ export class KdInput implements KdFieldControl, AfterContentInit {
   private readonly ngControl = inject(NgControl, { optional: true, self: true });
 
   private readonly ownId = this.element.getAttribute('id');
+  /** Id bound by the page (`[id]="..."`); a static `id="..."` also lands here. */
+  readonly boundId = input<string | null | undefined>(undefined, { alias: 'id' });
   /** Bumped on every value, status or touched change of the reactive control. */
   private readonly version = signal(0);
 
-  readonly id = () => this.ownId || this.field?.generatedId() || '';
+  readonly id = () => this.boundId() || this.ownId || this.field?.generatedId() || '';
   readonly isCheck = () =>
     this.element instanceof HTMLInputElement &&
     (this.element.type === 'checkbox' || this.element.type === 'radio');

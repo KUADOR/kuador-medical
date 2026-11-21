@@ -1,0 +1,5 @@
+// Layout of the authorization form of /my-contacts (MEDK-44). Tokens only (ADR-007).
+.my-links__form {
+  display: grid;
+  gap: var(--kd-space-4);
+}

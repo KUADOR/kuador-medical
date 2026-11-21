@@ -45,6 +45,18 @@ class Host {
   }
 }
 
+@Component({
+  imports: [KdField, KdInput],
+  template: `
+    <kd-field label="Rol" error="Elige un rol.">
+      <select kdInput [id]="'branch-' + branch()"><option>Sin acceso</option></select>
+    </kd-field>
+  `,
+})
+class BoundIdHost {
+  readonly branch = signal('b1');
+}
+
 const q = <T extends Element>(root: ParentNode, selector: string) =>
   root.querySelector<T>(selector)!;
 
@@ -65,6 +77,15 @@ describe('KdField and KdInput', () => {
     const root = el(await render(Host));
 
     expect(q<HTMLLabelElement>(root, 'label[for="notes"]').textContent?.trim()).toBe('Notas');
+  });
+
+  it('keeps an id bound by the page, e.g. one per row (MEDK-44)', async () => {
+    const root = el(await render(BoundIdHost));
+    const select = q<HTMLSelectElement>(root, 'select');
+
+    expect(select.id).toBe('branch-b1');
+    expect(q<HTMLLabelElement>(root, 'kd-field label').htmlFor).toBe('branch-b1');
+    expect(select.getAttribute('aria-describedby')).toBe('branch-b1-error');
   });
 
   it('marks required controls with aria-required', async () => {
