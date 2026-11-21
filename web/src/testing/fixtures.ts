@@ -5,9 +5,14 @@ import type {
   ClinicSelectionResult,
   CurrentSession,
   GuardianLink,
+  LimitInfo,
+  ModuleInfo,
   Patient,
   PermissionInfo,
+  Plan,
+  PlanPrice,
   PlatformPermissionInfo,
+  PlatformSettings,
   RegistrationSettings,
   Role,
   StaffUser,
@@ -342,4 +347,108 @@ export const REGISTRATION_SETTINGS: RegistrationSettings = {
   selfRegistrationEnabled: false,
   publicCode: 'test-clinic',
   version: 4,
+};
+
+// ---------------------------------------------------------------- plans and settings (MEDK-72)
+
+/**
+ * SUPER_ADMIN with the platform permissions of the plans and settings panel. Those codes come
+ * from the platform contract and are not in the user registration enum yet (MEDK-65).
+ */
+export const PLATFORM_ADMIN: CurrentSession = {
+  ...SUPER_ADMIN,
+  permissions: [
+    'platform.permissions.read',
+    'platform.plans.manage',
+    'platform.settings.manage',
+  ] as unknown as CurrentSession['permissions'],
+};
+
+export const MODULE_CATALOG: ModuleInfo[] = [
+  { code: 'AGENDA', label: 'Agenda y citas' },
+  { code: 'PATIENTS', label: 'Pacientes' },
+  { code: 'ODONTOGRAM', label: 'Odontograma' },
+  { code: 'E_INVOICING', label: 'Facturación electrónica' },
+];
+
+export const LIMIT_CATALOG: LimitInfo[] = [
+  { code: 'MAX_BRANCHES', label: 'Sedes', unit: 'COUNT' },
+  { code: 'MAX_USERS', label: 'Usuarios', unit: 'COUNT' },
+  { code: 'MAX_STORAGE_MB', label: 'Almacenamiento', unit: 'MEGABYTES' },
+];
+
+export const MONTHLY_PRICE: PlanPrice = {
+  id: '00000000-0000-0000-0000-0000000000d1',
+  billingPeriod: 'MONTHLY',
+  currency: 'USD',
+  amount: '49.00',
+  effectiveFrom: '2025-01-01T05:00:00Z',
+  createdAt: '2024-12-20T15:00:00Z',
+};
+
+export const ANNUAL_PRICE: PlanPrice = {
+  id: '00000000-0000-0000-0000-0000000000d2',
+  billingPeriod: 'ANNUAL',
+  currency: 'USD',
+  amount: '490.00',
+  effectiveFrom: '2025-01-01T05:00:00Z',
+  createdAt: '2024-12-20T15:00:00Z',
+};
+
+export const OLD_MONTHLY_PRICE: PlanPrice = {
+  id: '00000000-0000-0000-0000-0000000000d0',
+  billingPeriod: 'MONTHLY',
+  currency: 'USD',
+  amount: '39.00',
+  effectiveFrom: '2024-01-01T05:00:00Z',
+  createdAt: '2023-12-20T15:00:00Z',
+};
+
+export const STANDARD_PLAN: Plan = {
+  id: '00000000-0000-0000-0000-0000000000c1',
+  code: 'STANDARD',
+  name: 'Estándar',
+  description: 'Clínica médica con hasta tres sedes.',
+  trial: false,
+  status: 'ACTIVE',
+  modules: ['AGENDA', 'PATIENTS'],
+  limits: { MAX_BRANCHES: 3, MAX_USERS: 15, MAX_STORAGE_MB: null },
+  currentPrices: [MONTHLY_PRICE, ANNUAL_PRICE],
+  createdAt: '2024-12-20T15:00:00Z',
+  updatedAt: '2025-01-10T15:00:00Z',
+  version: 3,
+};
+
+export const TRIAL_PLAN: Plan = {
+  id: '00000000-0000-0000-0000-0000000000c0',
+  code: 'TRIAL',
+  name: 'Prueba',
+  description: null,
+  trial: true,
+  status: 'ACTIVE',
+  modules: ['AGENDA', 'PATIENTS', 'ODONTOGRAM'],
+  limits: { MAX_BRANCHES: 1, MAX_USERS: 3, MAX_STORAGE_MB: 500 },
+  currentPrices: [],
+  createdAt: '2024-12-20T15:00:00Z',
+  updatedAt: '2024-12-20T15:00:00Z',
+  version: 0,
+};
+
+export const ARCHIVED_PLAN: Plan = {
+  ...STANDARD_PLAN,
+  id: '00000000-0000-0000-0000-0000000000c2',
+  code: 'LEGACY',
+  name: 'Anterior',
+  status: 'ARCHIVED',
+  version: 7,
+};
+
+export const DEFAULT_SETTINGS: PlatformSettings = {
+  trialDays: 14,
+  graceDays: 7,
+  suspensionDaysBeforeCancel: 90,
+  retentionDays: 90,
+  ownerInvitationTtlHours: 72,
+  priceChangeNoticeDays: 30,
+  version: 1,
 };

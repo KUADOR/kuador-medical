@@ -1,8 +1,9 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router, UrlTree } from '@angular/router';
-import type { PermissionCode } from '../api/api-types';
+import type { AccessPermission, TwoFactorStep } from '../api/api-types';
 import { AuthRoutes, RETURN_URL_PARAM } from './auth-routes';
 import { AuthService, LoginStep } from './auth.service';
+import { twoFactorRoute } from './login-navigation';
 import { AccessRequirement, canAccess, landingUrl } from './navigation';
 import { SessionStore } from './session.store';
 
@@ -17,6 +18,12 @@ export function requireAccess(requirement: AccessRequirement = {}): CanActivateF
     const router = inject(Router);
 
     const account = await session.ensureAccount();
+    const step = session.twoFactorStep();
+    if (!account && step) {
+      return router.createUrlTree([twoFactorRoute(step)], {
+        queryParams: { [RETURN_URL_PARAM]: state.url },
+      });
+    }
     if (!account) {
       session.clear();
       return router.createUrlTree([AuthRoutes.login], {
@@ -34,7 +41,7 @@ export function requireAccess(requirement: AccessRequirement = {}): CanActivateF
 }
 
 /** Shorthand for pages that only need permissions (no plan module). */
-export function requirePermissions(...permissions: PermissionCode[]): CanActivateFn {
+export function requirePermissions(...permissions: AccessPermission[]): CanActivateFn {
   return requireAccess({ permissions });
 }
 
@@ -47,6 +54,10 @@ export const pendingPasswordChangeGuard: CanActivateFn = async (): Promise<boole
   const router = inject(Router);
 
   const account = await session.ensureAccount();
+  const step = session.twoFactorStep();
+  if (!account && step) {
+    return router.createUrlTree([twoFactorRoute(step)]);
+  }
   if (!account) {
     session.clear();
     return router.createUrlTree([AuthRoutes.login]);
@@ -63,6 +74,10 @@ export const homeGuard: CanActivateFn = async (): Promise<UrlTree> => {
     return router.parseUrl('/status');
   }
   const account = await session.ensureAccount();
+  const step = session.twoFactorStep();
+  if (!account && step) {
+    return router.parseUrl(twoFactorRoute(step));
+  }
   if (!account) {
     session.clear();
     return router.parseUrl('/status');
@@ -79,6 +94,11 @@ export const guestGuard: CanActivateFn = async (): Promise<boolean | UrlTree> =>
     return true;
   }
   const account = await session.ensureAccount();
+  const step = session.twoFactorStep();
+  if (!account && step) {
+    // A session waiting for its second factor finishes it (or logs out) first.
+    return router.parseUrl(twoFactorRoute(step));
+  }
   if (!account) {
     session.clear();
     return true;
@@ -94,5 +114,28 @@ export function loginStepGuard(step: LoginStep['status']): CanActivateFn {
   return (): boolean | UrlTree => {
     const pending = inject(AuthService).pendingStep();
     return pending?.status === step ? true : inject(Router).createUrlTree([AuthRoutes.login]);
+  };
+}
+
+/**
+ * Second factor pages (ADR-019): only for a session whose pending step is this one. The other
+ * step goes to its own page, a session that already passed it goes home and no session to login.
+ */
+export function twoFactorStepGuard(step: TwoFactorStep): CanActivateFn {
+  return (route): boolean | UrlTree => {
+    const session = inject(SessionStore);
+    const router = inject(Router);
+    if (!session.hasUsableSession()) {
+      session.clear();
+      return router.createUrlTree([AuthRoutes.login]);
+    }
+    const pending = session.twoFactorStep();
+    if (pending === step) {
+      return true;
+    }
+    if (pending) {
+      return router.createUrlTree([twoFactorRoute(pending)], { queryParams: route.queryParams });
+    }
+    return router.createUrlTree(['/']);
   };
 }

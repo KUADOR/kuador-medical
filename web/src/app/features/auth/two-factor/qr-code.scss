@@ -1,0 +1,18 @@
+// QR code of the TOTP enrollment (MEDK-74). Tokens only (ADR-007); the host forces the light
+// token values so the code is always dark on light.
+:host {
+  display: inline-block;
+  padding: var(--kd-space-2);
+  background: var(--kd-surface-raised);
+  border: var(--kd-border-hairline);
+}
+
+.qr-code__image {
+  display: block;
+  inline-size: calc(var(--kd-space-12) * 4);
+  block-size: calc(var(--kd-space-12) * 4);
+}
+
+.qr-code__modules {
+  fill: var(--kd-text-default);
+}

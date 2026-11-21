@@ -74,7 +74,9 @@ class EndpointPermissionContractTest {
                 "PUT /platform/plans/{planId}", "POST /platform/plans/{planId}/archive",
                 "GET /platform/plans/{planId}/prices", "POST /platform/plans/{planId}/prices",
                 "GET /platform/catalog/modules", "GET /platform/catalog/limits",
-                "GET /platform/settings", "PUT /platform/settings");
+                "GET /platform/settings", "PUT /platform/settings",
+                "GET /platform/tenants", "POST /platform/tenants", "GET /platform/tenants/{tenantId}",
+                "PATCH /platform/tenants/{tenantId}");
         handlers.forEach((operation, handler) -> {
             if (required.containsKey(operation)) {
                 assertThat(accessOf(handler)).as("access of %s", operation).isEqualTo(required.get(operation));

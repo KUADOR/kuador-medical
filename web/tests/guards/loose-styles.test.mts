@@ -31,6 +31,8 @@ const SECONDARY_SCREENS = [
   // Shared by my authorized contacts (secondary) and the patient record (main, MEDK-43).
   'patients/shared',
   'platform',
+  // Plans, prices and platform settings of the SUPER_ADMIN (MEDK-72).
+  'platform-admin',
   'roles',
   'signup',
   'staff-users',

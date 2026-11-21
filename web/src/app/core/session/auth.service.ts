@@ -3,6 +3,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import {
   AcceptInvitationRequest,
+  AcceptOwnerInvitationRequest,
   ApiPaths,
   AuthenticatedResult,
   BranchSelectionResult,
@@ -13,8 +14,12 @@ import {
   LoginRequest,
   LoginResult,
   OneTimeTokenRequest,
+  OwnerInvitationPreview,
+  OwnerInvitationTokenRequest,
+  OwnerPaths,
   PasswordResetConfirmRequest,
   PasswordResetRequest,
+  PlatformSession,
   RefreshRequest,
   SelectBranchRequest,
   SelectClinicRequest,
@@ -23,6 +28,9 @@ import {
   SwitchBranchRequest,
   TenantSignupRequest,
   TenantSignupResponse,
+  TwoFactorCodeRequest,
+  TwoFactorEnrollment,
+  TwoFactorStep,
   selfRegistrationPath,
 } from '../api/api-types';
 import { AppConfigService } from '../config/app-config.service';
@@ -33,7 +41,10 @@ export type LoginStep = ClinicSelectionResult | BranchSelectionResult;
 
 /** Result of a login step as seen by the pages. */
 export type LoginOutcome =
-  { status: 'AUTHENTICATED'; account: CurrentSession | null } | { status: LoginStep['status'] };
+  | { status: 'AUTHENTICATED'; account: CurrentSession | null }
+  | { status: LoginStep['status'] }
+  /** The session exists but must enroll or verify the TOTP second factor first (ADR-019). */
+  | { status: 'TWO_FACTOR_REQUIRED'; step: TwoFactorStep };
 
 interface PendingStep {
   step: LoginStep;
@@ -184,6 +195,48 @@ export class AuthService {
     return this.handle(result);
   }
 
+  /**
+   * POST /public/owner-invitations/preview (platform contract): clinic, owner name, masked
+   * email and the versions of the terms and data policy to accept.
+   */
+  previewOwnerInvitation(token: string): Promise<OwnerInvitationPreview> {
+    return firstValueFrom(
+      this.http.post<OwnerInvitationPreview>(this.url(OwnerPaths.invitationPreview), {
+        token,
+      } satisfies OwnerInvitationTokenRequest),
+    );
+  }
+
+  /**
+   * POST /public/owner-invitations/accept: activates the OWNER account with its password and the
+   * accepted versions. The new session always has to enroll the second factor next (ADR-019).
+   */
+  async acceptOwnerInvitation(request: AcceptOwnerInvitationRequest): Promise<LoginOutcome> {
+    const result = await firstValueFrom(
+      this.http.post<PlatformSession>(this.url(OwnerPaths.invitationAccept), request),
+    );
+    this.pending.set(null);
+    this.session.start(result, 'ENROLLMENT_REQUIRED');
+    return { status: 'TWO_FACTOR_REQUIRED', step: 'ENROLLMENT_REQUIRED' };
+  }
+
+  /** POST /auth/two-factor/enrollment: a new TOTP secret and its otpauth:// URI for the QR. */
+  startTwoFactorEnrollment(): Promise<TwoFactorEnrollment> {
+    return firstValueFrom(
+      this.http.post<TwoFactorEnrollment>(this.url(OwnerPaths.twoFactorEnrollment), null),
+    );
+  }
+
+  /** POST /auth/two-factor/enrollment/confirm: enables the second factor and opens the session. */
+  async confirmTwoFactorEnrollment(code: string): Promise<LoginOutcome> {
+    return this.completeTwoFactor(OwnerPaths.twoFactorEnrollmentConfirm, code);
+  }
+
+  /** POST /auth/two-factor/verify: second factor of a login; opens the session. */
+  async verifyTwoFactor(code: string): Promise<LoginOutcome> {
+    return this.completeTwoFactor(OwnerPaths.twoFactorVerify, code);
+  }
+
   /** POST /auth/email-verification/confirm for a self-registered patient. */
   async confirmEmail(token: string): Promise<void> {
     await firstValueFrom(
@@ -231,11 +284,24 @@ export class AuthService {
     return this.session.ensureAccount();
   }
 
+  private async completeTwoFactor(path: string, code: string): Promise<LoginOutcome> {
+    const result = await firstValueFrom(
+      this.http.post<PlatformSession>(this.url(path), { code } satisfies TwoFactorCodeRequest),
+    );
+    return this.handle(result);
+  }
+
   private async handle(result: LoginResult): Promise<LoginOutcome> {
     if (result.status === 'AUTHENTICATED') {
       this.pending.set(null);
       this.session.start(result);
-      return { status: 'AUTHENTICATED', account: await this.session.ensureAccount() };
+      const account = await this.session.ensureAccount();
+      // GET /me answered 401 TWO_FACTOR_REQUIRED: the interceptor marked the pending step.
+      const step = this.session.twoFactorStep();
+      if (!account && step) {
+        return { status: 'TWO_FACTOR_REQUIRED', step };
+      }
+      return { status: 'AUTHENTICATED', account };
     }
     this.pending.set({ step: result, expiresAt: Date.now() + result.preAuthExpiresIn * 1000 });
     return { status: result.status };

@@ -1,0 +1,86 @@
+<section class="tenants-section" aria-labelledby="price-lock-title" data-testid="price-lock-panel">
+  <h2 id="price-lock-title" class="tenants-section__title">Precio congelado</h2>
+  <div aria-live="polite">
+    @if (notice(); as message) {
+      <kd-alert tone="ok" data-testid="price-lock-notice">{{ message }}</kd-alert>
+    }
+  </div>
+  @if (failure(); as message) {
+    <kd-alert tone="error" data-testid="price-lock-failure" tabindex="-1">
+      <p class="tenants-text">{{ message }}</p>
+      @if (stale()) {
+        <button kdButton type="button" icon="refresh-cw" (click)="reloadData()">
+          Recargar los datos
+        </button>
+      }
+    </kd-alert>
+  }
+
+  <p class="tenants-muted" data-testid="price-lock-state">
+    @if (lockedUntil(); as until) {
+      La clínica conserva su precio contratado hasta el {{ until }}, inclusive.
+    } @else {
+      La clínica no tiene el precio congelado: un cambio de tarifa le aplica desde su próxima
+      renovación, con aviso de 30 días al OWNER.
+    }
+  </p>
+
+  @if (!subscription().purged) {
+    <form
+      class="tenants-stack"
+      [formGroup]="form"
+      (ngSubmit)="lock()"
+      novalidate
+      aria-label="Congelar el precio contratado"
+      data-testid="price-lock-form"
+    >
+      <kd-field label="Congelar hasta el" hint="Último día en que conserva su precio.">
+        <input
+          kdInput
+          id="price-lock-until"
+          type="date"
+          formControlName="lockedUntil"
+          [min]="today"
+        />
+      </kd-field>
+      <kd-field label="Motivo (opcional)" hint="Sin datos clínicos. Queda en la auditoría.">
+        <textarea
+          kdInput
+          id="price-lock-reason"
+          rows="2"
+          formControlName="reason"
+          [attr.maxlength]="limits.reason"
+        ></textarea>
+      </kd-field>
+      <kd-actions>
+        <button
+          kdButton
+          type="submit"
+          icon="lock"
+          data-testid="lock-price"
+          [disabled]="busy() !== null"
+        >
+          {{
+            busy() === 'lock'
+              ? 'Guardando…'
+              : lockedUntil()
+                ? 'Cambiar la fecha'
+                : 'Congelar precio'
+          }}
+        </button>
+        @if (lockedUntil()) {
+          <button
+            kdButton
+            variant="tertiary"
+            type="button"
+            data-testid="unlock-price"
+            [disabled]="busy() !== null"
+            (click)="unlock()"
+          >
+            {{ busy() === 'unlock' ? 'Quitando…' : 'Quitar congelamiento' }}
+          </button>
+        }
+      </kd-actions>
+    </form>
+  }
+</section>

@@ -1,0 +1,35 @@
+<kd-page
+  heading="Verificación en dos pasos"
+  headingId="two-factor-verify-title"
+  width="narrow"
+  description="Escribe el código que muestra tu app de autenticación para terminar de ingresar."
+>
+  <form class="two-factor__form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    @if (failure(); as message) {
+      <kd-alert tone="error" data-testid="form-error">{{ message }}</kd-alert>
+    }
+    <kd-field label="Código de verificación" hint="6 dígitos; cambia cada 30 segundos.">
+      <input
+        kdInput
+        id="two-factor-code"
+        type="text"
+        inputmode="numeric"
+        autocomplete="one-time-code"
+        maxlength="7"
+        formControlName="code"
+      />
+    </kd-field>
+    <kd-actions>
+      <button kdButton variant="primary" type="submit" [disabled]="submitting()">
+        {{ submitting() ? 'Verificando…' : 'Verificar e ingresar' }}
+      </button>
+    </kd-actions>
+  </form>
+
+  <p class="two-factor__help">{{ lostDeviceHelp }}</p>
+  <kd-actions>
+    <button kdButton variant="tertiary" type="button" icon="log-out" (click)="logout()">
+      Salir
+    </button>
+  </kd-actions>
+</kd-page>

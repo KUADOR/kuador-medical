@@ -54,6 +54,7 @@ class PlatformPermissionsIT {
 
     private List<Map.Entry<String, Function<String, MvcTestResult>>> platformOperations() {
         String plan = "/api/v1/platform/plans/" + TRIAL_PLAN_ID;
+        String tenant = "/api/v1/platform/tenants/" + UUID.randomUUID();
         Map<String, Object> planBody = Map.of("code", "FORBIDDEN_" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(),
                 "name", "Prohibido", "trial", false, "modules", List.of(), "limits", Map.of());
         Map<String, Object> settings = Map.of("trialDays", 1, "graceDays", 1, "suspensionDaysBeforeCancel", 1,
@@ -71,7 +72,12 @@ class PlatformPermissionsIT {
                 Map.entry("GET /platform/catalog/modules", token -> api.get("/api/v1/platform/catalog/modules", token)),
                 Map.entry("GET /platform/catalog/limits", token -> api.get("/api/v1/platform/catalog/limits", token)),
                 Map.entry("GET /platform/settings", token -> api.get("/api/v1/platform/settings", token)),
-                Map.entry("PUT /platform/settings", token -> api.put("/api/v1/platform/settings", token, settings)));
+                Map.entry("PUT /platform/settings", token -> api.put("/api/v1/platform/settings", token, settings)),
+                Map.entry("GET /platform/tenants", token -> api.get("/api/v1/platform/tenants", token)),
+                Map.entry("POST /platform/tenants", token -> api.post("/api/v1/platform/tenants", token, tenantBody())),
+                Map.entry("GET /platform/tenants/{tenantId}", token -> api.get(tenant, token)),
+                Map.entry("PATCH /platform/tenants/{tenantId}", token -> api.patch(tenant, token,
+                        Map.of("city", "Cuenca", "version", 0))));
     }
 
     @Test
@@ -79,6 +85,7 @@ class PlatformPermissionsIT {
         Clinic clinic = api.clinic("Clinica Sin Planes");
         assertThat(api.body(api.me(clinic.token())).get("roles").toString()).contains("OWNER");
         int plansBefore = count("plan");
+        int tenantsBefore = count("tenant");
         int pricesBefore = count("plan_price");
         String settingsBefore = settingsSnapshot();
 
@@ -92,6 +99,7 @@ class PlatformPermissionsIT {
         }
 
         assertThat(count("plan")).isEqualTo(plansBefore);
+        assertThat(count("tenant")).isEqualTo(tenantsBefore);
         assertThat(count("plan_price")).isEqualTo(pricesBefore);
         assertThat(settingsSnapshot()).isEqualTo(settingsBefore);
         assertThat(jdbc.queryForObject("select status from plan where id = ?::uuid", String.class, TRIAL_PLAN_ID))
@@ -102,10 +110,12 @@ class PlatformPermissionsIT {
     void anonymousCallerIsUnauthenticated() {
         for (var operation : platformOperations()) {
             String[] route = operation.getKey().split(" ");
-            String uri = "/api/v1" + route[1].replace("{planId}", TRIAL_PLAN_ID);
+            String uri = "/api/v1" + route[1].replace("{planId}", TRIAL_PLAN_ID)
+                    .replace("{tenantId}", UUID.randomUUID().toString());
             MvcTestResult result = switch (route[0]) {
                 case "GET" -> mvc.get().uri(uri).exchange();
                 case "PUT" -> mvc.put().uri(uri).exchange();
+                case "PATCH" -> mvc.patch().uri(uri).exchange();
                 default -> mvc.post().uri(uri).exchange();
             };
             assertThat(result).as(operation.getKey()).hasStatus(HttpStatus.UNAUTHORIZED);
@@ -127,6 +137,15 @@ class PlatformPermissionsIT {
         assertThat(jdbc.queryForObject(
                 "select count(*) from identity_role_permission where permission_code like 'platform.%'", Integer.class))
                 .isZero();
+    }
+
+    private static Map<String, Object> tenantBody() {
+        return Map.ofEntries(Map.entry("legalName", "Prohibida S.A."), Map.entry("ruc", "0000000000001"),
+                Map.entry("clinicType", "MEDICAL"), Map.entry("countryCode", "EC"), Map.entry("city", "Quito"),
+                Map.entry("address", "Calle 1"), Map.entry("phone", "+593000000000"),
+                Map.entry("contactEmail", "prohibida@example.test"), Map.entry("planId", TRIAL_PLAN_ID),
+                Map.entry("billingPeriod", "MONTHLY"),
+                Map.entry("owner", Map.of("fullName", "Nadie", "email", "nadie@example.test")));
     }
 
     private int count(String table) {

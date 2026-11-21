@@ -1,0 +1,199 @@
+<kd-page
+  heading="Registrar clínica"
+  headingId="tenant-form-title"
+  description="Registra los datos de la clínica, su plan y su OWNER. Le enviaremos al OWNER un enlace de un solo uso para activar su cuenta."
+>
+  <a kdPageBefore kdButton variant="tertiary" icon="arrow-left" [routerLink]="listLink"
+    >Volver a clínicas</a
+  >
+
+  @switch (state().kind) {
+    @case ('loading') {
+      <kd-loading-state label="Cargando planes…" />
+    }
+    @case ('failed') {
+      <kd-alert tone="error" data-testid="load-error">{{ loadFailure() }}</kd-alert>
+      <kd-actions>
+        <button kdButton type="button" icon="refresh-cw" (click)="load()">Volver a intentar</button>
+      </kd-actions>
+    }
+    @default {
+      <form
+        class="tenants-form"
+        [formGroup]="form"
+        (ngSubmit)="submit()"
+        novalidate
+        data-testid="tenant-form"
+      >
+        <kd-error-summary [errors]="summary()" data-testid="error-summary" />
+        @if (failure(); as message) {
+          <kd-alert tone="error" data-testid="form-error" tabindex="-1">{{ message }}</kd-alert>
+        }
+        <p class="tenants-muted">
+          Todos los campos son obligatorios salvo los marcados como opcionales.
+        </p>
+
+        <fieldset kdFieldGroup boxed legend="Datos de la clínica">
+          <kd-field label="Razón social">
+            <input
+              kdInput
+              id="tenant-legal-name"
+              type="text"
+              formControlName="legalName"
+              autocomplete="organization"
+              [attr.maxlength]="limits.legalName"
+            />
+          </kd-field>
+          <kd-field label="Nombre comercial (opcional)">
+            <input
+              kdInput
+              id="tenant-trade-name"
+              type="text"
+              formControlName="tradeName"
+              autocomplete="off"
+              [attr.maxlength]="limits.tradeName"
+            />
+          </kd-field>
+          <kd-field label="RUC" hint="13 dígitos, sin guiones." [error]="rucError()">
+            <input
+              kdInput
+              id="tenant-ruc"
+              type="text"
+              inputmode="numeric"
+              formControlName="ruc"
+              autocomplete="off"
+              maxlength="13"
+            />
+          </kd-field>
+          <kd-field label="Tipo de clínica">
+            <select kdInput id="tenant-type" formControlName="clinicType">
+              <option value="">Elige un tipo</option>
+              @for (type of clinicTypes; track type) {
+                <option [value]="type">{{ clinicTypeLabels[type] }}</option>
+              }
+            </select>
+          </kd-field>
+        </fieldset>
+
+        <fieldset kdFieldGroup boxed legend="Ubicación y contacto">
+          <kd-field label="País">
+            <select kdInput id="tenant-country" formControlName="countryCode">
+              @for (country of countries; track country[0]) {
+                <option [value]="country[0]">{{ country[1] }}</option>
+              }
+            </select>
+          </kd-field>
+          <kd-field label="Ciudad">
+            <input
+              kdInput
+              id="tenant-city"
+              type="text"
+              formControlName="city"
+              autocomplete="address-level2"
+              [attr.maxlength]="limits.city"
+            />
+          </kd-field>
+          <kd-field label="Dirección">
+            <input
+              kdInput
+              id="tenant-address"
+              type="text"
+              formControlName="address"
+              autocomplete="street-address"
+              [attr.maxlength]="limits.address"
+            />
+          </kd-field>
+          <kd-field label="Teléfono" hint="Con el código de país, por ejemplo +593 2 000 0000.">
+            <input
+              kdInput
+              id="tenant-phone"
+              type="tel"
+              formControlName="phone"
+              autocomplete="tel"
+              [attr.maxlength]="limits.phoneMax"
+            />
+          </kd-field>
+          <kd-field label="Correo de contacto">
+            <input
+              kdInput
+              id="tenant-contact-email"
+              type="email"
+              formControlName="contactEmail"
+              autocomplete="email"
+              [attr.maxlength]="limits.email"
+            />
+          </kd-field>
+          <kd-field label="Número de establecimiento del MSP (opcional)">
+            <input
+              kdInput
+              id="tenant-msp"
+              type="text"
+              formControlName="mspEstablishmentNumber"
+              autocomplete="off"
+              [attr.maxlength]="limits.msp"
+            />
+          </kd-field>
+        </fieldset>
+
+        <fieldset
+          kdFieldGroup
+          boxed
+          legend="Plan"
+          hint="Con el plan de prueba la clínica empieza en Prueba; con un plan pagado, en Activa. Precios sin IVA."
+        >
+          <kd-field label="Plan">
+            <select kdInput id="tenant-plan" formControlName="planId">
+              <option value="">Elige un plan</option>
+              @for (plan of plans(); track plan.id) {
+                <option [value]="plan.id">{{ planOptionLabel(plan) }}</option>
+              }
+            </select>
+          </kd-field>
+          <kd-field label="Periodicidad">
+            <select kdInput id="tenant-period" formControlName="billingPeriod">
+              @for (period of periods; track period) {
+                <option [value]="period">{{ periodLabels[period] }}</option>
+              }
+            </select>
+          </kd-field>
+        </fieldset>
+
+        <fieldset
+          kdFieldGroup
+          boxed
+          legend="OWNER de la clínica"
+          hint="Recibirá una invitación de un solo uso; deberá definir su contraseña, aceptar los términos y configurar la verificación en dos pasos."
+          formGroupName="owner"
+        >
+          <kd-field label="Nombre completo del OWNER">
+            <input
+              kdInput
+              id="tenant-owner-name"
+              type="text"
+              formControlName="fullName"
+              autocomplete="off"
+              [attr.maxlength]="limits.ownerName"
+            />
+          </kd-field>
+          <kd-field label="Correo del OWNER">
+            <input
+              kdInput
+              id="tenant-owner-email"
+              type="email"
+              formControlName="email"
+              autocomplete="off"
+              [attr.maxlength]="limits.email"
+            />
+          </kd-field>
+        </fieldset>
+
+        <kd-actions>
+          <button kdButton variant="primary" type="submit" [disabled]="submitting()">
+            {{ submitting() ? 'Registrando…' : 'Registrar clínica y enviar invitación' }}
+          </button>
+          <a kdButton variant="tertiary" [routerLink]="listLink">Cancelar</a>
+        </kd-actions>
+      </form>
+    }
+  }
+</kd-page>

@@ -1,0 +1,126 @@
+<section class="tenants-section" aria-labelledby="owner-title" data-testid="owner">
+  <h2 id="owner-title" class="tenants-section__title">OWNER</h2>
+  <div aria-live="polite">
+    @if (notice(); as message) {
+      <kd-alert tone="ok" data-testid="owner-notice">{{ message }}</kd-alert>
+    }
+  </div>
+  @if (failure(); as message) {
+    <kd-alert tone="error" data-testid="owner-failure" tabindex="-1">{{ message }}</kd-alert>
+  }
+
+  <dl kdDetails>
+    <dt>Nombre</dt>
+    <dd>{{ owner().fullName }}</dd>
+    <dt>Correo</dt>
+    <dd data-testid="owner-email">{{ owner().maskedEmail }}</dd>
+    <dt>Verificación en dos pasos</dt>
+    <dd data-testid="two-factor">
+      {{ owner().twoFactorEnabled ? 'Configurada' : 'Sin configurar' }}
+    </dd>
+    @if (owner().invitation; as invitation) {
+      <dt>Invitación</dt>
+      <dd data-testid="invitation">
+        {{ invitationLabels[invitation.status] }} · enviada a {{ invitation.maskedEmail }} el
+        {{ formatDateTime(invitation.sentAt) }}
+        @if (invitation.status === 'PENDING') {
+          · vence el {{ formatDateTime(invitation.expiresAt) }}
+        }
+      </dd>
+    }
+  </dl>
+
+  @if (canResend()) {
+    <form
+      class="tenants-stack"
+      [formGroup]="resendForm"
+      (ngSubmit)="resend()"
+      novalidate
+      aria-label="Reenviar invitación del OWNER"
+      data-testid="resend-form"
+    >
+      <kd-field
+        label="Corregir el correo del OWNER (opcional)"
+        hint="Déjalo vacío para reenviar al mismo correo."
+      >
+        <input
+          kdInput
+          id="owner-new-email"
+          type="email"
+          formControlName="email"
+          autocomplete="off"
+          [attr.maxlength]="limits.email"
+        />
+      </kd-field>
+      <kd-actions>
+        <button
+          kdButton
+          type="submit"
+          icon="mail"
+          data-testid="resend"
+          [disabled]="busy() !== null"
+        >
+          {{ busy() === 'resend' ? 'Enviando…' : 'Reenviar invitación' }}
+        </button>
+      </kd-actions>
+    </form>
+  }
+
+  @if (owner().twoFactorEnabled) {
+    @if (confirmingReset()) {
+      <div
+        class="tenants-confirm"
+        role="alertdialog"
+        aria-labelledby="reset-title"
+        aria-describedby="reset-text"
+        data-testid="reset-confirm"
+      >
+        <h3 id="reset-title" class="tenants-subtitle">
+          ¿Restablecer la verificación en dos pasos del OWNER?
+        </h3>
+        <p id="reset-text" class="tenants-text">
+          Hazlo solo después de verificar su identidad. Deberá configurarla de nuevo en su próximo
+          ingreso. Queda registrado con tu motivo.
+        </p>
+        <form class="tenants-stack" [formGroup]="resetForm" (ngSubmit)="confirmReset()" novalidate>
+          <kd-field label="Motivo" hint="Sin datos clínicos. Queda en la auditoría.">
+            <textarea
+              kdInput
+              id="owner-reset-reason"
+              rows="3"
+              formControlName="reason"
+              [attr.maxlength]="limits.reason"
+            ></textarea>
+          </kd-field>
+          <kd-actions>
+            <button
+              kdButton
+              variant="danger"
+              type="submit"
+              data-testid="confirm-reset"
+              [disabled]="busy() !== null"
+            >
+              {{ busy() === 'reset' ? 'Restableciendo…' : 'Sí, restablecer' }}
+            </button>
+            <button kdButton variant="tertiary" type="button" (click)="cancelReset()">
+              Cancelar
+            </button>
+          </kd-actions>
+        </form>
+      </div>
+    } @else {
+      <kd-actions>
+        <button
+          kdButton
+          type="button"
+          icon="lock"
+          data-testid="reset-two-factor"
+          [disabled]="busy() !== null"
+          (click)="askReset()"
+        >
+          Restablecer verificación en dos pasos
+        </button>
+      </kd-actions>
+    }
+  }
+</section>

@@ -47,5 +47,8 @@ public enum AuditAction {
     PLAN_UPDATED,
     PLAN_ARCHIVED,
     PLAN_PRICE_CREATED,
-    PLATFORM_SETTINGS_UPDATED
+    PLATFORM_SETTINGS_UPDATED,
+    // MEDK-66 clinic onboarding and administration by the SUPER_ADMIN (event of the clinic)
+    TENANT_ONBOARDED,
+    TENANT_UPDATED
 }

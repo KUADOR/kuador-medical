@@ -32,7 +32,8 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   PRIVILEGE_ESCALATION: 'No puedes otorgar permisos o roles que tú no tienes.',
   SELF_MODIFICATION_FORBIDDEN: 'No puedes cambiar tus propios roles ni tu propio acceso.',
   LAST_OWNER: 'La clínica debe conservar al menos una persona con el rol OWNER.',
-  PLAN_LIMIT_REACHED: 'Tu clínica alcanzó el límite de usuarios de su plan.',
+  PLAN_LIMIT_REACHED:
+    'Tu clínica alcanzó un límite de su plan (por ejemplo, de usuarios o sucursales), así que no puedes crear más de este tipo. No se borró ningún dato: libera cupo o pide a Kuador un plan mayor.',
   IDEMPOTENCY_KEY_REUSED:
     'Esta solicitud ya se envió con otros datos. Recarga la página e intenta de nuevo.',
   RESOURCE_ID_TAKEN: 'Esta solicitud ya se envió. Recarga la página e intenta de nuevo.',
@@ -43,6 +44,23 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   LAST_LEGAL_GUARDIAN: 'Un paciente menor de edad debe conservar al menos un representante legal.',
   CONTACT_CHANNEL_UNAVAILABLE:
     'El paciente no tiene un correo o teléfono registrado para enviarle la invitación.',
+  // Platform and subscriptions contract (MEDK-49).
+  TENANT_READ_ONLY:
+    'Tu clínica está en modo solo lectura por el estado de su suscripción: puedes consultar y exportar, pero no crear ni editar.',
+  MODULE_NOT_IN_PLAN: 'El plan de tu clínica no incluye este módulo.',
+  INVALID_SUBSCRIPTION_TRANSITION:
+    'La suscripción no puede pasar a ese estado desde su estado actual.',
+  REACTIVATION_WINDOW_CLOSED:
+    'Ya no se puede reactivar la clínica: terminó su período de retención.',
+  INVITATION_INVALID_OR_EXPIRED:
+    'La invitación no es válida: venció, ya se usó o fue reemplazada por una nueva.',
+  TWO_FACTOR_REQUIRED: 'Debes completar la verificación en dos pasos para continuar.',
+  TWO_FACTOR_CODE_INVALID: 'El código no es correcto o ya venció. Escribe el código actual.',
+  TWO_FACTOR_ALREADY_ENABLED: 'La verificación en dos pasos ya está activada.',
+  RUC_ALREADY_REGISTERED: 'Ya existe una clínica registrada con ese RUC.',
+  PLAN_ARCHIVED: 'El plan está archivado: no se puede editar ni elegir.',
+  PLAN_CHANGE_NOT_ALLOWED: 'El estado actual de la suscripción no permite ese cambio de plan.',
+  PURGE_NOT_ALLOWED: 'Todavía no se puede borrar definitivamente esta clínica.',
 };
 
 /** Messages for field-level validation codes (Problem.errors[].code). */
@@ -56,6 +74,12 @@ export const FIELD_ERROR_MESSAGES: Readonly<Record<string, string>> = {
   DUPLICATE: 'Este valor ya está registrado.',
   UNKNOWN_BRANCH: 'La sucursal no existe en tu clínica.',
   UNKNOWN_ROLE: 'El rol no existe en tu clínica.',
+  UNKNOWN_MODULE: 'El módulo no existe en el catálogo del sistema.',
+  UNKNOWN_LIMIT: 'El límite no existe en el catálogo del sistema.',
+  IN_THE_PAST: 'La fecha no puede ser anterior a hoy.',
+  TRIAL_PLAN_REQUIRED: 'El plan de prueba no se puede archivar: siempre debe existir uno.',
+  MISMATCH: 'El valor no coincide.',
+  OUTDATED_VERSION: 'Los datos cambiaron mientras los editabas. Recarga para ver los cambios.',
 };
 
 export const NETWORK_ERROR_MESSAGE =

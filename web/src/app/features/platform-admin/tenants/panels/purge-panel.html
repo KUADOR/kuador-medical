@@ -1,0 +1,115 @@
+<section class="tenants-section" aria-labelledby="purge-title" data-testid="purge">
+  <h2 id="purge-title" class="tenants-section__title">Baja definitiva</h2>
+  @if (failure(); as message) {
+    <kd-alert tone="error" data-testid="purge-failure" tabindex="-1">{{ message }}</kd-alert>
+  }
+
+  <div aria-live="polite">
+    @if (confirmed(); as done) {
+      <kd-alert tone="ok" data-testid="purge-confirmed">
+        Purga confirmada el {{ formatDateTime(done.confirmedAt) }}. Cada módulo elimina o anonimiza
+        sus datos; la historia clínica se conserva hasta validar el plazo legal de conservación.
+      </kd-alert>
+    }
+  </div>
+
+  @if (subscription().purged) {
+    <p class="tenants-muted" data-testid="purge-done">
+      Los datos de esta clínica ya fueron purgados.
+    </p>
+  } @else if (!confirmed()) {
+    @if (!available()) {
+      <p class="tenants-muted" data-testid="purge-unavailable">
+        @if (retentionEnd(); as end) {
+          Se podrá purgar cuando termine la retención, el {{ end }}. Hasta entonces el OWNER puede
+          consultar y exportar sus datos.
+        } @else {
+          Todavía no se puede purgar esta clínica.
+        }
+      </p>
+    } @else {
+      <kd-alert tone="warning">
+        La purga es definitiva y se hace en dos pasos. La historia clínica no se purga hasta validar
+        el plazo legal de conservación. Los respaldos con estos datos se purgan a los 30 días.
+      </kd-alert>
+
+      @if (request(); as pending) {
+        <div
+          class="tenants-confirm"
+          role="alertdialog"
+          aria-labelledby="purge-confirm-title"
+          aria-describedby="purge-confirm-text"
+          data-testid="purge-step-2"
+        >
+          <h3 id="purge-confirm-title" class="tenants-subtitle">Paso 2 de 2: confirmar la purga</h3>
+          <p id="purge-confirm-text" class="tenants-text">
+            Solicitud registrada el {{ formatDateTime(pending.requestedAt) }}. Para confirmar,
+            escribe el RUC de {{ tenant().legalName }}.
+          </p>
+          <form
+            class="tenants-stack"
+            [formGroup]="confirmForm"
+            (ngSubmit)="confirmPurge()"
+            novalidate
+          >
+            <kd-field label="RUC de la clínica">
+              <input
+                kdInput
+                id="purge-ruc"
+                type="text"
+                inputmode="numeric"
+                formControlName="rucConfirmation"
+                autocomplete="off"
+                maxlength="13"
+              />
+            </kd-field>
+            <kd-actions>
+              <button
+                kdButton
+                variant="danger"
+                type="submit"
+                icon="trash-2"
+                data-testid="confirm-purge"
+                [disabled]="busy()"
+              >
+                {{ busy() ? 'Confirmando…' : 'Confirmar purga definitiva' }}
+              </button>
+            </kd-actions>
+          </form>
+        </div>
+      } @else {
+        <form
+          class="tenants-stack"
+          [formGroup]="requestForm"
+          (ngSubmit)="requestPurge()"
+          novalidate
+          aria-label="Solicitar la purga de la clínica"
+          data-testid="purge-step-1"
+        >
+          <h3 class="tenants-subtitle">Paso 1 de 2: solicitar la purga</h3>
+          <p class="tenants-text">Todavía no se borra nada.</p>
+          <kd-field label="Motivo" hint="Obligatorio. Sin datos clínicos. Queda en la auditoría.">
+            <textarea
+              kdInput
+              id="purge-reason"
+              rows="3"
+              formControlName="reason"
+              [attr.maxlength]="limits.reason"
+            ></textarea>
+          </kd-field>
+          <kd-actions>
+            <button
+              kdButton
+              variant="danger"
+              type="submit"
+              data-testid="request-purge"
+              [disabled]="busy()"
+            >
+              {{ busy() ? 'Solicitando…' : 'Solicitar purga' }}
+            </button>
+          </kd-actions>
+        </form>
+      }
+    }
+  }
+</section>

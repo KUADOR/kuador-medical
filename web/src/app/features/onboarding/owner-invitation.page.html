@@ -1,0 +1,89 @@
+<kd-page heading="Activa la cuenta de tu clínica" headingId="owner-invitation-title" width="narrow">
+  @switch (state()) {
+    @case ('loading') {
+      <kd-loading-state label="Revisando la invitación…" data-testid="loading" />
+    }
+    @case ('invalid') {
+      <kd-alert tone="error" data-testid="link-error">{{ invalidMessage }}</kd-alert>
+    }
+    @case ('error') {
+      <kd-alert tone="error" data-testid="load-error">{{ loadError() }}</kd-alert>
+      <kd-actions>
+        <button kdButton type="button" icon="refresh-cw" (click)="load()">Intentar de nuevo</button>
+      </kd-actions>
+    }
+    @case ('ready') {
+      @if (preview(); as invitation) {
+        <kd-alert tone="info" data-testid="invitation-summary">
+          Hola, {{ invitation.ownerName }}. Kuador te invitó como OWNER de
+          <strong>{{ invitation.clinicName }}</strong> con el correo
+          <strong>{{ invitation.maskedEmail }}</strong>. La invitación vence el
+          {{ formatDay(invitation.expiresAt) }}.
+        </kd-alert>
+
+        <p class="owner-invitation__steps" data-testid="steps">
+          Paso 1 de 2: elige tu contraseña y acepta los términos. Paso 2 de 2: activa la
+          verificación en dos pasos, obligatoria para la cuenta OWNER.
+        </p>
+
+        <form class="owner-invitation__form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+          @if (failure(); as message) {
+            <kd-alert tone="error" data-testid="form-error">{{ message }}</kd-alert>
+          }
+
+          <kd-field label="Contraseña" [hint]="'Al menos ' + passwordMinLength + ' caracteres.'">
+            <input
+              kdInput
+              id="owner-password"
+              type="password"
+              formControlName="password"
+              autocomplete="new-password"
+            />
+          </kd-field>
+
+          <kd-field label="Repite la contraseña">
+            <input
+              kdInput
+              id="owner-confirm"
+              type="password"
+              formControlName="confirmPassword"
+              autocomplete="new-password"
+            />
+          </kd-field>
+
+          <kd-field
+            [label]="'Acepto los términos del servicio (versión ' + invitation.termsVersion + ')'"
+          >
+            <input kdInput id="owner-terms" type="checkbox" formControlName="acceptTerms" />
+          </kd-field>
+
+          <kd-field
+            [label]="
+              'Acepto la política de tratamiento de datos (versión ' +
+              invitation.dataPolicyVersion +
+              ')'
+            "
+            hint="La clínica es la responsable de los datos de sus pacientes y Kuador es solo el encargado de su tratamiento."
+          >
+            <input
+              kdInput
+              id="owner-data-policy"
+              type="checkbox"
+              formControlName="acceptDataPolicy"
+            />
+          </kd-field>
+
+          <kd-actions>
+            <button kdButton variant="primary" type="submit" [disabled]="submitting()">
+              {{ submitting() ? 'Activando…' : 'Continuar' }}
+            </button>
+          </kd-actions>
+        </form>
+      }
+    }
+  }
+
+  <kd-actions>
+    <a kdButton variant="tertiary" [routerLink]="loginLink">Ir a ingresar</a>
+  </kd-actions>
+</kd-page>

@@ -7,6 +7,7 @@ import {
   pendingPasswordChangeGuard,
   requireAccess,
   requirePermissions,
+  twoFactorStepGuard,
 } from './core/session/auth.guards';
 import { Modules } from './core/session/navigation';
 import { AcceptInvitationPage } from './features/auth/accept-invitation/accept-invitation.page';
@@ -72,6 +73,33 @@ export const routes: Routes = [
     path: 'invitation',
     component: AcceptInvitationPage,
     title: `Activar cuenta · ${APP_TITLE}`,
+  },
+  {
+    // OWNER invitation of a new clinic (MEDK-49): /owner-invitation#t=<token> (ADR-014).
+    path: 'owner-invitation',
+    loadComponent: () =>
+      import('./features/onboarding/owner-invitation.page').then((m) => m.OwnerInvitationPage),
+    title: `Activar cuenta de la clínica · ${APP_TITLE}`,
+  },
+  {
+    // Mandatory TOTP second factor of the OWNER (ADR-019).
+    path: 'two-factor/enroll',
+    // Lazy: the QR encoder is only needed by this page.
+    loadComponent: () =>
+      import('./features/auth/two-factor/two-factor-enroll.page').then(
+        (m) => m.TwoFactorEnrollPage,
+      ),
+    canActivate: [twoFactorStepGuard('ENROLLMENT_REQUIRED')],
+    title: `Activar verificación en dos pasos · ${APP_TITLE}`,
+  },
+  {
+    path: 'two-factor/verify',
+    loadComponent: () =>
+      import('./features/auth/two-factor/two-factor-verify.page').then(
+        (m) => m.TwoFactorVerifyPage,
+      ),
+    canActivate: [twoFactorStepGuard('VERIFICATION_REQUIRED')],
+    title: `Verificación en dos pasos · ${APP_TITLE}`,
   },
   {
     path: 'email-verification',
@@ -188,10 +216,73 @@ export const routes: Routes = [
     title: `Mis contactos autorizados · ${APP_TITLE}`,
   },
   {
+    // Allowed also while the clinic is read-only (ADR-017).
+    path: 'data-export',
+    loadComponent: () =>
+      import('./features/tenant-export/tenant-export.page').then((m) => m.TenantExportPage),
+    canActivate: [requirePermissions('tenant.data.export')],
+    title: `Exportar datos · ${APP_TITLE}`,
+  },
+  {
     path: 'platform/permissions',
     component: PlatformPermissionsPage,
     canActivate: [requirePermissions('platform.permissions.read')],
     title: `Catálogo de permisos · ${APP_TITLE}`,
+  },
+  {
+    path: 'platform/plans',
+    loadComponent: () =>
+      import('./features/platform-admin/plans/plans.page').then((m) => m.PlansPage),
+    canActivate: [requirePermissions('platform.plans.manage')],
+    title: `Planes y tarifas · ${APP_TITLE}`,
+  },
+  {
+    path: 'platform/plans/new',
+    loadComponent: () =>
+      import('./features/platform-admin/plans/plan-form.page').then((m) => m.PlanFormPage),
+    canActivate: [requirePermissions('platform.plans.manage')],
+    title: `Nuevo plan · ${APP_TITLE}`,
+  },
+  {
+    path: 'platform/plans/:id',
+    loadComponent: () =>
+      import('./features/platform-admin/plans/plan-form.page').then((m) => m.PlanFormPage),
+    canActivate: [requirePermissions('platform.plans.manage')],
+    title: `Plan · ${APP_TITLE}`,
+  },
+  {
+    path: 'platform/settings',
+    loadComponent: () =>
+      import('./features/platform-admin/settings/platform-settings.page').then(
+        (m) => m.PlatformSettingsPage,
+      ),
+    canActivate: [requirePermissions('platform.settings.manage')],
+    title: `Ajustes de plataforma · ${APP_TITLE}`,
+  },
+  {
+    // SUPER_ADMIN clinics panel (MEDK-73). Lazy: only platform accounts ever open it.
+    path: 'platform/tenants',
+    loadComponent: () =>
+      import('./features/platform-admin/tenants/tenants-list.page').then((m) => m.TenantsListPage),
+    canActivate: [requirePermissions('platform.tenants.manage')],
+    title: `Clínicas · ${APP_TITLE}`,
+  },
+  {
+    // Onboarding also needs the plans to choose from.
+    path: 'platform/tenants/new',
+    loadComponent: () =>
+      import('./features/platform-admin/tenants/tenant-form.page').then((m) => m.TenantFormPage),
+    canActivate: [requirePermissions('platform.tenants.manage', 'platform.plans.manage')],
+    title: `Registrar clínica · ${APP_TITLE}`,
+  },
+  {
+    path: 'platform/tenants/:id',
+    loadComponent: () =>
+      import('./features/platform-admin/tenants/tenant-detail.page').then(
+        (m) => m.TenantDetailPage,
+      ),
+    canActivate: [requirePermissions('platform.tenants.manage')],
+    title: `Clínica · ${APP_TITLE}`,
   },
   {
     path: 'forbidden',
