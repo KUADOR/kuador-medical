@@ -1,0 +1,160 @@
+<kd-page
+  heading="Planes y tarifas"
+  headingId="plans-title"
+  width="wide"
+  description="Planes que Kuador ofrece a las clínicas, con sus módulos, límites y tarifas vigentes. Los precios están en USD y no incluyen IVA."
+>
+  <a
+    kdPageActions
+    kdButton
+    variant="primary"
+    icon="plus"
+    [routerLink]="newPlanLink"
+    data-testid="new-plan"
+    >Nuevo plan</a
+  >
+
+  <div aria-live="polite">
+    @if (notice(); as message) {
+      <kd-alert tone="ok" data-testid="notice">{{ message }}</kd-alert>
+    }
+  </div>
+
+  @if (actionFailure(); as message) {
+    <kd-alert tone="error" data-testid="action-error">{{ message }}</kd-alert>
+  }
+
+  @if (confirming(); as plan) {
+    <div
+      class="plans__confirm"
+      role="alertdialog"
+      aria-labelledby="archive-title"
+      aria-describedby="archive-text"
+    >
+      <h2 id="archive-title" class="plans__confirm-title">¿Archivar el plan «{{ plan.name }}»?</h2>
+      <p id="archive-text" class="plans__text">
+        Ya no se podrá elegir para clínicas nuevas ni para cambios de plan. Las clínicas que lo
+        tienen lo conservan. Los planes nunca se borran.
+      </p>
+      <kd-actions>
+        <button
+          kdButton
+          variant="danger"
+          icon="lock"
+          type="button"
+          data-testid="confirm-archive"
+          [disabled]="archiving()"
+          (click)="confirmArchive()"
+        >
+          {{ archiving() ? 'Archivando…' : 'Sí, archivar' }}
+        </button>
+        <button kdButton variant="tertiary" type="button" (click)="cancelArchive()">
+          Cancelar
+        </button>
+      </kd-actions>
+    </div>
+  }
+
+  <div class="plans__filters">
+    <kd-field label="Mostrar">
+      <select kdInput id="plans-filter" data-testid="plans-filter" (change)="changeFilter($event)">
+        <option value="ALL" [selected]="filter() === 'ALL'">Todos los planes</option>
+        <option value="ACTIVE" [selected]="filter() === 'ACTIVE'">Activos</option>
+        <option value="ARCHIVED" [selected]="filter() === 'ARCHIVED'">Archivados</option>
+      </select>
+    </kd-field>
+  </div>
+
+  <div class="plans__content" [attr.aria-busy]="state().kind === 'loading'">
+    @switch (state().kind) {
+      @case ('loading') {
+        <kd-loading-state label="Cargando planes…" />
+      }
+      @case ('failed') {
+        <kd-alert tone="error" data-testid="load-error">{{ loadFailure() }}</kd-alert>
+        <kd-actions>
+          <button kdButton type="button" icon="refresh-cw" (click)="load()">
+            Volver a intentar
+          </button>
+        </kd-actions>
+      }
+      @default {
+        @if (plans().length === 0) {
+          <kd-empty-state
+            data-testid="empty"
+            icon="file-text"
+            heading="No hay planes para mostrar."
+          />
+        } @else {
+          <kd-table label="Planes">
+            <table>
+              <caption class="visually-hidden">
+                Planes con sus tarifas vigentes en USD, sin IVA
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Plan</th>
+                  <th scope="col">Estado</th>
+                  <th scope="col">Módulos</th>
+                  @for (period of periods; track period) {
+                    <th scope="col">{{ periodLabels[period] }} (sin IVA)</th>
+                  }
+                  <th scope="col"><span class="visually-hidden">Acciones</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (plan of plans(); track plan.id) {
+                  <tr data-testid="plan-row">
+                    <td>
+                      <span class="plans__name">{{ plan.name }}</span>
+                      <code class="plans__code">{{ plan.code }}</code>
+                      @if (plan.trial) {
+                        <kd-badge tone="info" data-testid="trial-badge">Plan de prueba</kd-badge>
+                      }
+                    </td>
+                    <td>
+                      <kd-badge
+                        [tone]="plan.status === 'ACTIVE' ? 'ok' : 'neutral'"
+                        data-testid="status"
+                      >
+                        {{ statusLabels[plan.status] }}
+                      </kd-badge>
+                    </td>
+                    <td>{{ plan.modules.length }}</td>
+                    @for (period of periods; track period) {
+                      <td data-testid="price">{{ price(plan, period) }}</td>
+                    }
+                    <td>
+                      <div class="plans__actions">
+                        <a
+                          kdButton
+                          [icon]="plan.status === 'ACTIVE' ? 'pencil' : 'eye'"
+                          [routerLink]="planUrl(plan.id)"
+                        >
+                          {{ plan.status === 'ACTIVE' ? 'Editar' : 'Ver'
+                          }}<span class="visually-hidden"> {{ plan.name }}</span>
+                        </a>
+                        @if (canArchive(plan)) {
+                          <button
+                            kdButton
+                            variant="tertiary"
+                            icon="lock"
+                            type="button"
+                            [attr.data-archive-plan]="plan.id"
+                            (click)="askArchive(plan)"
+                          >
+                            Archivar<span class="visually-hidden"> {{ plan.name }}</span>
+                          </button>
+                        }
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </kd-table>
+        }
+      }
+    }
+  </div>
+</kd-page>

@@ -1,0 +1,45 @@
+// Layout of the plans list (MEDK-72). Tokens only (ADR-007).
+.plans__content,
+.plans__filters {
+  display: grid;
+  gap: var(--kd-space-3);
+}
+
+.plans__name {
+  display: block;
+  font: var(--kd-type-label);
+}
+
+.plans__code {
+  display: block;
+  font: var(--kd-type-body-sm);
+  color: var(--kd-text-muted);
+}
+
+.plans__text {
+  margin: 0;
+  font: var(--kd-type-body-sm);
+  color: var(--kd-text-muted);
+}
+
+.plans__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kd-space-2);
+}
+
+// Inline archive confirmation: a raised panel with the warning tone as its edge (R-03, R-08).
+.plans__confirm {
+  display: grid;
+  gap: var(--kd-space-3);
+  padding: var(--kd-space-4);
+  border: var(--kd-border-hairline);
+  border-left: var(--kd-space-1) solid var(--kd-color-warning);
+  border-radius: var(--kd-radius-lg);
+  background: var(--kd-surface-raised);
+}
+
+.plans__confirm-title {
+  margin: 0;
+  font: var(--kd-type-title);
+}

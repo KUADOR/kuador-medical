@@ -1,12 +1,12 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { ClinicSubscription, OwnerPaths } from '../api/api-types';
+import { AccessPermission, ClinicSubscription, OwnerPaths } from '../api/api-types';
 import { AppConfigService } from '../config/app-config.service';
 import { SessionStore } from '../session/session.store';
 
 /** Permission that lets an account read the subscription of its clinic (platform contract). */
-export const SUBSCRIPTION_READ_PERMISSION = 'subscription.read';
+export const SUBSCRIPTION_READ_PERMISSION = 'subscription.read' satisfies AccessPermission;
 
 /**
  * Subscription of the current clinic (GET /tenant/subscription): status, access mode, plan,
@@ -32,10 +32,9 @@ export class SubscriptionService {
 
   /** True when the current account may read the subscription of its clinic. */
   canRead(): boolean {
-    const account = this.session.account();
     return (
-      account?.scope === 'TENANT' &&
-      (account.permissions as readonly string[]).includes(SUBSCRIPTION_READ_PERMISSION)
+      this.session.account()?.scope === 'TENANT' &&
+      this.session.hasPermission(SUBSCRIPTION_READ_PERMISSION)
     );
   }
 

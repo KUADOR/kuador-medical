@@ -11,6 +11,9 @@ export const AppRoutes = {
   roles: '/roles',
   newRole: '/roles/new',
   platformPermissions: '/platform/permissions',
+  plans: '/platform/plans',
+  newPlan: '/platform/plans/new',
+  platformSettings: '/platform/settings',
   patients: '/patients',
   newPatient: '/patients/new',
   selfRegistrationSettings: '/patients/self-registration',
@@ -21,6 +24,11 @@ export const AppRoutes = {
 /** Detail page of a patient. */
 export function patientUrl(id: string): string {
   return `${AppRoutes.patients}/${encodeURIComponent(id)}`;
+}
+
+/** Edit (or, when archived, view) page of a plan. */
+export function planUrl(id: string): string {
+  return `${AppRoutes.plans}/${encodeURIComponent(id)}`;
 }
 
 /** Edit page of a patient. */
@@ -88,6 +96,18 @@ export const MENU_ITEMS: readonly MenuItem[] = [
     link: AppRoutes.platformPermissions,
     icon: 'clipboard-list',
     permissions: ['platform.permissions.read'],
+  },
+  {
+    label: 'Planes y tarifas',
+    link: AppRoutes.plans,
+    icon: 'file-text',
+    permissions: ['platform.plans.manage'],
+  },
+  {
+    label: 'Ajustes de plataforma',
+    link: AppRoutes.platformSettings,
+    icon: 'settings',
+    permissions: ['platform.settings.manage'],
   },
   {
     // OWNER data export (MEDK-74): also allowed while the clinic is read-only (ADR-017).

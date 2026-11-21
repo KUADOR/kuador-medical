@@ -1,0 +1,46 @@
+// Layout of the plan form and its price versions (MEDK-72): raised panels, no shadow
+// (R-03, R-04). Tokens only (ADR-007).
+.plan-form,
+.price-form {
+  display: grid;
+  gap: var(--kd-space-4);
+}
+
+.plan-form {
+  padding: var(--kd-space-4);
+  border: var(--kd-border-hairline);
+  border-radius: var(--kd-radius-lg);
+  background: var(--kd-surface-raised);
+}
+
+.price-form {
+  padding-top: var(--kd-space-4);
+  border-top: var(--kd-border-hairline);
+}
+
+// Value and «Sin límite» side by side when there is room; they wrap on narrow screens.
+.plan-form__limit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kd-space-2) var(--kd-space-4);
+  align-items: end;
+}
+
+.plan-form__title,
+.plan-form__subtitle {
+  margin: 0;
+}
+
+.plan-form__title {
+  font: var(--kd-type-title);
+}
+
+.plan-form__subtitle {
+  font: var(--kd-type-subtitle);
+}
+
+.plan-form__message {
+  margin: 0;
+  font: var(--kd-type-body-sm);
+  color: var(--kd-text-muted);
+}

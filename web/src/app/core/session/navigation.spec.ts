@@ -2,6 +2,7 @@ import {
   ACCOUNT,
   FULL_ACCOUNT,
   PATIENT_ACCOUNT,
+  PLATFORM_ADMIN,
   RECEPTION_ACCOUNT,
   STAFF_ADMIN_ACCOUNT,
   STAFF_OWNER_ACCOUNT,
@@ -13,6 +14,11 @@ describe('navigation', () => {
   it('builds the menu from the permissions of GET /me', () => {
     expect(menuFor(FULL_ACCOUNT).map((item) => item.label)).toEqual(['Roles']);
     expect(menuFor(SUPER_ADMIN).map((item) => item.label)).toEqual(['Catálogo de permisos']);
+    expect(menuFor(PLATFORM_ADMIN).map((item) => item.label)).toEqual([
+      'Catálogo de permisos',
+      'Planes y tarifas',
+      'Ajustes de plataforma',
+    ]);
     expect(menuFor({ ...ACCOUNT, permissions: [] })).toEqual([]);
     expect(menuFor(null)).toEqual([]);
   });

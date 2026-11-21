@@ -230,6 +230,36 @@ export const routes: Routes = [
     title: `Catálogo de permisos · ${APP_TITLE}`,
   },
   {
+    path: 'platform/plans',
+    loadComponent: () =>
+      import('./features/platform-admin/plans/plans.page').then((m) => m.PlansPage),
+    canActivate: [requirePermissions('platform.plans.manage')],
+    title: `Planes y tarifas · ${APP_TITLE}`,
+  },
+  {
+    path: 'platform/plans/new',
+    loadComponent: () =>
+      import('./features/platform-admin/plans/plan-form.page').then((m) => m.PlanFormPage),
+    canActivate: [requirePermissions('platform.plans.manage')],
+    title: `Nuevo plan · ${APP_TITLE}`,
+  },
+  {
+    path: 'platform/plans/:id',
+    loadComponent: () =>
+      import('./features/platform-admin/plans/plan-form.page').then((m) => m.PlanFormPage),
+    canActivate: [requirePermissions('platform.plans.manage')],
+    title: `Plan · ${APP_TITLE}`,
+  },
+  {
+    path: 'platform/settings',
+    loadComponent: () =>
+      import('./features/platform-admin/settings/platform-settings.page').then(
+        (m) => m.PlatformSettingsPage,
+      ),
+    canActivate: [requirePermissions('platform.settings.manage')],
+    title: `Ajustes de plataforma · ${APP_TITLE}`,
+  },
+  {
     path: 'forbidden',
     component: MessagePage,
     title: `Sin permiso · ${APP_TITLE}`,

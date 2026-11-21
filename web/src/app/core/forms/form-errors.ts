@@ -48,6 +48,24 @@ export function controlErrorMessage(control: AbstractControl | null): string | n
   if (errors['samePassword']) {
     return 'La contraseña nueva debe ser distinta de la actual.';
   }
+  if (errors['integer']) {
+    return 'Escribe un número entero, sin decimales.';
+  }
+  if (errors['min']) {
+    return `Debe ser como mínimo ${errors['min'].min}.`;
+  }
+  if (errors['max']) {
+    return `Debe ser como máximo ${errors['max'].max}.`;
+  }
+  if (errors['amount']) {
+    return 'Escribe un monto con hasta dos decimales, por ejemplo 49.00.';
+  }
+  if (errors['planCode']) {
+    return 'Usa de 2 a 40 letras mayúsculas, números o guion bajo, empezando con una letra.';
+  }
+  if (errors['pastDate']) {
+    return 'La fecha no puede ser anterior a hoy.';
+  }
   return 'El valor no es válido.';
 }
 
@@ -68,6 +86,15 @@ export const notInFuture: ValidatorFn = (control): ValidationErrors | null => {
   const today = new Date();
   const local = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   return value > local ? { futureDate: true } : null;
+};
+
+/** Whole number (the value may come as a string from a text or number input). */
+export const integer: ValidatorFn = (control): ValidationErrors | null => {
+  const value: unknown = control.value;
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+  return /^-?\d+$/.test(String(value).trim()) ? null : { integer: true };
 };
 
 /** Optional phone in E.164 format, as the contract requires (`+` and 7 to 15 digits). */

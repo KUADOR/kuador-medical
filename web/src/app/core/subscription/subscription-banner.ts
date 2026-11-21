@@ -7,6 +7,7 @@ import {
   untracked,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import type { AccessPermission } from '../api/api-types';
 import { KdAlert, KdButton } from '../../design-system';
 import { AppRoutes } from '../session/navigation';
 import { SessionStore } from '../session/session.store';
@@ -14,7 +15,7 @@ import { subscriptionNotice } from './subscription-notice';
 import { SubscriptionService } from './subscription.service';
 
 /** Permission of the clinic data export (platform contract). */
-const EXPORT_PERMISSION = 'tenant.data.export';
+const EXPORT_PERMISSION = 'tenant.data.export' satisfies AccessPermission;
 
 /**
  * Notice of the subscription status above every page of a clinic account: overdue (grace with
@@ -50,11 +51,7 @@ export class SubscriptionBanner {
 
   protected readonly exportLink = AppRoutes.dataExport;
   protected readonly notice = computed(() => subscriptionNotice(this.subscriptions.subscription()));
-  protected readonly canExport = computed(() =>
-    (this.session.account()?.permissions as readonly string[] | undefined)?.includes(
-      EXPORT_PERMISSION,
-    ),
-  );
+  protected readonly canExport = computed(() => this.session.hasPermission(EXPORT_PERMISSION));
 
   constructor() {
     effect(() => {
