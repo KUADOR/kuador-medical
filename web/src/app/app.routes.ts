@@ -194,6 +194,31 @@ export const routes: Routes = [
     title: `Catálogo de permisos · ${APP_TITLE}`,
   },
   {
+    // SUPER_ADMIN clinics panel (MEDK-73). Lazy: only platform accounts ever open it.
+    path: 'platform/tenants',
+    loadComponent: () =>
+      import('./features/platform-admin/tenants/tenants-list.page').then((m) => m.TenantsListPage),
+    canActivate: [requirePermissions('platform.tenants.manage')],
+    title: `Clínicas · ${APP_TITLE}`,
+  },
+  {
+    // Onboarding also needs the plans to choose from.
+    path: 'platform/tenants/new',
+    loadComponent: () =>
+      import('./features/platform-admin/tenants/tenant-form.page').then((m) => m.TenantFormPage),
+    canActivate: [requirePermissions('platform.tenants.manage', 'platform.plans.manage')],
+    title: `Registrar clínica · ${APP_TITLE}`,
+  },
+  {
+    path: 'platform/tenants/:id',
+    loadComponent: () =>
+      import('./features/platform-admin/tenants/tenant-detail.page').then(
+        (m) => m.TenantDetailPage,
+      ),
+    canActivate: [requirePermissions('platform.tenants.manage')],
+    title: `Clínica · ${APP_TITLE}`,
+  },
+  {
     path: 'forbidden',
     component: MessagePage,
     title: `Sin permiso · ${APP_TITLE}`,

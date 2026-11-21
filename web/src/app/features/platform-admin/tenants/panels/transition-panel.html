@@ -1,0 +1,100 @@
+<section class="tenants-section" aria-labelledby="transition-title" data-testid="transitions">
+  <h2 id="transition-title" class="tenants-section__title">Cambiar el estado</h2>
+  <div aria-live="polite">
+    @if (notice(); as message) {
+      <kd-alert tone="ok" data-testid="transition-notice">{{ message }}</kd-alert>
+    }
+  </div>
+  @if (failure(); as message) {
+    <kd-alert tone="error" data-testid="transition-failure" tabindex="-1">
+      <p class="tenants-text">{{ message }}</p>
+      @if (stale()) {
+        <button kdButton type="button" icon="refresh-cw" (click)="reloadData()">
+          Recargar los datos
+        </button>
+      }
+    </kd-alert>
+  }
+
+  @if (cancelledClosed()) {
+    <p class="tenants-muted" data-testid="reactivation-closed">
+      @if (subscription().purged) {
+        La clínica fue purgada: ya no se puede reactivar.
+      } @else if (retentionEnd(); as end) {
+        La retención terminó el {{ end }}: ya no se puede reactivar.
+      } @else {
+        La clínica ya no se puede reactivar.
+      }
+    </p>
+  } @else if (targets().length === 0) {
+    <p class="tenants-muted" data-testid="no-transitions">
+      No hay cambios de estado manuales disponibles en el estado actual.
+    </p>
+  } @else {
+    @if (subscription().status === 'CANCELLED' && retentionEnd(); as end) {
+      <kd-alert tone="info" data-testid="reactivation-window">
+        La clínica está cancelada. Solo un SUPER_ADMIN puede reactivarla, con un motivo, hasta el
+        fin de la retención el {{ end }}.
+      </kd-alert>
+    }
+    <form
+      class="tenants-stack"
+      [formGroup]="form"
+      (ngSubmit)="review()"
+      novalidate
+      aria-label="Cambiar el estado de la suscripción"
+      data-testid="transition-form"
+    >
+      <kd-field label="Nuevo estado">
+        <select kdInput id="transition-target" formControlName="target">
+          <option value="">Elige una acción</option>
+          @for (target of targets(); track target) {
+            <option [value]="target">{{ actionLabel(target) }}</option>
+          }
+        </select>
+      </kd-field>
+      <kd-field label="Motivo" hint="Obligatorio. Sin datos clínicos. Queda en la auditoría.">
+        <textarea
+          kdInput
+          id="transition-reason"
+          rows="3"
+          formControlName="reason"
+          [attr.maxlength]="limits.reason"
+        ></textarea>
+      </kd-field>
+
+      @if (confirming(); as target) {
+        <div
+          class="tenants-confirm"
+          role="alertdialog"
+          aria-labelledby="transition-confirm-title"
+          aria-describedby="transition-confirm-text"
+        >
+          <h3 id="transition-confirm-title" class="tenants-subtitle">
+            ¿{{ actionLabel(target) }} {{ clinic() }}?
+          </h3>
+          <p id="transition-confirm-text" class="tenants-text" data-testid="transition-consequence">
+            {{ consequence(target) }}
+          </p>
+          <kd-actions>
+            <button
+              kdButton
+              [variant]="target === 'ACTIVE' ? 'secondary' : 'danger'"
+              type="button"
+              data-testid="confirm-transition"
+              [disabled]="busy()"
+              (click)="confirm()"
+            >
+              {{ busy() ? 'Aplicando…' : 'Sí, ' + actionLabel(target).toLowerCase() }}
+            </button>
+            <button kdButton variant="tertiary" type="button" (click)="cancel()">Cancelar</button>
+          </kd-actions>
+        </div>
+      } @else {
+        <kd-actions>
+          <button kdButton type="submit" data-testid="review-transition">Continuar</button>
+        </kd-actions>
+      }
+    </form>
+  }
+</section>

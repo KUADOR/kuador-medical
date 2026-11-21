@@ -4,7 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import {
   AuthenticatedResult,
   CurrentSession,
-  PermissionCode,
+  SessionPermission,
   SessionPaths,
 } from '../api/api-types';
 import { AppConfigService } from '../config/app-config.service';
@@ -141,7 +141,7 @@ export class SessionStore {
     this.resetAccount();
   }
 
-  hasPermission(code: PermissionCode): boolean {
+  hasPermission(code: SessionPermission): boolean {
     return this.permissions().has(code);
   }
 

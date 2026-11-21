@@ -8,7 +8,13 @@
 //   of MEDK-12. Authentication and session (login, clinic and branch selection, refresh,
 //   logout, password reset, invitations, email verification, switch-branch, GET /me and
 //   patient self-registration), staff users, branch role assignments and roles use it.
+// - platform.schema.d.ts (contracts/platform.openapi.yaml): plans, clinics (tenants) and
+//   subscriptions of the SUPER_ADMIN (MEDK-49). Its ErrorCode is a superset of the other two.
 import type { components as IdentityComponents, paths as IdentityPaths } from './identity.schema';
+import type {
+  components as PlatformComponents,
+  paths as PlatformContractPaths,
+} from './platform.schema';
 import type {
   components as RegistrationComponents,
   paths as RegistrationPaths,
@@ -16,6 +22,7 @@ import type {
 
 type Schemas = IdentityComponents['schemas'];
 type Registration = RegistrationComponents['schemas'];
+type Platform = PlatformComponents['schemas'];
 
 // ---------------------------------------------------------------- identity contract
 export type SystemInfo = Schemas['SystemInfo'];
@@ -28,11 +35,26 @@ export type TenantSignupRequest = Schemas['TenantSignupRequest'];
 export type TenantSignupResponse = Schemas['TenantSignupResponse'];
 
 // ---------------------------------------------------------------- user registration contract
-// Errors and permission codes come from the target contract: it is a superset of identity.
-export type Problem = Registration['Problem'];
-export type FieldError = Registration['FieldError'];
-export type ErrorCode = Registration['ErrorCode'];
+// Errors come from the platform contract: its ErrorCode is a superset of identity and user
+// registration. Permission codes are those of user registration plus the platform ones (MEDK-49).
+export type Problem = Platform['Problem'];
+export type FieldError = Platform['FieldError'];
+export type ErrorCode = Platform['ErrorCode'];
+/**
+ * Permissions added by the platform contract (its description, § Permissions; MEDK-65 adds them
+ * to the catalog). Platform permissions are never assignable to a clinic role.
+ */
+export type PlatformPermissionCode =
+  | 'platform.plans.manage'
+  | 'platform.tenants.manage'
+  | 'platform.tenants.purge'
+  | 'platform.settings.manage'
+  | 'subscription.read'
+  | 'tenant.data.export';
+/** Permission of a clinic role (the catalog of user registration). */
 export type PermissionCode = Registration['PermissionCode'];
+/** Any permission a session can hold: clinic ones and the platform ones of MEDK-49. */
+export type SessionPermission = PermissionCode | PlatformPermissionCode;
 export type AccountScope = Registration['AccountScope'];
 export type AccountKind = Registration['AccountKind'];
 export type ClinicSummary = Registration['ClinicSummary'];
@@ -51,7 +73,10 @@ export type LoginResult = Registration['LoginResult'];
 export type AuthenticatedResult = Registration['AuthenticatedResult'];
 export type ClinicSelectionResult = Registration['ClinicSelectionResult'];
 export type BranchSelectionResult = Registration['BranchSelectionResult'];
-export type CurrentSession = Registration['CurrentSession'];
+/** GET /me; its permissions also carry the platform codes (SessionPermission above). */
+export type CurrentSession = Omit<Registration['CurrentSession'], 'permissions'> & {
+  permissions: SessionPermission[];
+};
 export type SelfRegistrationRequest = Registration['SelfRegistrationRequest'];
 // Roles and permission catalog of the clinic.
 export type PermissionInfo = Registration['PermissionInfo'];
@@ -188,4 +213,75 @@ export function selfRegistrationPath(
   publicCode: string,
 ): `/public/clinics/${string}/patient-registrations` {
   return `/public/clinics/${encodeURIComponent(publicCode)}/patient-registrations`;
+}
+
+// ---------------------------------------------------------------- platform contract (MEDK-49)
+export type ClinicType = Platform['ClinicType'];
+export type BillingPeriod = Platform['BillingPeriod'];
+export type ModuleCode = Platform['ModuleCode'];
+export type LimitCode = Platform['LimitCode'];
+export type PlanStatus = Platform['PlanStatus'];
+export type PlatformPlan = Platform['Plan'];
+export type PlanSummary = Platform['PlanSummary'];
+export type SubscriptionStatus = Platform['SubscriptionStatus'];
+export type AccessMode = Platform['AccessMode'];
+export type Tenant = Platform['Tenant'];
+export type TenantOwner = Platform['TenantOwner'];
+export type TenantListItem = Platform['TenantListItem'];
+export type TenantPage = Platform['TenantPage'];
+export type CreateTenantRequest = Platform['CreateTenantRequest'];
+export type InvitationStatus = Platform['InvitationStatus'];
+export type OwnerInvitation = Platform['OwnerInvitation'];
+export type ResendOwnerInvitationRequest = Platform['ResendOwnerInvitationRequest'];
+export type ReasonRequest = Platform['ReasonRequest'];
+export type Subscription = Platform['Subscription'];
+export type SubscriptionTransition = Platform['SubscriptionTransition'];
+export type SubscriptionPeriod = Platform['SubscriptionPeriod'];
+export type TransitionCause = Platform['TransitionCause'];
+export type TransitionRequest = Platform['TransitionRequest'];
+export type PlanChangeKind = Platform['PlanChangeKind'];
+export type PlanChange = Platform['PlanChange'];
+export type PlanChangeRequest = Platform['PlanChangeRequest'];
+export type PlanChangePreview = Platform['PlanChangePreview'];
+export type LimitExcess = Platform['LimitExcess'];
+export type PriceLockRequest = Platform['PriceLockRequest'];
+export type PurgeRequest = Platform['PurgeRequest'];
+export type CreatePurgeRequest = Platform['CreatePurgeRequest'];
+export type ConfirmPurgeRequest = Platform['ConfirmPurgeRequest'];
+
+/** Paths of the platform contract used by the clinics panel (MEDK-73). */
+export const PlatformPaths = {
+  plans: '/platform/plans',
+  tenants: '/platform/tenants',
+} as const satisfies Record<string, keyof PlatformContractPaths>;
+
+/** Path of a single clinic (GET /platform/tenants/{tenantId}). */
+export function platformTenantPath(id: string): `/platform/tenants/${string}` {
+  return `/platform/tenants/${encodeURIComponent(id)}`;
+}
+
+/** Sub-resources of a clinic managed by the SUPER_ADMIN. */
+export type PlatformTenantAction =
+  | 'owner-invitations'
+  | 'owner/two-factor-reset'
+  | 'subscription'
+  | 'subscription/plan-change-preview'
+  | 'subscription/plan-changes'
+  | 'subscription/transitions'
+  | 'subscription/price-lock'
+  | 'purge-requests';
+
+export function platformTenantActionPath(
+  id: string,
+  action: PlatformTenantAction,
+): `/platform/tenants/${string}/${PlatformTenantAction}` {
+  return `${platformTenantPath(id)}/${action}`;
+}
+
+/** POST /platform/tenants/{tenantId}/purge-requests/{requestId}/confirm. */
+export function confirmPurgePath(
+  id: string,
+  requestId: string,
+): `/platform/tenants/${string}/purge-requests/${string}/confirm` {
+  return `${platformTenantPath(id)}/purge-requests/${encodeURIComponent(requestId)}/confirm`;
 }

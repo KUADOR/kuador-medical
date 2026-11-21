@@ -1,0 +1,153 @@
+<section class="tenants-section" aria-labelledby="plan-change-title" data-testid="plan-change">
+  <h2 id="plan-change-title" class="tenants-section__title">Cambiar el plan</h2>
+  <div aria-live="polite">
+    @if (notice(); as message) {
+      <kd-alert tone="ok" data-testid="plan-change-notice">{{ message }}</kd-alert>
+    }
+  </div>
+  @if (failure(); as message) {
+    <kd-alert tone="error" data-testid="plan-change-failure" tabindex="-1">
+      <p class="tenants-text">{{ message }}</p>
+      @if (stale()) {
+        <button kdButton type="button" icon="refresh-cw" (click)="reloadData()">
+          Recargar los datos
+        </button>
+      }
+    </kd-alert>
+  }
+
+  @if (!allowed()) {
+    <p class="tenants-muted" data-testid="plan-change-unavailable">
+      El plan solo se puede cambiar mientras la suscripción está en Prueba, Activa o Vencida.
+    </p>
+  } @else {
+    @switch (plansState().kind) {
+      @case ('loading') {
+        <kd-loading-state label="Cargando planes…" />
+      }
+      @case ('failed') {
+        <kd-alert tone="error" data-testid="plans-error">{{ plansFailure() }}</kd-alert>
+        <kd-actions>
+          <button kdButton type="button" icon="refresh-cw" (click)="loadPlans()">
+            Volver a intentar
+          </button>
+        </kd-actions>
+      }
+      @default {
+        <p class="tenants-muted">
+          Subir de plan aplica de inmediato con prorrateo por los días restantes del período. Bajar
+          de plan o cambiar la periodicidad aplica en la próxima renovación, sin reembolso. Precios
+          sin IVA.
+        </p>
+        <form
+          class="tenants-stack"
+          [formGroup]="form"
+          (ngSubmit)="showPreview()"
+          novalidate
+          aria-label="Cambiar el plan de la clínica"
+          data-testid="plan-change-form"
+        >
+          <kd-field label="Plan nuevo">
+            <select kdInput id="plan-change-target" formControlName="targetPlanId">
+              <option value="">Elige un plan</option>
+              @for (plan of plans(); track plan.id) {
+                <option [value]="plan.id">{{ planOptionLabel(plan) }}</option>
+              }
+            </select>
+          </kd-field>
+          <kd-field label="Periodicidad">
+            <select kdInput id="plan-change-period" formControlName="billingPeriod">
+              @for (period of periods; track period) {
+                <option [value]="period">{{ periodLabels[period] }}</option>
+              }
+            </select>
+          </kd-field>
+          @if (!preview()) {
+            <kd-actions>
+              <button
+                kdButton
+                type="submit"
+                icon="eye"
+                data-testid="preview-plan-change"
+                [disabled]="busy() !== null"
+              >
+                {{ busy() === 'preview' ? 'Calculando…' : 'Ver vista previa' }}
+              </button>
+            </kd-actions>
+          }
+        </form>
+
+        @if (preview(); as result) {
+          <div
+            class="tenants-confirm"
+            role="group"
+            aria-labelledby="plan-preview-title"
+            tabindex="-1"
+            data-testid="plan-preview"
+          >
+            <h3 id="plan-preview-title" class="tenants-subtitle">
+              Vista previa: {{ result.targetPlan.name }} ({{ periodLabels[result.billingPeriod] }})
+            </h3>
+            <dl kdDetails>
+              <dt>Tipo de cambio</dt>
+              <dd data-testid="preview-kind">{{ kindLabels[result.kind] }}</dd>
+              <dt>Aplica desde</dt>
+              <dd data-testid="preview-effective">{{ formatDate(result.effectiveAt) }}</dd>
+              <dt>Precio nuevo</dt>
+              <dd>{{ formatMoney(result.newPriceAmount, result.currency) }} sin IVA</dd>
+              @if (formatMoney(result.proratedAmount, result.currency); as prorated) {
+                <dt>Prorrateo por los días restantes</dt>
+                <dd data-testid="preview-prorated">{{ prorated }} sin IVA</dd>
+              }
+            </dl>
+            @if (result.excess.length > 0) {
+              <kd-alert tone="warning" data-testid="preview-excess">
+                <p class="tenants-text">
+                  La clínica excede los límites del plan nuevo. La bajada no se bloquea, pero si
+                  sigue excediéndolos cuando se aplique no podrá crear nuevos recursos de ese tipo
+                  hasta cumplirlos. No se borra ningún dato.
+                </p>
+                <ul class="tenants-list">
+                  @for (excess of result.excess; track excess.limit) {
+                    <li data-testid="excess-item">
+                      {{ limitLabels[excess.limit] }}: usa {{ excess.usage }} y el plan permite
+                      {{ excess.limitValue }}.
+                    </li>
+                  }
+                </ul>
+              </kd-alert>
+            }
+            @if (result.disabledModules.length > 0) {
+              <kd-alert tone="warning" data-testid="preview-modules">
+                Dejará de tener estos módulos:
+                @for (module of result.disabledModules; track module; let last = $last) {
+                  {{ moduleLabels[module] }}{{ last ? '.' : ', ' }}
+                }
+              </kd-alert>
+            }
+            <kd-actions>
+              <button
+                kdButton
+                type="button"
+                data-testid="apply-plan-change"
+                [disabled]="busy() !== null"
+                (click)="apply()"
+              >
+                {{
+                  busy() === 'apply'
+                    ? 'Aplicando…'
+                    : result.kind === 'UPGRADE'
+                      ? 'Confirmar y aplicar ahora'
+                      : 'Confirmar y programar'
+                }}
+              </button>
+              <button kdButton variant="tertiary" type="button" (click)="discard()">
+                Descartar
+              </button>
+            </kd-actions>
+          </div>
+        }
+      }
+    }
+  }
+</section>

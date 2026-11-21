@@ -2,7 +2,8 @@
 
 Angular (standalone components, signals, zoneless) client of the Medical Kuador API.
 It is built contract-first (ADR-011): types come from `contracts/identity.openapi.yaml` (status, clinic
-signup, password change, platform catalog) and `contracts/user-registration.openapi.yaml` (MEDK-12:
+signup, password change, platform catalog), `contracts/platform.openapi.yaml` (MEDK-49: plans, clinics and
+subscriptions) and `contracts/user-registration.openapi.yaml` (MEDK-12:
 authentication and session, staff users, branch role assignments, roles, patients and self-registration).
 
 > Since MEDK-25 the api implements the whole `user-registration.openapi.yaml`: `npm start` against the real api
@@ -20,7 +21,7 @@ Requires Node.js `^22.22.3` or `^24.15.0`.
 | Script | What it does |
 |---|---|
 | `npm start` | Dev server on `http://localhost:4200`, proxying `/api` and `/actuator` (paths unchanged) to the real API at `API_PROXY_TARGET`, default `http://localhost:8080` (`proxy.conf.mjs`, development configuration only). E.g. `API_PROXY_TARGET=http://localhost:9090 npm start`. |
-| `npm run mock` | Prism mocks: `identity.openapi.yaml` on `http://localhost:4010` and `user-registration.openapi.yaml` on `http://localhost:4011`. |
+| `npm run mock` | Prism mocks: `identity.openapi.yaml` on `http://localhost:4010`, `user-registration.openapi.yaml` on `http://localhost:4011` and `platform.openapi.yaml` on `http://localhost:4012` (`/platform/tenants` and `/platform/plans` go there in `start:mock`). |
 | `npm run start:mock` | Dev server proxying `/api/v1` to the mocks, stripping the prefix (`proxy.mock.conf.json`): `/auth/*` (except `/auth/password`), `/me`, `/public/*`, `/patients`, `/patient-registration-settings`, `/staff-users`, `/roles` and `/permissions` go to 4011, the rest to 4010. |
 | `npm run dev:mock` | `mock` and `start:mock` together. |
 | `npm run api:generate` | Regenerates `identity.schema.d.ts` and `user-registration.schema.d.ts` in `src/app/core/api/`. |
@@ -74,7 +75,9 @@ src/app/
     patients/   PatientsService (/patients, guardian links, consents, account invitation,
                 /me/guardian-links, /patient-registration-settings; creations send Idempotency-Key)
                 and Spanish labels, minor-age check and date formatting
-    platform/   PlatformService (/platform/permissions)
+    platform/   PlatformService (/platform/permissions) and PlatformTenantsService (MEDK-73: clinics,
+                subscription, OWNER invitation and 2FA reset, plan change, transitions, price lock,
+                purge; creations send Idempotency-Key)
     system/     SystemInfoService (GET /system/info)
   features/
     status/           System status page: example web → API → database flow
@@ -92,6 +95,9 @@ src/app/
                       edit, detail (consent, account invitation, guardian links and history),
                       self-registration switch and public link, adult patient authorized contacts
     platform/         Full permission catalog for the SUPER_ADMIN
+    platform-admin/   SUPER_ADMIN panels; tenants/ (MEDK-73): clinic list, onboarding and clinic record
+                      with its subscription panels (panels/: OWNER, transitions and reactivation,
+                      plan change with preview, price lock, two-step purge)
     message/          Informative page (forbidden, not found)
   design-system/   Component library (MEDK-40): standalone components that read only --kd-* tokens.
                     Public API in index.ts; see its README.md. Catalog at /design-system (dev builds only)
@@ -137,6 +143,8 @@ src/testing/    Test-only fixtures and app harness (real routes, guards and inte
 | `/patients/self-registration` | `patients.read` + module `patients` | Switch only with `patients.selfRegistration.configure`; public link while enabled. |
 | `/my-contacts` | account kind `PATIENT` | Adult patient: link history and authorization of an emergency contact or delegated access. |
 | `/platform/permissions` | `platform.permissions.read` | SUPER_ADMIN only; clinic accounts get `/forbidden`. |
+| `/platform/tenants`, `/platform/tenants/:id` | `platform.tenants.manage` | SUPER_ADMIN clinics panel; the purge needs `platform.tenants.purge` and the plan change `platform.plans.manage`. |
+| `/platform/tenants/new` | `platform.tenants.manage`, `platform.plans.manage` | Clinic onboarding with its plan and OWNER invitation. |
 
 The header menu is built from the permissions and `enabledModules` of `GET /me` and is empty while a password
 change is pending. With more than one branch in `availableBranches`, the header shows a branch selector
