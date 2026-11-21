@@ -26,3 +26,7 @@ kuador:
     adulthood:
       # Tests run the adulthood job explicitly (AdulthoodJob.runOnce).
       cron: "-"
+  platform:
+    subscription-lifecycle:
+      # Tests run the lifecycle job explicitly (SubscriptionLifecycleJob.runOnce).
+      cron: "-"

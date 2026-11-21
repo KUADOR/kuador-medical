@@ -38,6 +38,8 @@ public enum ErrorCode {
     // MEDK-49 platform and subscriptions (contracts/platform.openapi.yaml)
     PLAN_ARCHIVED,
     RUC_ALREADY_REGISTERED,
+    INVALID_SUBSCRIPTION_TRANSITION,
+    REACTIVATION_WINDOW_CLOSED,
     // MEDK-67 OWNER invitation and mandatory second factor (ADR-019)
     INVITATION_INVALID_OR_EXPIRED,
     TWO_FACTOR_REQUIRED,

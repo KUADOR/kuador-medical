@@ -77,7 +77,15 @@ class PlatformPermissionsIT {
                 Map.entry("POST /platform/tenants", token -> api.post("/api/v1/platform/tenants", token, tenantBody())),
                 Map.entry("GET /platform/tenants/{tenantId}", token -> api.get(tenant, token)),
                 Map.entry("PATCH /platform/tenants/{tenantId}", token -> api.patch(tenant, token,
-                        Map.of("city", "Cuenca", "version", 0))));
+                        Map.of("city", "Cuenca", "version", 0))),
+                Map.entry("GET /platform/tenants/{tenantId}/subscription",
+                        token -> api.get(tenant + "/subscription", token)),
+                Map.entry("POST /platform/tenants/{tenantId}/subscription/transitions",
+                        token -> api.post(tenant + "/subscription/transitions", token,
+                                Map.of("target", "ACTIVE", "reason", "Reactivar", "version", 0))),
+                Map.entry("PUT /platform/tenants/{tenantId}/subscription/price-lock",
+                        token -> api.put(tenant + "/subscription/price-lock", token,
+                                Map.of("lockedUntil", "2099-01-01", "version", 0))));
     }
 
     @Test

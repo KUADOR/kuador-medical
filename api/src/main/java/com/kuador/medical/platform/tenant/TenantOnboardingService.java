@@ -125,7 +125,7 @@ class TenantOnboardingService {
         // Identity seeds the roles and invites the OWNER in this transaction (MEDK-67).
         events.publishEvent(new TenantCreated(id, new TenantCreated.InitialOwner(
                 request.owner().fullName().strip(), request.owner().email().strip())));
-        subscriptions.open(plan, request.billingPeriod(), now);
+        subscriptions.open(plan, request.billingPeriod(), now, actor.accountId(), actor.displayName());
         flush();
         audit.record(AuditAction.TENANT_ONBOARDED, id, actor.accountId(), AuditTarget.tenant(id));
         return id;

@@ -34,4 +34,8 @@ public record AuditTarget(String type, UUID id) {
     public static AuditTarget planPrice(UUID id) {
         return new AuditTarget("PLAN_PRICE", id);
     }
+
+    public static AuditTarget subscription(UUID id) {
+        return new AuditTarget("SUBSCRIPTION", id);
+    }
 }

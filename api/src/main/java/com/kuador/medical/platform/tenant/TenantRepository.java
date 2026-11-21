@@ -17,6 +17,10 @@ public interface TenantRepository extends JpaRepository<Tenant, UUID> {
     @Query("select t from Tenant t where t.id = :id and t.ruc is not null and t.purgedAt is null")
     Optional<Tenant> findOnboarded(@Param("id") UUID id);
 
+    /** A clinic onboarded by the platform, purged or not. */
+    @Query("select count(t) > 0 from Tenant t where t.id = :id and t.ruc is not null")
+    boolean existsOnboarded(@Param("id") UUID id);
+
     @Query("""
             select count(t) > 0 from Tenant t
             where t.ruc = :ruc and t.purgedAt is null and (:except is null or t.id <> :except)""")

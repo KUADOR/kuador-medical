@@ -59,5 +59,14 @@ public enum AuditAction {
     /** Reset by a SUPER_ADMIN with a reason (plan D7). */
     TWO_FACTOR_RESET,
     /** Too many wrong codes: the second factor is locked for a while. */
-    TWO_FACTOR_LOCKED
+    TWO_FACTOR_LOCKED,
+    // MEDK-68 subscription lifecycle (event of the clinic; the actor is null for events and the job)
+    SUBSCRIPTION_STATUS_CHANGED,
+    SUBSCRIPTION_RENEWED,
+    SUBSCRIPTION_PRICE_LOCK_UPDATED,
+    /** A PaymentFailed event: recorded, the status does not change (plan D5). */
+    SUBSCRIPTION_PAYMENT_FAILED,
+    /** A PaymentReceived event that the state machine rejects, for example on a cancelled clinic (D12). */
+    SUBSCRIPTION_PAYMENT_REJECTED,
+    PRICE_CHANGE_NOTICE_SENT
 }
