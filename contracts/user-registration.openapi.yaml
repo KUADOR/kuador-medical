@@ -2823,6 +2823,10 @@ components:
         - patients.guardians.manage
         - patients.selfRegistration.configure
         - platform.permissions.read
+        - platform.plans.manage
+        - platform.tenants.manage
+        - platform.tenants.purge
+        - platform.settings.manage
 
     PermissionScope:
       type: string

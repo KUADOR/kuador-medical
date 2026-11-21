@@ -19,6 +19,7 @@ public final class ContractSchema {
 
     private static final Path CONTRACT = Path.of("..", "contracts", "identity.openapi.yaml");
     private static final Path USER_REGISTRATION = Path.of("..", "contracts", "user-registration.openapi.yaml");
+    private static final Path PLATFORM = Path.of("..", "contracts", "platform.openapi.yaml");
 
     private final Map<String, Object> document;
 
@@ -33,6 +34,11 @@ public final class ContractSchema {
     /** {@code contracts/user-registration.openapi.yaml}, the target contract of epic MEDK-12. */
     public static ContractSchema userRegistration() {
         return load(USER_REGISTRATION);
+    }
+
+    /** {@code contracts/platform.openapi.yaml}, the target contract of epic MEDK-49. */
+    public static ContractSchema platform() {
+        return load(PLATFORM);
     }
 
     private static ContractSchema load(Path contract) {
@@ -68,6 +74,10 @@ public final class ContractSchema {
             assertObject(variant(schema, body, where), body, where);
             return;
         }
+        if (schema.containsKey("allOf")) {
+            assertObject(merged((List<Map<String, Object>>) schema.get("allOf")), body, where);
+            return;
+        }
         Map<String, Object> properties = map(schema, "properties");
         List<String> required = (List<String>) schema.getOrDefault("required", List.of());
         assertThat(body).as("required properties of %s", where).containsKeys(required.toArray(String[]::new));
@@ -84,6 +94,19 @@ public final class ContractSchema {
                 assertThat(value).as("type of %s.%s", where, name).isInstanceOf(String.class);
             }
         });
+    }
+
+    /** The object schemas of an {@code allOf}, merged: their properties and required properties together. */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> merged(List<Map<String, Object>> parts) {
+        Map<String, Object> properties = new java.util.LinkedHashMap<>();
+        List<String> required = new java.util.ArrayList<>();
+        for (Map<String, Object> part : parts) {
+            Map<String, Object> schema = resolve(part);
+            properties.putAll((Map<String, Object>) schema.getOrDefault("properties", Map.of()));
+            required.addAll((List<String>) schema.getOrDefault("required", List.of()));
+        }
+        return Map.of("properties", properties, "required", required);
     }
 
     /** The {@code oneOf} variant named by the discriminator value of {@code body}. */

@@ -43,7 +43,19 @@ class PermissionCatalogTest {
     void platformPermissionsAreNeverClinicScoped() {
         assertThat(Permission.ofScope(PermissionScope.PLATFORM))
                 .extracting(Permission::code)
-                .containsExactly("platform.permissions.read");
+                .containsExactly(
+                        "platform.permissions.read",
+                        "platform.plans.manage",
+                        "platform.tenants.manage",
+                        "platform.tenants.purge",
+                        "platform.settings.manage");
+    }
+
+    @Test
+    void everyPlatformCodeIsPlatformScoped() {
+        assertThat(Permission.values())
+                .filteredOn(permission -> permission.code().startsWith("platform."))
+                .allSatisfy(permission -> assertThat(permission.scope()).isEqualTo(PermissionScope.PLATFORM));
     }
 
     @Test

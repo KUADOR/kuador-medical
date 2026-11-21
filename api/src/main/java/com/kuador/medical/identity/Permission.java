@@ -34,7 +34,18 @@ public enum Permission {
             PermissionScope.TENANT,
             "Habilitar o deshabilitar el autorregistro de pacientes"),
     PLATFORM_PERMISSIONS_READ(
-            "platform.permissions.read", PermissionScope.PLATFORM, "Ver el catálogo completo de permisos");
+            "platform.permissions.read", PermissionScope.PLATFORM, "Ver el catálogo completo de permisos"),
+    // MEDK-65 (epic MEDK-49): platform administration, SUPER_ADMIN only
+    PLATFORM_PLANS_MANAGE(
+            "platform.plans.manage", PermissionScope.PLATFORM, "Administrar planes, módulos, límites y tarifas"),
+    PLATFORM_TENANTS_MANAGE(
+            "platform.tenants.manage",
+            PermissionScope.PLATFORM,
+            "Dar de alta y administrar clínicas, sus suscripciones y reactivaciones"),
+    PLATFORM_TENANTS_PURGE(
+            "platform.tenants.purge", PermissionScope.PLATFORM, "Solicitar y confirmar la baja definitiva de clínicas"),
+    PLATFORM_SETTINGS_MANAGE(
+            "platform.settings.manage", PermissionScope.PLATFORM, "Administrar los ajustes de la plataforma");
 
     private final String code;
     private final PermissionScope scope;

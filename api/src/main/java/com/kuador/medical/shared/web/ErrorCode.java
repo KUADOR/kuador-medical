@@ -34,5 +34,8 @@ public enum ErrorCode {
     MINOR_CANNOT_HAVE_ACCOUNT,
     ADULT_AUTHORIZATION_REQUIRED,
     LAST_LEGAL_GUARDIAN,
-    CONTACT_CHANNEL_UNAVAILABLE
+    CONTACT_CHANNEL_UNAVAILABLE,
+    // MEDK-49 platform and subscriptions (contracts/platform.openapi.yaml)
+    PLAN_ARCHIVED,
+    RUC_ALREADY_REGISTERED
 }

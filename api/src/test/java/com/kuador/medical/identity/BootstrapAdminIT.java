@@ -106,7 +106,8 @@ class BootstrapAdminIT {
         assertThat(me).containsEntry("scope", "PLATFORM").containsEntry("mustChangePassword", true)
                 .containsEntry("kind", "STAFF").containsEntry("enabledModules", List.of()).doesNotContainKey("clinic");
         assertThat((List<Object>) me.get("roles")).containsExactly("SUPER_ADMIN");
-        assertThat((List<Object>) me.get("permissions")).containsExactly("platform.permissions.read");
+        assertThat((List<Object>) me.get("permissions")).containsExactlyElementsOf(
+                Permission.ofScope(PermissionScope.PLATFORM).stream().map(Permission::code).toList());
 
         // Change: the same token now operates the platform; the initial password is dead.
         String newPassword = IdentityApi.randomPassword();

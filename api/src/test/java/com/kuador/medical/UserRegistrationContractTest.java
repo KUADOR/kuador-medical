@@ -207,7 +207,10 @@ class UserRegistrationContractTest {
         List<Object> contractCodes = list(map(map(map(document, "components"), "schemas"), "ErrorCode").get("enum"));
         List<String> codeCodes = Arrays.stream(ErrorCode.values()).map(Enum::name).toList();
 
-        assertThat(contractCodes).containsExactlyInAnyOrderElementsOf(codeCodes);
+        // platform.openapi.yaml extends this list (MEDK-49); PlatformContractTest checks that it
+        // publishes every code of the api, so here the api only has to know every published code.
+        assertThat(codeCodes).containsAll(contractCodes.stream().map(Object::toString).toList());
+        assertThat(contractCodes).doesNotHaveDuplicates();
     }
 
     @Test

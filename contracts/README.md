@@ -72,6 +72,10 @@ extending the one of the api.
 | `patients.guardians.manage` | Manage guardians and their links |
 | `patients.selfRegistration.configure` | Enable or disable patient self-registration |
 | `platform.permissions.read` | Platform only: view the whole catalog |
+| `platform.plans.manage` | Platform only: plans, modules, limits, prices and catalogs (MEDK-65) |
+| `platform.tenants.manage` | Platform only: clinics, subscriptions, transitions and reactivation (MEDK-49) |
+| `platform.tenants.purge` | Platform only: request and confirm the purge of a clinic (MEDK-49) |
+| `platform.settings.manage` | Platform only: lifecycle settings (MEDK-65) |
 
 The plan of MEDK-12 named the role permissions `identity.roles.read` and
 `identity.roles.manage`; the already published `roles.*` codes are kept instead, so stored
