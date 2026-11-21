@@ -167,6 +167,14 @@ public final class IdentityApi {
                 .exchange();
     }
 
+    public MvcTestResult patch(String uri, String token, Object body) {
+        return mvc.patch().uri(uri)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(body))
+                .exchange();
+    }
+
     public MvcTestResult delete(String uri, String token) {
         return mvc.delete().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer " + token).exchange();
     }

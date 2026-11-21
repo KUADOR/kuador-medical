@@ -36,5 +36,6 @@ public enum ErrorCode {
     LAST_LEGAL_GUARDIAN,
     CONTACT_CHANNEL_UNAVAILABLE,
     // MEDK-49 platform and subscriptions (contracts/platform.openapi.yaml)
-    PLAN_ARCHIVED
+    PLAN_ARCHIVED,
+    RUC_ALREADY_REGISTERED
 }
