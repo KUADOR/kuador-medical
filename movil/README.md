@@ -197,6 +197,25 @@ the script clones the SDK at that tag into a Docker volume the first time):
 scripts/update-goldens.sh
 ```
 
+### Performance (SC-011)
+
+Measured on the reference devices of
+`specs/033-epica-nueva-identidad-visual-y-experienc/audit.md` § 4.2, always in profile mode
+(the iOS simulator only runs debug, which is not representative). Results go to `results.md`
+of the same folder.
+
+```bash
+# Cold start: 5 runs, read timeToFirstFrameMicros from build/start_up_info.json
+flutter run --profile --trace-startup --dart-define=API_BASE_URL=<api> -d <device-id>
+
+# Frames while scrolling a patient screen (synthetic data, no api needed). Writes
+# build/patient_contacts_scroll.timeline_summary.json (missed_frame_*_budget_count, percentiles)
+flutter drive --profile --driver=test_driver/perf_driver.dart \
+  --target=integration_test/performance_test.dart -d <device-id>
+```
+
+`flutter test` does not run `integration_test/`; it needs a device or simulator.
+
 ## Structure
 
 ```
