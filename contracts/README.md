@@ -6,6 +6,7 @@ HTTP contracts of Medical Kuador, written contract-first (ADR-011) in OpenAPI 3.
 |---|---|---|
 | `identity.openapi.yaml` | System status, clinic self-signup, password change, permission catalog, clinic roles and platform permissions. | Implemented by the api. |
 | `user-registration.openapi.yaml` | User registration epic (MEDK-12): multi-clinic login, branch selection and switching, refresh tokens, password reset, invitations, email verification, `/me`, staff users and branch role assignments, roles, patients, consent, guardians, adult patient links and patient self-registration. | Target contract; implemented by MEDK-14 to MEDK-18. |
+| `platform.openapi.yaml` | Platform and subscriptions epic (MEDK-49): plans, prices, catalogs and settings, clinic onboarding, subscription transitions and reactivation, plan changes, price lock, purge, public OWNER invitation, TOTP second factor, the clinic subscription view and data export. | Target contract; implemented by MEDK-65 to MEDK-70. |
 | `local-integration.openapi.yaml` | Local integration (MEDK-26): `POST /api/v1/auth/login`, `GET /api/v1/me`, `GET /api/v1/system/info` and `GET /actuator/health`, with full paths from the api origin. | Login, `/me` and system info implemented (schemas referenced from the files above, not redefined); `/actuator/health` implemented (MEDK-29). |
 
 ## Overlapping operations
@@ -35,6 +36,26 @@ declares the access of its handler and that no request carries a tenant identifi
 `UserRegistrationContractTest` (api, part of `./mvnw -B verify`) fails the build if an
 operation of `user-registration.openapi.yaml` breaks these rules, if a planned operation is
 missing, or if `ErrorCode` or `PermissionCode` drift from the code.
+
+`PlatformContractTest` (api, part of `./mvnw -B verify`) fails the build if
+`platform.openapi.yaml` misses a planned operation, if a `/platform/**` operation does not
+require a `platform.*` permission, if an operation outside `/platform/**` accepts a
+`tenantId`, if a one-time token travels in a path or query, or if its `ErrorCode` stops
+extending the one of the api.
+
+## Platform contract (MEDK-49)
+
+- `/platform/**` requires a `PLATFORM` token and is the only place where a clinic id
+  (`tenantId`) travels: the SUPER_ADMIN manages clinics as resources, never their clinical data.
+- Paths follow the `/api/v1` base of the other contracts (the plan wrote `/api/platform/...`).
+- The OWNER invitation is previewed with `POST /public/owner-invitations/preview` (token in
+  the body, ADR-014) instead of the plan's `GET /api/public/owner-invitations/{token}`.
+- The plan's `PLAN_LIMIT_EXCEEDED` and `LAST_OWNER_PROTECTED` keep their already published
+  names `PLAN_LIMIT_REACHED` and `LAST_OWNER`; the full mapping is in the contract description.
+- Permission codes follow the dotted catalog naming: `platform.plans.manage`,
+  `platform.tenants.manage`, `platform.tenants.purge`, `platform.settings.manage`,
+  `subscription.read` and `tenant.data.export` (added to `Permission` by MEDK-65).
+- Decisions: ADR-015 to ADR-019 in `docs/architecture.md`.
 
 ## Permission catalog (MEDK-12)
 
@@ -70,6 +91,7 @@ Configuration lives in `redocly.yaml` at the repository root; justified exceptio
 npx @stoplight/prism-cli mock contracts/identity.openapi.yaml -p 4010
 npx @stoplight/prism-cli mock contracts/user-registration.openapi.yaml -p 4011
 npx @stoplight/prism-cli mock contracts/local-integration.openapi.yaml -p 4012
+npx @stoplight/prism-cli mock contracts/platform.openapi.yaml -p 4013
 ```
 
 `local-integration.openapi.yaml` keeps the full paths (`GET http://localhost:4012/api/v1/me`,

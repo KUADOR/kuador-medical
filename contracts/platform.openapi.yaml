@@ -1,0 +1,3492 @@
+openapi: 3.1.0
+info:
+  title: Medical Kuador Platform and Subscriptions API
+  version: 0.1.0
+  summary: Plans, prices, clinics (tenants), subscriptions, owner onboarding, 2FA and data export (MEDK-49).
+  description: |
+    Contract-first definition (ADR-011) of the platform and subscriptions epic
+    (MEDK-49, plan § Contrato de API): plans with modules, limits and versioned
+    prices; platform settings; clinic (tenant) onboarding by the SUPER_ADMIN with an
+    OWNER invitation; the subscription state machine with manual transitions,
+    reactivation, plan changes and price lock; purge of cancelled clinics; the
+    OWNER invitation, terms acceptance and mandatory TOTP second factor; and the
+    clinic view of its subscription and data export.
+
+    This contract is the **target**: it is implemented by MEDK-65 to MEDK-70 and
+    consumed by the web through MEDK-72 to MEDK-75.
+
+    Cross-cutting rules:
+
+    - **Platform scope (ADR-015 to ADR-019, Constitution VII).** Every `/platform/**`
+      operation requires a `PLATFORM` access token (SUPER_ADMIN) and a `platform.*`
+      permission. A `TENANT` token responds `403` (`FORBIDDEN`). Platform
+      permissions can never be assigned to a clinic role.
+    - **Tenant as a managed resource.** `/platform/tenants/{tenantId}/**` is the only
+      place where a clinic identifier travels in a request: the SUPER_ADMIN manages
+      clinics as resources and never reads their clinical data. Clinic operations
+      (`/tenant/**`, `/auth/**`, `/public/**`) never accept a tenant identifier; the
+      clinic is resolved from the access token (ADR-007).
+    - **Explicit permission, denied by default (ADR-008).** Every operation states
+      its required permission in `x-required-permission` (`public`, `authenticated`
+      or a permission code). Public operations are also marked `x-public: true` and
+      have no security requirement.
+    - **One-time tokens (ADR-014).** The OWNER invitation token travels only in
+      request bodies, never in paths or query strings. Plan § Contrato listed
+      `GET /api/public/owner-invitations/{token}`; it is published as
+      `POST /public/owner-invitations/preview` to keep ADR-014.
+    - **Mandatory second factor for OWNER (ADR-019).** Until an OWNER session has
+      passed the TOTP second factor, every operation other than the
+      `/auth/two-factor/**` operations, `POST /auth/logout` and the public ones
+      responds `401` (`TWO_FACTOR_REQUIRED`) with `twoFactor` telling the client
+      whether to enroll or to verify.
+    - **Access mode by subscription status (ADR-017).** `TRIAL`, `ACTIVE` and
+      `PAST_DUE` allow full access within the plan; `SUSPENDED` and `CANCELLED`
+      (during retention) allow only reads and data export: any other write on a
+      clinic operation, in any contract, responds `403` (`TENANT_READ_ONLY`). A
+      module not enabled by the plan responds `403` (`MODULE_NOT_IN_PLAN`). Creating
+      a resource beyond a plan limit responds `409` (`PLAN_LIMIT_REACHED`).
+    - **Money.** Amounts are decimal strings with two decimals (`"49.00"`) in the
+      ISO 4217 `currency` of the price (USD), always **without VAT**; VAT is shown on
+      the invoice, outside this epic.
+    - **Dates.** Instants are UTC (`date-time`); day counts use the
+      `America/Guayaquil` time zone.
+    - **Optimistic locking.** Plan, settings and subscription changes send the
+      `version` they read; a stale one responds `409` (`VERSION_CONFLICT`).
+    - **Idempotent creations.** Creation requests (`201`) accept an
+      `Idempotency-Key` header and an optional client-generated `id` (UUID).
+    - **Errors** use Problem Details (RFC 9457) with a stable `code`; clients
+      translate the `code` into a user-facing message in Spanish.
+    - **Examples** use fictitious data only.
+
+    Error codes of the plan and their published name:
+
+    | Plan | Contract | Status |
+    |---|---|---|
+    | `TENANT_READ_ONLY` | `TENANT_READ_ONLY` | 403 |
+    | `PLAN_LIMIT_EXCEEDED` | `PLAN_LIMIT_REACHED` (already published by `user-registration.openapi.yaml`) | 409 |
+    | `MODULE_NOT_IN_PLAN` | `MODULE_NOT_IN_PLAN` | 403 |
+    | `INVALID_SUBSCRIPTION_TRANSITION` | `INVALID_SUBSCRIPTION_TRANSITION` | 409 |
+    | `REACTIVATION_WINDOW_CLOSED` | `REACTIVATION_WINDOW_CLOSED` | 409 |
+    | `INVITATION_INVALID_OR_EXPIRED` | `INVITATION_INVALID_OR_EXPIRED` | 410 |
+    | `LAST_OWNER_PROTECTED` | `LAST_OWNER` (already published by `user-registration.openapi.yaml`) | 409 |
+    | `TWO_FACTOR_REQUIRED` | `TWO_FACTOR_REQUIRED` | 401 |
+    | `RUC_ALREADY_REGISTERED` | `RUC_ALREADY_REGISTERED` | 409 |
+
+    Permissions introduced by this contract (added to the `Permission` catalog by
+    MEDK-65, following the dotted naming of ADR-003):
+
+    | Plan | Code | Scope |
+    |---|---|---|
+    | `PLATFORM_PLAN_MANAGE` | `platform.plans.manage` | Platform |
+    | `PLATFORM_TENANT_MANAGE` | `platform.tenants.manage` (includes manual transitions and reactivation) | Platform |
+    | `PLATFORM_TENANT_PURGE` | `platform.tenants.purge` | Platform |
+    | `PLATFORM_SETTINGS_MANAGE` | `platform.settings.manage` | Platform |
+    | `SUBSCRIPTION_VIEW` | `subscription.read` (suggested for OWNER) | Clinic |
+    | `TENANT_DATA_EXPORT` | `tenant.data.export` (suggested for OWNER) | Clinic |
+
+    Platform permissions are never assignable to a clinic role.
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Kuador-Proprietary
+servers:
+  - url: /api/v1
+    description: Same origin as the client (local, staging and production).
+tags:
+  - name: Plans
+    description: Plans, their modules, limits and versioned prices (SUPER_ADMIN).
+  - name: Catalog
+    description: Fixed catalogs of modules and limits (SUPER_ADMIN).
+  - name: Settings
+    description: Platform settings such as trial, grace and retention periods (SUPER_ADMIN).
+  - name: Tenants
+    description: Clinic (tenant) onboarding and administration (SUPER_ADMIN).
+  - name: Subscriptions
+    description: Subscription state, transitions, plan changes and price lock (SUPER_ADMIN).
+  - name: Purge
+    description: Definitive deletion of cancelled clinics with double confirmation (SUPER_ADMIN).
+  - name: Owner onboarding
+    description: Public OWNER invitation, password and terms acceptance.
+  - name: Two-factor
+    description: TOTP second factor enrollment and verification.
+  - name: Clinic subscription
+    description: The clinic's own view of its subscription and its data export.
+security:
+  - bearerAuth: []
+paths:
+  # ------------------------------------------------------------------ Plans
+  /platform/plans:
+    get:
+      tags: [Plans]
+      operationId: listPlans
+      summary: List plans
+      description: Returns every plan with its modules, limits and current prices. Archived plans are included unless `status` filters them out.
+      x-required-permission: platform.plans.manage
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Filter by plan status.
+          schema:
+            $ref: '#/components/schemas/PlanStatus'
+      responses:
+        '200':
+          description: Plans.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Plan'
+              examples:
+                plans:
+                  value:
+                    - id: 3f2e1d0c-9b8a-4c7d-8e6f-5a4b3c2d1e0f
+                      code: STANDARD
+                      name: Standard
+                      description: Medical clinic with up to three branches.
+                      trial: false
+                      status: ACTIVE
+                      modules: [AGENDA, PATIENTS, CLINICAL_RECORDS, CONSULTATION, USERS, NOTIFICATIONS]
+                      limits:
+                        MAX_BRANCHES: 3
+                        MAX_USERS: 15
+                        MAX_PATIENTS: 5000
+                        MAX_APPOINTMENTS: null
+                        MAX_STORAGE_MB: 10240
+                      currentPrices:
+                        - id: 1b2c3d4e-5f6a-4b7c-9d8e-0f1a2b3c4d5e
+                          billingPeriod: MONTHLY
+                          currency: USD
+                          amount: '49.00'
+                          effectiveFrom: '2030-01-01T05:00:00Z'
+                          createdAt: '2029-12-20T15:00:00Z'
+                      createdAt: '2029-12-20T15:00:00Z'
+                      updatedAt: '2030-01-10T15:00:00Z'
+                      version: 3
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags: [Plans]
+      operationId: createPlan
+      summary: Create a plan
+      description: |
+        Creates a plan with its enabled modules, limits (null means unlimited) and its
+        initial prices, one per billing period. Only one plan can be the trial plan
+        (`trial = true`); `code` is unique. Audited.
+      x-required-permission: platform.plans.manage
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePlanRequest'
+            examples:
+              standard:
+                value:
+                  code: STANDARD
+                  name: Standard
+                  description: Medical clinic with up to three branches.
+                  trial: false
+                  modules: [AGENDA, PATIENTS, CLINICAL_RECORDS, CONSULTATION, USERS, NOTIFICATIONS]
+                  limits:
+                    MAX_BRANCHES: 3
+                    MAX_USERS: 15
+                    MAX_PATIENTS: 5000
+                    MAX_APPOINTMENTS: null
+                    MAX_STORAGE_MB: 10240
+                  prices:
+                    - billingPeriod: MONTHLY
+                      currency: USD
+                      amount: '49.00'
+                    - billingPeriod: ANNUAL
+                      currency: USD
+                      amount: '490.00'
+      responses:
+        '201':
+          description: Plan created.
+          headers:
+            Location:
+              $ref: '#/components/headers/Location'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Plan'
+              examples:
+                created:
+                  $ref: '#/components/examples/StandardPlan'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: |
+            The `code` is already used, another trial plan exists (`VALIDATION` with
+            field errors `DUPLICATE`), the idempotency key was reused with another body
+            (`IDEMPOTENCY_KEY_REUSED`) or the client id is taken (`RESOURCE_ID_TAKEN`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                keyReused:
+                  value:
+                    type: about:blank
+                    title: Conflict
+                    status: 409
+                    code: IDEMPOTENCY_KEY_REUSED
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /platform/plans/{planId}:
+    parameters:
+      - $ref: '#/components/parameters/PlanId'
+    get:
+      tags: [Plans]
+      operationId: getPlan
+      summary: Get a plan
+      description: Returns the plan with its modules, limits and current prices.
+      x-required-permission: platform.plans.manage
+      responses:
+        '200':
+          description: The plan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Plan'
+              examples:
+                standard:
+                  $ref: '#/components/examples/StandardPlan'
+                trial:
+                  $ref: '#/components/examples/TrialPlan'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      tags: [Plans]
+      operationId: updatePlan
+      summary: Update a plan
+      description: |
+        Replaces the name, description, modules and limits of a plan. Prices are not
+        changed here (see `POST /platform/plans/{planId}/prices`). Lowering a limit or
+        removing a module never deletes clinic data: clinics over the new limit cannot
+        create new resources of that kind until they comply. Archived plans cannot be
+        edited (`PLAN_ARCHIVED`). Audited.
+      x-required-permission: platform.plans.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePlanRequest'
+            examples:
+              update:
+                value:
+                  name: Standard
+                  description: Medical clinic with up to three branches.
+                  modules: [AGENDA, PATIENTS, CLINICAL_RECORDS, CONSULTATION, USERS, NOTIFICATIONS]
+                  limits:
+                    MAX_BRANCHES: 3
+                    MAX_USERS: 20
+                    MAX_PATIENTS: 5000
+                    MAX_APPOINTMENTS: null
+                    MAX_STORAGE_MB: 10240
+                  version: 3
+      responses:
+        '200':
+          description: Plan updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Plan'
+              examples:
+                updated:
+                  $ref: '#/components/examples/StandardPlan'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/PlanConflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /platform/plans/{planId}/archive:
+    parameters:
+      - $ref: '#/components/parameters/PlanId'
+    post:
+      tags: [Plans]
+      operationId: archivePlan
+      summary: Archive a plan
+      description: |
+        Archives a plan: it can no longer be chosen for new clinics or plan changes,
+        and existing subscriptions keep it. Plans are never deleted. Archiving an
+        archived plan is a no-op. The trial plan cannot be archived: it responds
+        `400` (`VALIDATION`, field `trial`, code `TRIAL_PLAN_REQUIRED`). Audited.
+      x-required-permission: platform.plans.manage
+      responses:
+        '200':
+          description: Plan archived.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Plan'
+              examples:
+                archived:
+                  $ref: '#/components/examples/ArchivedPlan'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /platform/plans/{planId}/prices:
+    parameters:
+      - $ref: '#/components/parameters/PlanId'
+    get:
+      tags: [Plans]
+      operationId: listPlanPrices
+      summary: List the price history of a plan
+      description: Returns every price version of the plan, newest first. Prices are immutable.
+      x-required-permission: platform.plans.manage
+      parameters:
+        - name: billingPeriod
+          in: query
+          required: false
+          description: Filter by billing period.
+          schema:
+            $ref: '#/components/schemas/BillingPeriod'
+      responses:
+        '200':
+          description: Price versions.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PlanPrice'
+              examples:
+                history:
+                  value:
+                    - id: 0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d
+                      billingPeriod: MONTHLY
+                      currency: USD
+                      amount: '55.00'
+                      effectiveFrom: '2030-03-01T05:00:00Z'
+                      createdAt: '2030-01-15T15:00:00Z'
+                    - id: 1b2c3d4e-5f6a-4b7c-9d8e-0f1a2b3c4d5e
+                      billingPeriod: MONTHLY
+                      currency: USD
+                      amount: '49.00'
+                      effectiveFrom: '2030-01-01T05:00:00Z'
+                      createdAt: '2029-12-20T15:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags: [Plans]
+      operationId: createPlanPrice
+      summary: Publish a new price version
+      description: |
+        Adds a new immutable price version for one billing period (ADR-015). It applies
+        immediately to new subscriptions from `effectiveFrom`. Current subscriptions
+        keep their contracted price until the first renewal at least
+        `priceChangeNoticeDays` (30 by default) after the OWNER is notified by email
+        (plan D1); clinics with a valid price lock keep it until the lock ends.
+        `effectiveFrom` cannot be in the past. Audited.
+      x-required-permission: platform.plans.manage
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePlanPriceRequest'
+            examples:
+              monthly:
+                value:
+                  billingPeriod: MONTHLY
+                  currency: USD
+                  amount: '55.00'
+                  effectiveFrom: '2030-03-01T05:00:00Z'
+      responses:
+        '201':
+          description: Price version created; affected clinics are notified.
+          headers:
+            Location:
+              $ref: '#/components/headers/Location'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanPrice'
+              examples:
+                created:
+                  value:
+                    id: 0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d
+                    billingPeriod: MONTHLY
+                    currency: USD
+                    amount: '55.00'
+                    effectiveFrom: '2030-03-01T05:00:00Z'
+                    createdAt: '2030-01-15T15:00:00Z'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/PlanConflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ------------------------------------------------------------------ Catalog
+  /platform/catalog/modules:
+    get:
+      tags: [Catalog]
+      operationId: listModuleCatalog
+      summary: List the module catalog
+      description: Returns the fixed catalog of modules a plan can enable, with a Spanish label for display.
+      x-required-permission: platform.plans.manage
+      responses:
+        '200':
+          description: Module catalog.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ModuleInfo'
+              examples:
+                modules:
+                  value:
+                    - code: AGENDA
+                      label: Agenda y citas
+                    - code: ODONTOGRAM
+                      label: Odontograma
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /platform/catalog/limits:
+    get:
+      tags: [Catalog]
+      operationId: listLimitCatalog
+      summary: List the limit catalog
+      description: Returns the fixed catalog of limits a plan can set, with its unit and a Spanish label for display.
+      x-required-permission: platform.plans.manage
+      responses:
+        '200':
+          description: Limit catalog.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LimitInfo'
+              examples:
+                limits:
+                  value:
+                    - code: MAX_BRANCHES
+                      label: Sedes
+                      unit: COUNT
+                    - code: MAX_STORAGE_MB
+                      label: Almacenamiento
+                      unit: MEGABYTES
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ------------------------------------------------------------------ Settings
+  /platform/settings:
+    get:
+      tags: [Settings]
+      operationId: getPlatformSettings
+      summary: Get the platform settings
+      description: Returns the configurable periods of the subscription lifecycle (plan D10).
+      x-required-permission: platform.settings.manage
+      responses:
+        '200':
+          description: Platform settings.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformSettings'
+              examples:
+                defaults:
+                  $ref: '#/components/examples/DefaultSettings'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      tags: [Settings]
+      operationId: updatePlatformSettings
+      summary: Update the platform settings
+      description: |
+        Replaces the platform settings. New values apply to periods computed from now
+        on; dates already set on a subscription are not recomputed. Audited.
+      x-required-permission: platform.settings.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlatformSettings'
+            examples:
+              defaults:
+                $ref: '#/components/examples/DefaultSettings'
+      responses:
+        '200':
+          description: Settings updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformSettings'
+              examples:
+                defaults:
+                  $ref: '#/components/examples/DefaultSettings'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/VersionConflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ------------------------------------------------------------------ Tenants
+  /platform/tenants:
+    get:
+      tags: [Tenants]
+      operationId: listTenants
+      summary: List clinics
+      description: Returns a page of clinics with their plan and subscription status. Purged clinics are excluded.
+      x-required-permission: platform.tenants.manage
+      parameters:
+        - name: q
+          in: query
+          required: false
+          description: Case-insensitive search by legal name, trade name or RUC.
+          schema:
+            type: string
+            maxLength: 120
+        - name: status
+          in: query
+          required: false
+          description: Filter by subscription status.
+          schema:
+            $ref: '#/components/schemas/SubscriptionStatus'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: A page of clinics.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantPage'
+              examples:
+                page:
+                  value:
+                    items:
+                      - id: 5b0c8f2e-3a51-4d6e-9f0a-1c2b3d4e5f60
+                        legalName: Example Clinic S.A.
+                        tradeName: Example Clinic
+                        ruc: '0000000000001'
+                        clinicType: MEDICAL
+                        planName: Standard
+                        subscriptionStatus: ACTIVE
+                        createdAt: '2030-01-01T15:00:00Z'
+                    page: 0
+                    size: 20
+                    totalItems: 1
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags: [Tenants]
+      operationId: createTenant
+      summary: Onboard a clinic
+      description: |
+        Creates the clinic, its subscription and a one-time OWNER invitation in a
+        single transaction, and emails the invitation (link valid for
+        `ownerInvitationTtlHours`, 72 by default). With the trial plan the
+        subscription starts in `TRIAL` for `trialDays`; with a paid plan it starts in
+        `ACTIVE` with a period from now (plan D4). The plan must be active
+        (`PLAN_ARCHIVED`). The RUC has 13 digits and is unique among non-purged
+        clinics (`RUC_ALREADY_REGISTERED`). Missing data responds `400` naming each
+        field. Audited; the RUC and emails never reach the logs.
+      x-required-permission: platform.tenants.manage
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTenantRequest'
+            examples:
+              medical:
+                value:
+                  legalName: Example Clinic S.A.
+                  tradeName: Example Clinic
+                  ruc: '0000000000001'
+                  clinicType: MEDICAL
+                  countryCode: EC
+                  city: Quito
+                  address: 123 Example Avenue
+                  phone: '+593000000000'
+                  contactEmail: contact@example.com
+                  mspEstablishmentNumber: null
+                  planId: 3f2e1d0c-9b8a-4c7d-8e6f-5a4b3c2d1e0f
+                  billingPeriod: MONTHLY
+                  owner:
+                    fullName: Jane Doe
+                    email: jane.doe@example.com
+      responses:
+        '201':
+          description: Clinic created and invitation sent.
+          headers:
+            Location:
+              $ref: '#/components/headers/Location'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+              examples:
+                created:
+                  $ref: '#/components/examples/Tenant'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: The plan does not exist (`NOT_FOUND`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                notFound:
+                  value:
+                    type: about:blank
+                    title: Not Found
+                    status: 404
+                    code: NOT_FOUND
+        '409':
+          description: |
+            The RUC is already registered (`RUC_ALREADY_REGISTERED`), the plan is
+            archived (`PLAN_ARCHIVED`), the idempotency key was reused with another
+            body (`IDEMPOTENCY_KEY_REUSED`) or the client id is taken
+            (`RESOURCE_ID_TAKEN`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                rucTaken:
+                  value:
+                    type: about:blank
+                    title: Conflict
+                    status: 409
+                    code: RUC_ALREADY_REGISTERED
+                planArchived:
+                  value:
+                    type: about:blank
+                    title: Conflict
+                    status: 409
+                    code: PLAN_ARCHIVED
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /platform/tenants/{tenantId}:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+    get:
+      tags: [Tenants]
+      operationId: getTenant
+      summary: Get a clinic
+      description: Returns the clinic data, its subscription summary and the state of its OWNER onboarding. Never includes clinical data.
+      x-required-permission: platform.tenants.manage
+      responses:
+        '200':
+          description: The clinic.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+              examples:
+                tenant:
+                  $ref: '#/components/examples/Tenant'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      tags: [Tenants]
+      operationId: updateTenant
+      summary: Update a clinic
+      description: |
+        Updates the clinic data (JSON merge patch semantics: only the sent fields
+        change; `null` clears an optional field). The plan and the subscription change
+        through their own operations. Purged clinics respond `404`. Audited.
+      x-required-permission: platform.tenants.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTenantRequest'
+            examples:
+              phone:
+                value:
+                  phone: '+593000000001'
+                  version: 2
+      responses:
+        '200':
+          description: Clinic updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+              examples:
+                tenant:
+                  $ref: '#/components/examples/Tenant'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: The new RUC is already registered (`RUC_ALREADY_REGISTERED`) or the version is stale (`VERSION_CONFLICT`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                rucTaken:
+                  value:
+                    type: about:blank
+                    title: Conflict
+                    status: 409
+                    code: RUC_ALREADY_REGISTERED
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /platform/tenants/{tenantId}/owner-invitations:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+    post:
+      tags: [Tenants]
+      operationId: resendOwnerInvitation
+      summary: Resend the OWNER invitation
+      description: |
+        Issues a new one-time OWNER invitation and emails it; the previous one is
+        revoked at once. Allowed only while the OWNER has not accepted
+        (`ACCOUNT_ALREADY_ACTIVE`). The email can be corrected in the request.
+        Audited.
+      x-required-permission: platform.tenants.manage
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResendOwnerInvitationRequest'
+            examples:
+              sameEmail:
+                value: {}
+              correctedEmail:
+                value:
+                  email: jane.doe@example.org
+      responses:
+        '201':
+          description: Invitation sent.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerInvitation'
+              examples:
+                sent:
+                  $ref: '#/components/examples/PendingInvitation'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: The OWNER already accepted (`ACCOUNT_ALREADY_ACTIVE`) or the idempotency key was reused (`IDEMPOTENCY_KEY_REUSED`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                alreadyActive:
+                  value:
+                    type: about:blank
+                    title: Conflict
+                    status: 409
+                    code: ACCOUNT_ALREADY_ACTIVE
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /platform/tenants/{tenantId}/owner/two-factor-reset:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+    post:
+      tags: [Tenants]
+      operationId: resetOwnerTwoFactor
+      summary: Reset the second factor of the OWNER
+      description: |
+        Disables the TOTP second factor of the clinic OWNER after a verified support
+        request (plan D7). The OWNER must enroll again on the next login. A reason is
+        mandatory and audited.
+      x-required-permission: platform.tenants.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReasonRequest'
+            examples:
+              lostDevice:
+                value:
+                  reason: Owner lost the phone; identity verified by video call.
+      responses:
+        '204':
+          description: Second factor reset.
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ------------------------------------------------------------------ Subscriptions
+  /platform/tenants/{tenantId}/subscription:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+    get:
+      tags: [Subscriptions]
+      operationId: getTenantSubscription
+      summary: Get the subscription of a clinic
+      description: |
+        Returns the subscription with its contracted price, period dates, the
+        scheduled plan change, the price lock, the history of contracted periods and
+        transitions, the allowed manual targets and whether it can still be
+        reactivated from `CANCELLED` (ADR-016).
+      x-required-permission: platform.tenants.manage
+      responses:
+        '200':
+          description: The subscription.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+              examples:
+                active:
+                  $ref: '#/components/examples/ActiveSubscription'
+                cancelled:
+                  $ref: '#/components/examples/CancelledSubscription'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /platform/tenants/{tenantId}/subscription/plan-change-preview:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+    post:
+      tags: [Subscriptions]
+      operationId: previewPlanChange
+      summary: Preview a plan change
+      description: |
+        Computes, without changing anything, the kind of change (plan D2), when it
+        takes effect, the prorated amount of an upgrade (plan D3) and, for a
+        downgrade, the current usage that exceeds the target plan limits and the
+        modules that would be disabled.
+      x-required-permission: platform.tenants.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlanChangeRequest'
+            examples:
+              downgrade:
+                value:
+                  targetPlanId: 3f2e1d0c-9b8a-4c7d-8e6f-5a4b3c2d1e0f
+                  billingPeriod: MONTHLY
+      responses:
+        '200':
+          description: Preview of the change.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanChangePreview'
+              examples:
+                upgrade:
+                  value:
+                    kind: UPGRADE
+                    targetPlan:
+                      id: 9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d
+                      code: PREMIUM
+                      name: Premium
+                    billingPeriod: MONTHLY
+                    effectiveAt: '2030-01-16T15:00:00Z'
+                    proratedAmount: '25.00'
+                    currency: USD
+                    newPriceAmount: '99.00'
+                    excess: []
+                    disabledModules: []
+                downgrade:
+                  value:
+                    kind: DOWNGRADE
+                    targetPlan:
+                      id: 3f2e1d0c-9b8a-4c7d-8e6f-5a4b3c2d1e0f
+                      code: BASIC
+                      name: Basic
+                    billingPeriod: MONTHLY
+                    effectiveAt: '2030-02-01T05:00:00Z'
+                    proratedAmount: null
+                    currency: USD
+                    newPriceAmount: '29.00'
+                    excess:
+                      - limit: MAX_USERS
+                        limitValue: 5
+                        usage: 8
+                    disabledModules: [PHARMACY]
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/PlanChangeConflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /platform/tenants/{tenantId}/subscription/plan-changes:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+    post:
+      tags: [Subscriptions]
+      operationId: requestPlanChange
+      summary: Change the plan of a clinic
+      description: |
+        Applies or schedules a plan change. An `UPGRADE` applies at once and records
+        the prorated amount, published in the `PlanUpgraded` event for the billing
+        epic. A `DOWNGRADE` or a billing period change (`PERIOD_CHANGE`) is scheduled
+        for the next renewal, without refund; if the clinic still exceeds a limit
+        then, it cannot create new resources of that kind (`PLAN_LIMIT_REACHED`) and
+        nothing is deleted. A new request replaces a scheduled one. Allowed in
+        `TRIAL`, `ACTIVE` and `PAST_DUE` (`PLAN_CHANGE_NOT_ALLOWED`). Audited.
+      x-required-permission: platform.tenants.manage
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlanChangeRequest'
+            examples:
+              upgrade:
+                value:
+                  targetPlanId: 9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d
+                  billingPeriod: MONTHLY
+                  version: 4
+      responses:
+        '201':
+          description: Plan change applied (`APPLIED`) or scheduled (`SCHEDULED`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanChange'
+              examples:
+                upgrade:
+                  $ref: '#/components/examples/AppliedUpgrade'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/PlanChangeConflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /platform/tenants/{tenantId}/subscription/transitions:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+    post:
+      tags: [Subscriptions]
+      operationId: transitionSubscription
+      summary: Apply a manual subscription transition
+      description: |
+        Moves the subscription to `target` following the state machine (ADR-016):
+        activation from `TRIAL` or `PAST_DUE`, suspension, cancellation requested by
+        the clinic, reactivation from `SUSPENDED` and reactivation from `CANCELLED`.
+        Any other transition responds `409` (`INVALID_SUBSCRIPTION_TRANSITION`).
+
+        Reactivation from `CANCELLED` (plan D12) requires a non-blank `reason`, is
+        allowed only while `retentionEndsAt` has not passed and the clinic is not
+        purged (`REACTIVATION_WINDOW_CLOSED`), starts a new period from now at the
+        current plan price (or the locked one) and cancels any pending purge request.
+        A `PaymentReceived` event never reactivates a cancelled clinic.
+
+        `reason` is optional for other transitions. Every transition is audited with
+        the actor, cause and reason, and publishes `SubscriptionStatusChanged`.
+      x-required-permission: platform.tenants.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransitionRequest'
+            examples:
+              suspend:
+                value:
+                  target: SUSPENDED
+                  reason: Requested by the clinic owner.
+                  version: 4
+              reactivateCancelled:
+                value:
+                  target: ACTIVE
+                  reason: Clinic paid the outstanding balance by bank transfer.
+                  version: 7
+      responses:
+        '200':
+          description: Transition applied.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+              examples:
+                active:
+                  $ref: '#/components/examples/ActiveSubscription'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: |
+            The transition is not allowed from the current status
+            (`INVALID_SUBSCRIPTION_TRANSITION`), the retention window of a cancelled
+            clinic is over or the clinic was purged (`REACTIVATION_WINDOW_CLOSED`), or
+            the version is stale (`VERSION_CONFLICT`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                invalidTransition:
+                  value:
+                    type: about:blank
+                    title: Conflict
+                    status: 409
+                    code: INVALID_SUBSCRIPTION_TRANSITION
+                    detail: Transition from TRIAL to PAST_DUE is not allowed.
+                windowClosed:
+                  value:
+                    type: about:blank
+                    title: Conflict
+                    status: 409
+                    code: REACTIVATION_WINDOW_CLOSED
+                    detail: The retention period ended on 2030-04-01.
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /platform/tenants/{tenantId}/subscription/price-lock:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+    put:
+      tags: [Subscriptions]
+      operationId: setPriceLock
+      summary: Set or remove the price lock
+      description: |
+        Freezes the contracted price of the clinic until `lockedUntil` (inclusive):
+        new price versions do not apply to it before that date. `null` removes the
+        lock. Audited.
+      x-required-permission: platform.tenants.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PriceLockRequest'
+            examples:
+              lock:
+                value:
+                  lockedUntil: '2030-12-31'
+                  reason: Launch agreement.
+                  version: 4
+              unlock:
+                value:
+                  lockedUntil: null
+                  version: 5
+      responses:
+        '200':
+          description: Price lock updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+              examples:
+                active:
+                  $ref: '#/components/examples/ActiveSubscription'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/VersionConflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ------------------------------------------------------------------ Purge
+  /platform/tenants/{tenantId}/purge-requests:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+    post:
+      tags: [Purge]
+      operationId: requestTenantPurge
+      summary: Request the purge of a clinic
+      description: |
+        First step of the double confirmation (plan D6, ADR-018). Allowed only for a
+        `CANCELLED` clinic whose retention has ended and without another pending
+        request (`PURGE_NOT_ALLOWED`). Nothing is deleted yet. Audited.
+      x-required-permission: platform.tenants.purge
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePurgeRequest'
+            examples:
+              request:
+                value:
+                  reason: Retention ended; the clinic confirmed it downloaded its data.
+      responses:
+        '201':
+          description: Purge requested.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurgeRequest'
+              examples:
+                requested:
+                  value:
+                    id: 7e6d5c4b-3a29-4180-9f7e-6d5c4b3a2918
+                    status: REQUESTED
+                    requestedAt: '2030-07-01T15:00:00Z'
+                    confirmedAt: null
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/PurgeNotAllowed'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /platform/tenants/{tenantId}/purge-requests/{requestId}/confirm:
+    parameters:
+      - $ref: '#/components/parameters/TenantId'
+      - $ref: '#/components/parameters/PurgeRequestId'
+    post:
+      tags: [Purge]
+      operationId: confirmTenantPurge
+      summary: Confirm the purge of a clinic
+      description: |
+        Second step of the double confirmation: the SUPER_ADMIN types the clinic RUC.
+        A mismatch responds `400` (`VALIDATION`, field `rucConfirmation`, code
+        `MISMATCH`). The state is checked again (`PURGE_NOT_ALLOWED`). The purge runs
+        asynchronously: each module deletes or anonymizes its own data
+        (`TenantPurged`); clinical records are not purged until the legal retention
+        period is validated (ADR-018). Audited.
+      x-required-permission: platform.tenants.purge
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmPurgeRequest'
+            examples:
+              confirm:
+                value:
+                  rucConfirmation: '0000000000001'
+      responses:
+        '200':
+          description: Purge confirmed and started.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurgeRequest'
+              examples:
+                confirmed:
+                  value:
+                    id: 7e6d5c4b-3a29-4180-9f7e-6d5c4b3a2918
+                    status: CONFIRMED
+                    requestedAt: '2030-07-01T15:00:00Z'
+                    confirmedAt: '2030-07-02T15:00:00Z'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/PurgeNotAllowed'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ------------------------------------------------------------------ Owner onboarding (public)
+  /public/owner-invitations/preview:
+    post:
+      tags: [Owner onboarding]
+      operationId: previewOwnerInvitation
+      summary: Preview an OWNER invitation
+      description: |
+        Returns the clinic name, the masked email and the versions of the terms and
+        data policy to accept. The token travels in the body (ADR-014). Expired, used,
+        revoked or unknown tokens respond `410` (`INVITATION_INVALID_OR_EXPIRED`).
+      x-required-permission: public
+      x-public: true
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OwnerInvitationTokenRequest'
+            examples:
+              preview:
+                value:
+                  token: one-time-example-token
+      responses:
+        '200':
+          description: Valid invitation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerInvitationPreview'
+              examples:
+                valid:
+                  value:
+                    clinicName: Example Clinic
+                    ownerName: Jane Doe
+                    maskedEmail: j***@example.com
+                    expiresAt: '2030-01-04T15:00:00Z'
+                    termsVersion: '2030-01'
+                    dataPolicyVersion: '2030-01'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '410':
+          $ref: '#/components/responses/InvitationGone'
+        '429':
+          $ref: '#/components/responses/TooManyAttempts'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /public/owner-invitations/accept:
+    post:
+      tags: [Owner onboarding]
+      operationId: acceptOwnerInvitation
+      summary: Accept an OWNER invitation
+      description: |
+        Activates the OWNER account with the chosen password and records the
+        acceptance of the terms and the data policy (the versions shown in the
+        preview, with timestamp). The token is consumed. Returns tokens whose session
+        still requires the second factor: the client continues with
+        `POST /auth/two-factor/enrollment` (ADR-019). A weak password responds `400`
+        (`WEAK_PASSWORD`) without consuming the token; outdated versions respond `400`
+        (`VALIDATION`).
+      x-required-permission: public
+      x-public: true
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptOwnerInvitationRequest'
+            examples:
+              accept:
+                value:
+                  token: one-time-example-token
+                  password: a-long-example-passphrase
+                  acceptTerms: true
+                  termsVersion: '2030-01'
+                  acceptDataPolicy: true
+                  dataPolicyVersion: '2030-01'
+      responses:
+        '200':
+          $ref: '#/components/responses/Session'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '410':
+          $ref: '#/components/responses/InvitationGone'
+        '429':
+          $ref: '#/components/responses/TooManyAttempts'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ------------------------------------------------------------------ Two-factor
+  /auth/two-factor/enrollment:
+    post:
+      tags: [Two-factor]
+      operationId: startTwoFactorEnrollment
+      summary: Start TOTP enrollment
+      description: |
+        Generates a new TOTP secret (RFC 6238: SHA-1, 6 digits, 30 seconds) for the
+        current account and returns it with an `otpauth://` URI to render as a QR
+        code. The secret is stored encrypted and stays inactive until confirmed;
+        calling again replaces an unconfirmed secret. An account with the second
+        factor already enabled responds `409` (`TWO_FACTOR_ALREADY_ENABLED`). The
+        secret is shown only in this response and never logged.
+      x-required-permission: authenticated
+      responses:
+        '200':
+          description: Enrollment started.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TwoFactorEnrollment'
+              examples:
+                enrollment:
+                  value:
+                    secret: EXAMPLEEXAMPLEEXAMPLEEXAMPLE2345
+                    otpauthUri: otpauth://totp/Medical%20Kuador:j***%40example.com?secret=EXAMPLEEXAMPLEEXAMPLEEXAMPLE2345&issuer=Medical%20Kuador&algorithm=SHA1&digits=6&period=30
+                    issuer: Medical Kuador
+                    digits: 6
+                    period: 30
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '409':
+          description: The second factor is already enabled (`TWO_FACTOR_ALREADY_ENABLED`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                alreadyEnabled:
+                  value:
+                    type: about:blank
+                    title: Conflict
+                    status: 409
+                    code: TWO_FACTOR_ALREADY_ENABLED
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /auth/two-factor/enrollment/confirm:
+    post:
+      tags: [Two-factor]
+      operationId: confirmTwoFactorEnrollment
+      summary: Confirm TOTP enrollment
+      description: |
+        Enables the second factor when `code` matches the pending secret (window of
+        ±1 step) and returns new tokens whose session has passed the second factor.
+        A wrong code responds `400` (`TWO_FACTOR_CODE_INVALID`); repeated failures
+        respond `429`. Audited.
+      x-required-permission: authenticated
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TwoFactorCodeRequest'
+            examples:
+              confirm:
+                value:
+                  code: '123456'
+      responses:
+        '200':
+          $ref: '#/components/responses/Session'
+        '400':
+          $ref: '#/components/responses/TwoFactorCodeError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '409':
+          description: There is no pending enrollment, or the second factor is already enabled (`TWO_FACTOR_ALREADY_ENABLED`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                alreadyEnabled:
+                  value:
+                    type: about:blank
+                    title: Conflict
+                    status: 409
+                    code: TWO_FACTOR_ALREADY_ENABLED
+        '429':
+          $ref: '#/components/responses/TooManyAttempts'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /auth/two-factor/verify:
+    post:
+      tags: [Two-factor]
+      operationId: verifyTwoFactor
+      summary: Verify the second factor after login
+      description: |
+        Completes a login of an account with the second factor enabled: when `code`
+        matches, returns new tokens whose session has passed the second factor. A
+        code already used in the same time step is rejected. A wrong code responds
+        `400` (`TWO_FACTOR_CODE_INVALID`); repeated failures respond `429`.
+      x-required-permission: authenticated
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TwoFactorCodeRequest'
+            examples:
+              verify:
+                value:
+                  code: '123456'
+      responses:
+        '200':
+          $ref: '#/components/responses/Session'
+        '400':
+          $ref: '#/components/responses/TwoFactorCodeError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '429':
+          $ref: '#/components/responses/TooManyAttempts'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ------------------------------------------------------------------ Clinic subscription
+  /tenant/subscription:
+    get:
+      tags: [Clinic subscription]
+      operationId: getMySubscription
+      summary: Get the subscription of the current clinic
+      description: |
+        Returns the status, access mode, plan, enabled modules, limits with current
+        usage, scheduled changes and notices of the clinic resolved from the access
+        token. Allowed in every access mode except `NONE`.
+      x-required-permission: subscription.read
+      responses:
+        '200':
+          description: Subscription of the current clinic.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicSubscription'
+              examples:
+                pastDue:
+                  value:
+                    status: PAST_DUE
+                    accessMode: FULL
+                    plan:
+                      id: 3f2e1d0c-9b8a-4c7d-8e6f-5a4b3c2d1e0f
+                      code: STANDARD
+                      name: Standard
+                    billingPeriod: MONTHLY
+                    priceAmount: '49.00'
+                    currency: USD
+                    currentPeriodEnd: '2030-02-01T05:00:00Z'
+                    trialEndsAt: null
+                    graceEndsAt: '2030-02-08T05:00:00Z'
+                    retentionEndsAt: null
+                    modules: [AGENDA, PATIENTS, CLINICAL_RECORDS, CONSULTATION, USERS, NOTIFICATIONS]
+                    limits:
+                      - limit: MAX_USERS
+                        limitValue: 15
+                        usage: 8
+                      - limit: MAX_BRANCHES
+                        limitValue: 3
+                        usage: 1
+                    scheduledPlanChange: null
+                    notices:
+                      - kind: PAYMENT_OVERDUE
+                        effectiveAt: '2030-02-08T05:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /tenant/exports:
+    post:
+      tags: [Clinic subscription]
+      operationId: requestTenantExport
+      summary: Request a data export of the current clinic
+      description: |
+        Starts an asynchronous export of the clinic data in the chosen format; each
+        module adds its own data. Allowed while the clinic is read-only (`SUSPENDED`,
+        or `CANCELLED` during retention). The file is available until `expiresAt`.
+        Audited (who exported and when).
+      x-required-permission: tenant.data.export
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateExportRequest'
+            examples:
+              json:
+                value:
+                  format: JSON
+      responses:
+        '202':
+          description: Export accepted.
+          headers:
+            Location:
+              $ref: '#/components/headers/Location'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantExport'
+              examples:
+                pending:
+                  value:
+                    id: 2c3d4e5f-6a7b-4c8d-9e0f-1a2b3c4d5e6f
+                    format: JSON
+                    status: PENDING
+                    createdAt: '2030-07-01T15:00:00Z'
+                    expiresAt: null
+                    downloadUrl: null
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/IdempotencyConflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /tenant/exports/{exportId}:
+    parameters:
+      - $ref: '#/components/parameters/ExportId'
+    get:
+      tags: [Clinic subscription]
+      operationId: getTenantExport
+      summary: Get a data export of the current clinic
+      description: |
+        Returns the status of an export. When `READY`, `downloadUrl` is a short-lived
+        URL to download the file. Exports of another clinic respond `404`.
+      x-required-permission: tenant.data.export
+      responses:
+        '200':
+          description: The export.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantExport'
+              examples:
+                ready:
+                  value:
+                    id: 2c3d4e5f-6a7b-4c8d-9e0f-1a2b3c4d5e6f
+                    format: JSON
+                    status: READY
+                    createdAt: '2030-07-01T15:00:00Z'
+                    expiresAt: '2030-07-08T15:00:00Z'
+                    downloadUrl: https://files.medical-kuador.invalid/exports/2c3d4e5f-6a7b-4c8d-9e0f-1a2b3c4d5e6f?signature=example
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Access token issued by the login operations of `user-registration.openapi.yaml`.
+        `/platform/**` requires a `PLATFORM` token (SUPER_ADMIN); clinic operations
+        require a `TENANT` token.
+
+  headers:
+    Location:
+      description: URL of the created resource.
+      schema:
+        type: string
+    RetryAfter:
+      description: Seconds until a new attempt is allowed.
+      schema:
+        type: integer
+        minimum: 1
+
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: |
+        Client-generated key (UUID recommended) that makes the creation safe to retry.
+        Kept for 24 hours per caller and operation (configurable).
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 64
+        examples: [9b2d5f1e-7c3a-4e8b-a6d0-1f2e3d4c5b6a]
+    Page:
+      name: page
+      in: query
+      description: Zero-based page number.
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    Size:
+      name: size
+      in: query
+      description: Page size.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    PlanId:
+      name: planId
+      in: path
+      required: true
+      description: Plan identifier.
+      schema:
+        type: string
+        format: uuid
+    TenantId:
+      name: tenantId
+      in: path
+      required: true
+      description: Clinic (tenant) identifier. Only platform operations accept it.
+      schema:
+        type: string
+        format: uuid
+    PurgeRequestId:
+      name: requestId
+      in: path
+      required: true
+      description: Purge request identifier.
+      schema:
+        type: string
+        format: uuid
+    ExportId:
+      name: exportId
+      in: path
+      required: true
+      description: Export identifier.
+      schema:
+        type: string
+        format: uuid
+
+  examples:
+    TrialPlan:
+      value:
+        id: 6b5a4c3d-2e1f-4a0b-8c9d-7e6f5a4b3c2d
+        code: TRIAL
+        name: Trial
+        description: 14-day free trial.
+        trial: true
+        status: ACTIVE
+        modules: [AGENDA, PATIENTS, CLINICAL_RECORDS, CONSULTATION, ODONTOGRAM, USERS]
+        limits:
+          MAX_BRANCHES: 1
+          MAX_USERS: 3
+          MAX_PATIENTS: 50
+          MAX_APPOINTMENTS: 100
+          MAX_STORAGE_MB: 500
+        currentPrices: []
+        createdAt: '2030-01-01T15:00:00Z'
+        updatedAt: '2030-01-01T15:00:00Z'
+        version: 0
+    StandardPlan:
+      value:
+        id: 3f2e1d0c-9b8a-4c7d-8e6f-5a4b3c2d1e0f
+        code: STANDARD
+        name: Standard
+        description: Medical clinic with up to three branches.
+        trial: false
+        status: ACTIVE
+        modules: [AGENDA, PATIENTS, CLINICAL_RECORDS, CONSULTATION, USERS, NOTIFICATIONS]
+        limits:
+          MAX_BRANCHES: 3
+          MAX_USERS: 15
+          MAX_PATIENTS: 5000
+          MAX_APPOINTMENTS: null
+          MAX_STORAGE_MB: 10240
+        currentPrices:
+          - id: 1b2c3d4e-5f6a-4b7c-9d8e-0f1a2b3c4d5e
+            billingPeriod: MONTHLY
+            currency: USD
+            amount: '49.00'
+            effectiveFrom: '2030-01-01T05:00:00Z'
+            createdAt: '2029-12-20T15:00:00Z'
+          - id: 4e5f6a7b-8c9d-4e0f-8a1b-2c3d4e5f6a7b
+            billingPeriod: ANNUAL
+            currency: USD
+            amount: '490.00'
+            effectiveFrom: '2030-01-01T05:00:00Z'
+            createdAt: '2029-12-20T15:00:00Z'
+        createdAt: '2029-12-20T15:00:00Z'
+        updatedAt: '2030-01-10T15:00:00Z'
+        version: 3
+    ArchivedPlan:
+      value:
+        id: 3f2e1d0c-9b8a-4c7d-8e6f-5a4b3c2d1e0f
+        code: LEGACY
+        name: Legacy
+        description: Plan no longer offered.
+        trial: false
+        status: ARCHIVED
+        modules: [AGENDA, PATIENTS, USERS]
+        limits:
+          MAX_BRANCHES: 1
+          MAX_USERS: 5
+          MAX_PATIENTS: null
+          MAX_APPOINTMENTS: null
+          MAX_STORAGE_MB: 1024
+        currentPrices: []
+        createdAt: '2029-01-01T15:00:00Z'
+        updatedAt: '2030-01-10T15:00:00Z'
+        version: 8
+    DefaultSettings:
+      value:
+        trialDays: 14
+        graceDays: 7
+        suspensionDaysBeforeCancel: 90
+        retentionDays: 90
+        ownerInvitationTtlHours: 72
+        priceChangeNoticeDays: 30
+        version: 0
+    PendingInvitation:
+      value:
+        status: PENDING
+        maskedEmail: j***@example.com
+        sentAt: '2030-01-01T15:00:00Z'
+        expiresAt: '2030-01-04T15:00:00Z'
+    Tenant:
+      value:
+        id: 5b0c8f2e-3a51-4d6e-9f0a-1c2b3d4e5f60
+        legalName: Example Clinic S.A.
+        tradeName: Example Clinic
+        ruc: '0000000000001'
+        clinicType: MEDICAL
+        countryCode: EC
+        city: Quito
+        address: 123 Example Avenue
+        phone: '+593000000000'
+        contactEmail: contact@example.com
+        mspEstablishmentNumber: null
+        owner:
+          fullName: Jane Doe
+          maskedEmail: j***@example.com
+          twoFactorEnabled: false
+          invitation:
+            status: PENDING
+            maskedEmail: j***@example.com
+            sentAt: '2030-01-01T15:00:00Z'
+            expiresAt: '2030-01-04T15:00:00Z'
+        subscription:
+          status: TRIAL
+          planId: 6b5a4c3d-2e1f-4a0b-8c9d-7e6f5a4b3c2d
+          planName: Trial
+          billingPeriod: MONTHLY
+          currentPeriodEnd: null
+          trialEndsAt: '2030-01-15T05:00:00Z'
+        createdAt: '2030-01-01T15:00:00Z'
+        version: 0
+    ActiveSubscription:
+      value:
+        id: 8f7e6d5c-4b3a-4291-8f0e-7d6c5b4a3928
+        status: ACTIVE
+        accessMode: FULL
+        plan:
+          id: 3f2e1d0c-9b8a-4c7d-8e6f-5a4b3c2d1e0f
+          code: STANDARD
+          name: Standard
+        billingPeriod: MONTHLY
+        priceAmount: '49.00'
+        currency: USD
+        currentPeriodStart: '2030-01-01T05:00:00Z'
+        currentPeriodEnd: '2030-02-01T05:00:00Z'
+        trialEndsAt: null
+        graceEndsAt: null
+        suspendedAt: null
+        cancelledAt: null
+        retentionEndsAt: null
+        reactivatedAt: null
+        priceLockedUntil: null
+        purged: false
+        reactivable: false
+        allowedTargets: [SUSPENDED, CANCELLED]
+        scheduledPlanChange: null
+        periods:
+          - planName: Standard
+            periodStart: '2030-01-01T05:00:00Z'
+            periodEnd: '2030-02-01T05:00:00Z'
+            amount: '49.00'
+            currency: USD
+        transitions:
+          - from: TRIAL
+            to: ACTIVE
+            cause: PAYMENT_RECEIVED
+            actor: null
+            reason: null
+            at: '2030-01-01T05:00:00Z'
+        version: 4
+    CancelledSubscription:
+      value:
+        id: 8f7e6d5c-4b3a-4291-8f0e-7d6c5b4a3928
+        status: CANCELLED
+        accessMode: RETENTION
+        plan:
+          id: 3f2e1d0c-9b8a-4c7d-8e6f-5a4b3c2d1e0f
+          code: STANDARD
+          name: Standard
+        billingPeriod: MONTHLY
+        priceAmount: '49.00'
+        currency: USD
+        currentPeriodStart: '2030-01-01T05:00:00Z'
+        currentPeriodEnd: '2030-02-01T05:00:00Z'
+        trialEndsAt: null
+        graceEndsAt: '2030-02-08T05:00:00Z'
+        suspendedAt: '2030-02-08T05:00:00Z'
+        cancelledAt: '2030-05-09T05:00:00Z'
+        retentionEndsAt: '2030-08-07T05:00:00Z'
+        reactivatedAt: null
+        priceLockedUntil: null
+        purged: false
+        reactivable: true
+        allowedTargets: [ACTIVE]
+        scheduledPlanChange: null
+        periods: []
+        transitions:
+          - from: SUSPENDED
+            to: CANCELLED
+            cause: SCHEDULER
+            actor: null
+            reason: null
+            at: '2030-05-09T05:00:00Z'
+        version: 7
+    AppliedUpgrade:
+      value:
+        id: 5d4c3b2a-1f0e-4d9c-8b7a-6f5e4d3c2b1a
+        kind: UPGRADE
+        status: APPLIED
+        fromPlan:
+          id: 3f2e1d0c-9b8a-4c7d-8e6f-5a4b3c2d1e0f
+          code: STANDARD
+          name: Standard
+        toPlan:
+          id: 9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d
+          code: PREMIUM
+          name: Premium
+        billingPeriod: MONTHLY
+        requestedAt: '2030-01-16T15:00:00Z'
+        effectiveAt: '2030-01-16T15:00:00Z'
+        proratedAmount: '25.00'
+        currency: USD
+
+  responses:
+    Session:
+      description: |
+        Tokens of the session, with the same shape as a completed login
+        (`AuthenticatedResult` of `user-registration.openapi.yaml`). After accepting
+        the invitation the session still requires the second factor; after enrollment
+        confirmation or verification it has passed it.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Session'
+          examples:
+            authenticated:
+              value:
+                status: AUTHENTICATED
+                accessToken: eyJhbGciOiJIUzI1NiJ9.example.signature
+                tokenType: Bearer
+                expiresIn: 900
+                refreshToken: refresh-example-token
+                refreshExpiresIn: 604800
+                scope: TENANT
+                clinic:
+                  id: 5b0c8f2e-3a51-4d6e-9f0a-1c2b3d4e5f60
+                  name: Example Clinic
+                branch: null
+                mustChangePassword: false
+    ValidationError:
+      description: The request is malformed or breaks a validation rule (`VALIDATION`), with one error per field.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            validation:
+              value:
+                type: about:blank
+                title: Bad Request
+                status: 400
+                code: VALIDATION
+                errors:
+                  - field: ruc
+                    code: INVALID_FORMAT
+                  - field: owner.email
+                    code: REQUIRED
+            weakPassword:
+              value:
+                type: about:blank
+                title: Bad Request
+                status: 400
+                code: WEAK_PASSWORD
+    TwoFactorCodeError:
+      description: The TOTP code is wrong, expired or already used (`TWO_FACTOR_CODE_INVALID`), or malformed (`VALIDATION`).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            invalidCode:
+              value:
+                type: about:blank
+                title: Bad Request
+                status: 400
+                code: TWO_FACTOR_CODE_INVALID
+    InvitationGone:
+      description: The OWNER invitation is expired, used, revoked by a newer one or unknown (`INVITATION_INVALID_OR_EXPIRED`).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            gone:
+              value:
+                type: about:blank
+                title: Gone
+                status: 410
+                code: INVITATION_INVALID_OR_EXPIRED
+    TooManyAttempts:
+      description: Too many attempts; temporarily blocked (`TOO_MANY_ATTEMPTS`).
+      headers:
+        Retry-After:
+          $ref: '#/components/headers/RetryAfter'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            tooManyAttempts:
+              value:
+                type: about:blank
+                title: Too Many Requests
+                status: 429
+                code: TOO_MANY_ATTEMPTS
+    Unauthenticated:
+      description: |
+        The access token is missing, invalid or expired (`UNAUTHENTICATED`), or the
+        OWNER session has not passed the second factor yet (`TWO_FACTOR_REQUIRED`,
+        with `twoFactor` = `ENROLLMENT_REQUIRED` or `VERIFICATION_REQUIRED`).
+      headers:
+        WWW-Authenticate:
+          description: Bearer challenge.
+          schema:
+            type: string
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            unauthenticated:
+              value:
+                type: about:blank
+                title: Unauthorized
+                status: 401
+                code: UNAUTHENTICATED
+            twoFactorRequired:
+              value:
+                type: about:blank
+                title: Unauthorized
+                status: 401
+                code: TWO_FACTOR_REQUIRED
+                twoFactor: VERIFICATION_REQUIRED
+    Forbidden:
+      description: |
+        The caller lacks the required permission or uses a token of the wrong scope
+        (`FORBIDDEN`), the module is not in the plan (`MODULE_NOT_IN_PLAN`) or the
+        clinic is read-only (`TENANT_READ_ONLY`).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            forbidden:
+              value:
+                type: about:blank
+                title: Forbidden
+                status: 403
+                code: FORBIDDEN
+            readOnly:
+              value:
+                type: about:blank
+                title: Forbidden
+                status: 403
+                code: TENANT_READ_ONLY
+            moduleNotInPlan:
+              value:
+                type: about:blank
+                title: Forbidden
+                status: 403
+                code: MODULE_NOT_IN_PLAN
+    NotFound:
+      description: The resource does not exist, the clinic was purged, or the resource belongs to another clinic (`NOT_FOUND`).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            notFound:
+              value:
+                type: about:blank
+                title: Not Found
+                status: 404
+                code: NOT_FOUND
+    VersionConflict:
+      description: The resource changed since it was read (`VERSION_CONFLICT`).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            versionConflict:
+              value:
+                type: about:blank
+                title: Conflict
+                status: 409
+                code: VERSION_CONFLICT
+    IdempotencyConflict:
+      description: Reused idempotency key with a different body (`IDEMPOTENCY_KEY_REUSED`) or client id already taken (`RESOURCE_ID_TAKEN`).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            keyReused:
+              value:
+                type: about:blank
+                title: Conflict
+                status: 409
+                code: IDEMPOTENCY_KEY_REUSED
+    PlanConflict:
+      description: The plan is archived (`PLAN_ARCHIVED`), the version is stale (`VERSION_CONFLICT`) or the idempotency key was reused (`IDEMPOTENCY_KEY_REUSED`).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            archived:
+              value:
+                type: about:blank
+                title: Conflict
+                status: 409
+                code: PLAN_ARCHIVED
+            versionConflict:
+              value:
+                type: about:blank
+                title: Conflict
+                status: 409
+                code: VERSION_CONFLICT
+    PlanChangeConflict:
+      description: |
+        The subscription status does not allow a plan change, or the target is the
+        current plan and period (`PLAN_CHANGE_NOT_ALLOWED`), the target plan is
+        archived (`PLAN_ARCHIVED`) or the version is stale (`VERSION_CONFLICT`).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            notAllowed:
+              value:
+                type: about:blank
+                title: Conflict
+                status: 409
+                code: PLAN_CHANGE_NOT_ALLOWED
+                detail: Plan changes are not allowed while SUSPENDED.
+    PurgeNotAllowed:
+      description: |
+        The clinic is not `CANCELLED`, its retention has not ended, another request is
+        pending, or the request is not pending any more (`PURGE_NOT_ALLOWED`).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            notAllowed:
+              value:
+                type: about:blank
+                title: Conflict
+                status: 409
+                code: PURGE_NOT_ALLOWED
+                detail: The retention period ends on 2030-08-07.
+    InternalError:
+      description: Unexpected error (`INTERNAL_ERROR`). No internal details are exposed.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            internal:
+              value:
+                type: about:blank
+                title: Internal Server Error
+                status: 500
+                code: INTERNAL_ERROR
+
+  schemas:
+    # ------------------------------------------------------------ Errors
+    ErrorCode:
+      type: string
+      description: |
+        Stable, machine-readable error code. Clients map it to a user-facing message.
+        Superset of the `ErrorCode` of `user-registration.openapi.yaml`; the codes
+        after `CONTACT_CHANNEL_UNAVAILABLE` are added by this contract.
+      enum:
+        - VALIDATION
+        - EMAIL_TAKEN
+        - INVALID_CREDENTIALS
+        - WEAK_PASSWORD
+        - UNAUTHENTICATED
+        - FORBIDDEN
+        - PASSWORD_CHANGE_REQUIRED
+        - NOT_FOUND
+        - ROLE_NAME_TAKEN
+        - VERSION_CONFLICT
+        - SYSTEM_ROLE_IMMUTABLE
+        - ROLE_IN_USE
+        - INTERNAL_ERROR
+        - TOO_MANY_ATTEMPTS
+        - INVALID_SESSION_TOKEN
+        - ONE_TIME_TOKEN_INVALID
+        - BRANCH_NOT_ASSIGNED
+        - PRIVILEGE_ESCALATION
+        - SELF_MODIFICATION_FORBIDDEN
+        - LAST_OWNER
+        - PLAN_LIMIT_REACHED
+        - IDEMPOTENCY_KEY_REUSED
+        - RESOURCE_ID_TAKEN
+        - ACCOUNT_ALREADY_ACTIVE
+        - PATIENT_DUPLICATE
+        - MINOR_CANNOT_HAVE_ACCOUNT
+        - ADULT_AUTHORIZATION_REQUIRED
+        - LAST_LEGAL_GUARDIAN
+        - CONTACT_CHANNEL_UNAVAILABLE
+        - TENANT_READ_ONLY
+        - MODULE_NOT_IN_PLAN
+        - INVALID_SUBSCRIPTION_TRANSITION
+        - REACTIVATION_WINDOW_CLOSED
+        - INVITATION_INVALID_OR_EXPIRED
+        - TWO_FACTOR_REQUIRED
+        - TWO_FACTOR_CODE_INVALID
+        - TWO_FACTOR_ALREADY_ENABLED
+        - RUC_ALREADY_REGISTERED
+        - PLAN_ARCHIVED
+        - PLAN_CHANGE_NOT_ALLOWED
+        - PURGE_NOT_ALLOWED
+
+    Problem:
+      type: object
+      description: Problem Details (RFC 9457) extended with a stable `code`.
+      required: [type, title, status, code]
+      properties:
+        type:
+          type: string
+          format: uri-reference
+          description: Problem type URI; `about:blank` when no specific type applies.
+          default: about:blank
+        title:
+          type: string
+          description: Short summary of the problem type.
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+          description: HTTP status code.
+        detail:
+          type: string
+          description: Explanation for developers. Never contains secrets, tokens or personal data.
+        instance:
+          type: string
+          format: uri-reference
+          description: URI of the specific occurrence.
+        code:
+          $ref: '#/components/schemas/ErrorCode'
+        errors:
+          type: array
+          description: Field-level validation errors (only for `VALIDATION`).
+          items:
+            $ref: '#/components/schemas/FieldError'
+        twoFactor:
+          type: string
+          description: Only for `TWO_FACTOR_REQUIRED`; tells the client whether to enroll or to verify.
+          enum: [ENROLLMENT_REQUIRED, VERIFICATION_REQUIRED]
+
+    FieldError:
+      type: object
+      required: [field, code]
+      properties:
+        field:
+          type: string
+          description: JSON path of the invalid field, for example `owner.email`.
+        code:
+          type: string
+          description: |
+            Stable validation code, for example `REQUIRED`, `TOO_LONG`, `INVALID_FORMAT`,
+            `DUPLICATE`, `UNKNOWN_MODULE`, `UNKNOWN_LIMIT`, `IN_THE_PAST`, `MISMATCH` or
+            `OUTDATED_VERSION`.
+          examples: [REQUIRED, MISMATCH]
+
+    # ------------------------------------------------------------ Shared
+    Version:
+      type: integer
+      format: int64
+      minimum: 0
+      description: Optimistic locking version; send back the value read.
+
+    ClientId:
+      type: string
+      format: uuid
+      description: Optional client-generated identifier of the new resource.
+
+    Money:
+      type: string
+      pattern: '^\d{1,10}\.\d{2}$'
+      description: Amount without VAT, with exactly two decimals.
+      examples: ['49.00']
+
+    Currency:
+      type: string
+      pattern: '^[A-Z]{3}$'
+      default: USD
+      description: ISO 4217 currency code. Only `USD` is offered today.
+      examples: [USD]
+
+    Email:
+      type: string
+      format: email
+      maxLength: 254
+
+    Reason:
+      type: string
+      minLength: 1
+      maxLength: 500
+      description: Free-text reason kept in the audit trail. Must not contain clinical data.
+
+    PageMetadata:
+      type: object
+      required: [page, size, totalItems]
+      properties:
+        page:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        totalItems:
+          type: integer
+          format: int64
+          minimum: 0
+
+    # ------------------------------------------------------------ Plans
+    ModuleCode:
+      type: string
+      description: Module of the fixed catalog that a plan can enable (`ModuleCode` in the api).
+      enum:
+        - AGENDA
+        - PATIENTS
+        - CLINICAL_RECORDS
+        - CONSULTATION
+        - ODONTOGRAM
+        - USERS
+        - PHARMACY
+        - WAREHOUSE
+        - CASH_REGISTER
+        - COLLECTIONS
+        - NOTIFICATIONS
+        - E_INVOICING
+        - PUBLIC_API
+        - ADVANCED_REPORTS
+
+    LimitCode:
+      type: string
+      description: Limit of the fixed catalog (`LimitCode` in the api). Limits count tenant-wide totals.
+      enum: [MAX_BRANCHES, MAX_USERS, MAX_PATIENTS, MAX_APPOINTMENTS, MAX_STORAGE_MB]
+
+    PlanLimits:
+      type: object
+      description: Value per limit; `null` means unlimited. Every limit of the catalog is present in responses.
+      additionalProperties: false
+      properties:
+        MAX_BRANCHES:
+          $ref: '#/components/schemas/LimitValue'
+        MAX_USERS:
+          $ref: '#/components/schemas/LimitValue'
+        MAX_PATIENTS:
+          $ref: '#/components/schemas/LimitValue'
+        MAX_APPOINTMENTS:
+          $ref: '#/components/schemas/LimitValue'
+        MAX_STORAGE_MB:
+          $ref: '#/components/schemas/LimitValue'
+
+    LimitValue:
+      type: [integer, 'null']
+      minimum: 0
+      description: Maximum allowed; `null` means unlimited.
+
+    BillingPeriod:
+      type: string
+      description: Billing period of a price. The model accepts more periods later (for example quarterly).
+      enum: [MONTHLY, ANNUAL]
+
+    PlanStatus:
+      type: string
+      enum: [ACTIVE, ARCHIVED]
+
+    ModuleInfo:
+      type: object
+      required: [code, label]
+      properties:
+        code:
+          $ref: '#/components/schemas/ModuleCode'
+        label:
+          type: string
+          description: Spanish label for display.
+
+    LimitInfo:
+      type: object
+      required: [code, label, unit]
+      properties:
+        code:
+          $ref: '#/components/schemas/LimitCode'
+        label:
+          type: string
+          description: Spanish label for display.
+        unit:
+          type: string
+          enum: [COUNT, MEGABYTES]
+
+    PlanPrice:
+      type: object
+      description: Immutable price version of a plan for one billing period (ADR-015).
+      required: [id, billingPeriod, currency, amount, effectiveFrom, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        billingPeriod:
+          $ref: '#/components/schemas/BillingPeriod'
+        currency:
+          $ref: '#/components/schemas/Currency'
+        amount:
+          $ref: '#/components/schemas/Money'
+        effectiveFrom:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    PriceInput:
+      type: object
+      additionalProperties: false
+      required: [billingPeriod, amount]
+      properties:
+        billingPeriod:
+          $ref: '#/components/schemas/BillingPeriod'
+        currency:
+          $ref: '#/components/schemas/Currency'
+        amount:
+          $ref: '#/components/schemas/Money'
+
+    CreatePlanPriceRequest:
+      type: object
+      additionalProperties: false
+      required: [billingPeriod, amount, effectiveFrom]
+      properties:
+        billingPeriod:
+          $ref: '#/components/schemas/BillingPeriod'
+        currency:
+          $ref: '#/components/schemas/Currency'
+        amount:
+          $ref: '#/components/schemas/Money'
+        effectiveFrom:
+          type: string
+          format: date-time
+          description: When the price starts to apply to new subscriptions; not in the past.
+        id:
+          $ref: '#/components/schemas/ClientId'
+
+    PlanSummary:
+      type: object
+      required: [id, code, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        name:
+          type: string
+
+    Plan:
+      type: object
+      required: [id, code, name, trial, status, modules, limits, currentPrices, createdAt, updatedAt, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          description: Unique, stable code.
+        name:
+          type: string
+        description:
+          type: [string, 'null']
+        trial:
+          type: boolean
+          description: True for the single trial plan (plan D9). It has no prices.
+        status:
+          $ref: '#/components/schemas/PlanStatus'
+        modules:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/ModuleCode'
+        limits:
+          $ref: '#/components/schemas/PlanLimits'
+        currentPrices:
+          type: array
+          description: The price in force today for each billing period.
+          items:
+            $ref: '#/components/schemas/PlanPrice'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          $ref: '#/components/schemas/Version'
+
+    CreatePlanRequest:
+      type: object
+      additionalProperties: false
+      required: [code, name, trial, modules, limits]
+      properties:
+        id:
+          $ref: '#/components/schemas/ClientId'
+        code:
+          type: string
+          pattern: '^[A-Z][A-Z0-9_]{1,39}$'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        description:
+          type: [string, 'null']
+          maxLength: 500
+        trial:
+          type: boolean
+        modules:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/ModuleCode'
+        limits:
+          $ref: '#/components/schemas/PlanLimits'
+        prices:
+          type: array
+          description: Initial prices, at most one per billing period; empty for the trial plan.
+          items:
+            $ref: '#/components/schemas/PriceInput'
+
+    UpdatePlanRequest:
+      type: object
+      additionalProperties: false
+      required: [name, modules, limits, version]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        description:
+          type: [string, 'null']
+          maxLength: 500
+        modules:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/ModuleCode'
+        limits:
+          $ref: '#/components/schemas/PlanLimits'
+        version:
+          $ref: '#/components/schemas/Version'
+
+    # ------------------------------------------------------------ Settings
+    PlatformSettings:
+      type: object
+      additionalProperties: false
+      description: Configurable periods of the lifecycle (plan D10). Defaults 14, 7, 90, 90, 72 and 30.
+      required: [trialDays, graceDays, suspensionDaysBeforeCancel, retentionDays, ownerInvitationTtlHours, priceChangeNoticeDays, version]
+      properties:
+        trialDays:
+          type: integer
+          minimum: 1
+          maximum: 365
+        graceDays:
+          type: integer
+          minimum: 0
+          maximum: 90
+        suspensionDaysBeforeCancel:
+          type: integer
+          minimum: 1
+          maximum: 365
+        retentionDays:
+          type: integer
+          minimum: 1
+          maximum: 3650
+        ownerInvitationTtlHours:
+          type: integer
+          minimum: 1
+          maximum: 720
+        priceChangeNoticeDays:
+          type: integer
+          minimum: 0
+          maximum: 365
+        version:
+          $ref: '#/components/schemas/Version'
+
+    # ------------------------------------------------------------ Tenants
+    Ruc:
+      type: string
+      pattern: '^\d{13}$'
+      description: Ecuadorian taxpayer number, 13 digits; unique among non-purged clinics (plan D8). Never logged.
+
+    ClinicType:
+      type: string
+      enum: [MEDICAL, DENTAL, MIXED]
+
+    SubscriptionStatus:
+      type: string
+      description: |
+        `TRIAL` (TRIAL), `ACTIVE` (ACTIVA), `PAST_DUE` (VENCIDA, grace period),
+        `SUSPENDED` (SUSPENDIDA) and `CANCELLED` (CANCELADA).
+      enum: [TRIAL, ACTIVE, PAST_DUE, SUSPENDED, CANCELLED]
+
+    AccessMode:
+      type: string
+      description: |
+        `FULL` within the plan; `READ_ONLY` (suspended: reads and export);
+        `RETENTION` (cancelled within retention: reads and export for the OWNER);
+        `NONE` (purged).
+      enum: [FULL, READ_ONLY, RETENTION, NONE]
+
+    OwnerInput:
+      type: object
+      additionalProperties: false
+      required: [fullName, email]
+      properties:
+        fullName:
+          type: string
+          minLength: 1
+          maxLength: 160
+        email:
+          $ref: '#/components/schemas/Email'
+
+    CreateTenantRequest:
+      type: object
+      additionalProperties: false
+      required: [legalName, ruc, clinicType, countryCode, city, address, phone, contactEmail, planId, billingPeriod, owner]
+      properties:
+        id:
+          $ref: '#/components/schemas/ClientId'
+        legalName:
+          type: string
+          minLength: 1
+          maxLength: 200
+        tradeName:
+          type: [string, 'null']
+          maxLength: 200
+        ruc:
+          $ref: '#/components/schemas/Ruc'
+        clinicType:
+          $ref: '#/components/schemas/ClinicType'
+        countryCode:
+          type: string
+          pattern: '^[A-Z]{2}$'
+          description: ISO 3166-1 alpha-2. Only `EC` is offered today.
+        city:
+          type: string
+          minLength: 1
+          maxLength: 120
+        address:
+          type: string
+          minLength: 1
+          maxLength: 300
+        phone:
+          type: string
+          minLength: 7
+          maxLength: 20
+        contactEmail:
+          $ref: '#/components/schemas/Email'
+        mspEstablishmentNumber:
+          type: [string, 'null']
+          maxLength: 40
+        planId:
+          type: string
+          format: uuid
+        billingPeriod:
+          $ref: '#/components/schemas/BillingPeriod'
+        owner:
+          $ref: '#/components/schemas/OwnerInput'
+
+    UpdateTenantRequest:
+      type: object
+      additionalProperties: false
+      required: [version]
+      properties:
+        legalName:
+          type: string
+          minLength: 1
+          maxLength: 200
+        tradeName:
+          type: [string, 'null']
+          maxLength: 200
+        ruc:
+          $ref: '#/components/schemas/Ruc'
+        clinicType:
+          $ref: '#/components/schemas/ClinicType'
+        countryCode:
+          type: string
+          pattern: '^[A-Z]{2}$'
+        city:
+          type: string
+          minLength: 1
+          maxLength: 120
+        address:
+          type: string
+          minLength: 1
+          maxLength: 300
+        phone:
+          type: string
+          minLength: 7
+          maxLength: 20
+        contactEmail:
+          $ref: '#/components/schemas/Email'
+        mspEstablishmentNumber:
+          type: [string, 'null']
+          maxLength: 40
+        version:
+          $ref: '#/components/schemas/Version'
+
+    InvitationStatus:
+      type: string
+      enum: [PENDING, ACCEPTED, EXPIRED, REVOKED]
+
+    OwnerInvitation:
+      type: object
+      required: [status, maskedEmail, sentAt, expiresAt]
+      properties:
+        status:
+          $ref: '#/components/schemas/InvitationStatus'
+        maskedEmail:
+          type: string
+        sentAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+
+    ResendOwnerInvitationRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: '#/components/schemas/ClientId'
+        email:
+          $ref: '#/components/schemas/Email'
+
+    TenantOwner:
+      type: object
+      required: [fullName, maskedEmail, twoFactorEnabled, invitation]
+      properties:
+        fullName:
+          type: string
+        maskedEmail:
+          type: string
+        twoFactorEnabled:
+          type: boolean
+        invitation:
+          oneOf:
+            - $ref: '#/components/schemas/OwnerInvitation'
+            - type: 'null'
+          description: Latest invitation; null once there is none to show.
+
+    TenantSubscriptionSummary:
+      type: object
+      required: [status, planId, planName, billingPeriod, currentPeriodEnd, trialEndsAt]
+      properties:
+        status:
+          $ref: '#/components/schemas/SubscriptionStatus'
+        planId:
+          type: string
+          format: uuid
+        planName:
+          type: string
+        billingPeriod:
+          $ref: '#/components/schemas/BillingPeriod'
+        currentPeriodEnd:
+          type: [string, 'null']
+          format: date-time
+        trialEndsAt:
+          type: [string, 'null']
+          format: date-time
+
+    Tenant:
+      type: object
+      required: [id, legalName, ruc, clinicType, countryCode, city, address, phone, contactEmail, owner, subscription, createdAt, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        legalName:
+          type: string
+        tradeName:
+          type: [string, 'null']
+        ruc:
+          $ref: '#/components/schemas/Ruc'
+        clinicType:
+          $ref: '#/components/schemas/ClinicType'
+        countryCode:
+          type: string
+        city:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+        contactEmail:
+          $ref: '#/components/schemas/Email'
+        mspEstablishmentNumber:
+          type: [string, 'null']
+        owner:
+          $ref: '#/components/schemas/TenantOwner'
+        subscription:
+          $ref: '#/components/schemas/TenantSubscriptionSummary'
+        createdAt:
+          type: string
+          format: date-time
+        version:
+          $ref: '#/components/schemas/Version'
+
+    TenantListItem:
+      type: object
+      required: [id, legalName, ruc, clinicType, planName, subscriptionStatus, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        legalName:
+          type: string
+        tradeName:
+          type: [string, 'null']
+        ruc:
+          $ref: '#/components/schemas/Ruc'
+        clinicType:
+          $ref: '#/components/schemas/ClinicType'
+        planName:
+          type: string
+        subscriptionStatus:
+          $ref: '#/components/schemas/SubscriptionStatus'
+        createdAt:
+          type: string
+          format: date-time
+
+    TenantPage:
+      allOf:
+        - $ref: '#/components/schemas/PageMetadata'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/TenantListItem'
+
+    ReasonRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason:
+          $ref: '#/components/schemas/Reason'
+
+    # ------------------------------------------------------------ Subscriptions
+    TransitionCause:
+      type: string
+      enum: [MANUAL, PAYMENT_RECEIVED, PAYMENT_FAILED, SCHEDULER]
+
+    SubscriptionTransition:
+      type: object
+      required: [from, to, cause, actor, reason, at]
+      properties:
+        from:
+          oneOf:
+            - $ref: '#/components/schemas/SubscriptionStatus'
+            - type: 'null'
+          description: Null for the initial status at onboarding.
+        to:
+          $ref: '#/components/schemas/SubscriptionStatus'
+        cause:
+          $ref: '#/components/schemas/TransitionCause'
+        actor:
+          type: [string, 'null']
+          description: Display name of the SUPER_ADMIN for manual transitions; null otherwise.
+        reason:
+          type: [string, 'null']
+        at:
+          type: string
+          format: date-time
+
+    SubscriptionPeriod:
+      type: object
+      description: Contracted price of one period (ADR-015).
+      required: [planName, periodStart, periodEnd, amount, currency]
+      properties:
+        planName:
+          type: string
+        periodStart:
+          type: string
+          format: date-time
+        periodEnd:
+          type: string
+          format: date-time
+        amount:
+          $ref: '#/components/schemas/Money'
+        currency:
+          $ref: '#/components/schemas/Currency'
+
+    PlanChangeKind:
+      type: string
+      description: '`UPGRADE` (higher price, same period), `DOWNGRADE` (lower or equal price) or `PERIOD_CHANGE` (other billing period), plan D2.'
+      enum: [UPGRADE, DOWNGRADE, PERIOD_CHANGE]
+
+    PlanChangeStatus:
+      type: string
+      enum: [SCHEDULED, APPLIED, CANCELLED]
+
+    PlanChange:
+      type: object
+      required: [id, kind, status, fromPlan, toPlan, billingPeriod, requestedAt, effectiveAt, proratedAmount, currency]
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          $ref: '#/components/schemas/PlanChangeKind'
+        status:
+          $ref: '#/components/schemas/PlanChangeStatus'
+        fromPlan:
+          $ref: '#/components/schemas/PlanSummary'
+        toPlan:
+          $ref: '#/components/schemas/PlanSummary'
+        billingPeriod:
+          $ref: '#/components/schemas/BillingPeriod'
+        requestedAt:
+          type: string
+          format: date-time
+        effectiveAt:
+          type: string
+          format: date-time
+        proratedAmount:
+          oneOf:
+            - $ref: '#/components/schemas/Money'
+            - type: 'null'
+          description: Only for `UPGRADE`; (new − contracted) × remaining days ÷ period days, HALF_UP (plan D3).
+        currency:
+          $ref: '#/components/schemas/Currency'
+
+    LimitExcess:
+      type: object
+      required: [limit, limitValue, usage]
+      properties:
+        limit:
+          $ref: '#/components/schemas/LimitCode'
+        limitValue:
+          type: integer
+          minimum: 0
+        usage:
+          type: integer
+          minimum: 0
+
+    PlanChangeRequest:
+      type: object
+      additionalProperties: false
+      required: [targetPlanId, billingPeriod]
+      properties:
+        id:
+          $ref: '#/components/schemas/ClientId'
+        targetPlanId:
+          type: string
+          format: uuid
+        billingPeriod:
+          $ref: '#/components/schemas/BillingPeriod'
+        version:
+          $ref: '#/components/schemas/Version'
+
+    PlanChangePreview:
+      type: object
+      required: [kind, targetPlan, billingPeriod, effectiveAt, proratedAmount, currency, newPriceAmount, excess, disabledModules]
+      properties:
+        kind:
+          $ref: '#/components/schemas/PlanChangeKind'
+        targetPlan:
+          $ref: '#/components/schemas/PlanSummary'
+        billingPeriod:
+          $ref: '#/components/schemas/BillingPeriod'
+        effectiveAt:
+          type: string
+          format: date-time
+        proratedAmount:
+          oneOf:
+            - $ref: '#/components/schemas/Money'
+            - type: 'null'
+        currency:
+          $ref: '#/components/schemas/Currency'
+        newPriceAmount:
+          $ref: '#/components/schemas/Money'
+        excess:
+          type: array
+          description: Current usage above the target limits; empty when the clinic complies.
+          items:
+            $ref: '#/components/schemas/LimitExcess'
+        disabledModules:
+          type: array
+          description: Modules of the current plan that the target plan does not include.
+          items:
+            $ref: '#/components/schemas/ModuleCode'
+
+    Subscription:
+      type: object
+      required:
+        - id
+        - status
+        - accessMode
+        - plan
+        - billingPeriod
+        - priceAmount
+        - currency
+        - currentPeriodStart
+        - currentPeriodEnd
+        - trialEndsAt
+        - graceEndsAt
+        - suspendedAt
+        - cancelledAt
+        - retentionEndsAt
+        - reactivatedAt
+        - priceLockedUntil
+        - purged
+        - reactivable
+        - allowedTargets
+        - scheduledPlanChange
+        - periods
+        - transitions
+        - version
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/SubscriptionStatus'
+        accessMode:
+          $ref: '#/components/schemas/AccessMode'
+        plan:
+          $ref: '#/components/schemas/PlanSummary'
+        billingPeriod:
+          $ref: '#/components/schemas/BillingPeriod'
+        priceAmount:
+          oneOf:
+            - $ref: '#/components/schemas/Money'
+            - type: 'null'
+          description: Contracted price of the current period (snapshot, ADR-015); null during the trial.
+        currency:
+          $ref: '#/components/schemas/Currency'
+        currentPeriodStart:
+          type: [string, 'null']
+          format: date-time
+        currentPeriodEnd:
+          type: [string, 'null']
+          format: date-time
+        trialEndsAt:
+          type: [string, 'null']
+          format: date-time
+        graceEndsAt:
+          type: [string, 'null']
+          format: date-time
+        suspendedAt:
+          type: [string, 'null']
+          format: date-time
+        cancelledAt:
+          type: [string, 'null']
+          format: date-time
+        retentionEndsAt:
+          type: [string, 'null']
+          format: date-time
+        reactivatedAt:
+          type: [string, 'null']
+          format: date-time
+        priceLockedUntil:
+          type: [string, 'null']
+          format: date
+        purged:
+          type: boolean
+        reactivable:
+          type: boolean
+          description: True when the status is `CANCELLED`, the retention has not ended and the clinic is not purged (plan D12).
+        allowedTargets:
+          type: array
+          description: Statuses reachable now through `POST .../subscription/transitions`.
+          items:
+            $ref: '#/components/schemas/SubscriptionStatus'
+        scheduledPlanChange:
+          oneOf:
+            - $ref: '#/components/schemas/PlanChange'
+            - type: 'null'
+        periods:
+          type: array
+          description: Contracted periods, newest first.
+          items:
+            $ref: '#/components/schemas/SubscriptionPeriod'
+        transitions:
+          type: array
+          description: Transitions, newest first.
+          items:
+            $ref: '#/components/schemas/SubscriptionTransition'
+        version:
+          $ref: '#/components/schemas/Version'
+
+    TransitionRequest:
+      type: object
+      additionalProperties: false
+      required: [target, version]
+      properties:
+        target:
+          $ref: '#/components/schemas/SubscriptionStatus'
+        reason:
+          $ref: '#/components/schemas/Reason'
+          description: Mandatory to reactivate a `CANCELLED` subscription.
+        version:
+          $ref: '#/components/schemas/Version'
+
+    PriceLockRequest:
+      type: object
+      additionalProperties: false
+      required: [lockedUntil, version]
+      properties:
+        lockedUntil:
+          type: [string, 'null']
+          format: date
+          description: Last day of the lock (America/Guayaquil); null removes it.
+        reason:
+          $ref: '#/components/schemas/Reason'
+        version:
+          $ref: '#/components/schemas/Version'
+
+    # ------------------------------------------------------------ Purge
+    PurgeRequestStatus:
+      type: string
+      enum: [REQUESTED, CONFIRMED, CANCELLED]
+
+    PurgeRequest:
+      type: object
+      required: [id, status, requestedAt, confirmedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/PurgeRequestStatus'
+        requestedAt:
+          type: string
+          format: date-time
+        confirmedAt:
+          type: [string, 'null']
+          format: date-time
+
+    CreatePurgeRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        id:
+          $ref: '#/components/schemas/ClientId'
+        reason:
+          $ref: '#/components/schemas/Reason'
+
+    ConfirmPurgeRequest:
+      type: object
+      additionalProperties: false
+      required: [rucConfirmation]
+      properties:
+        rucConfirmation:
+          $ref: '#/components/schemas/Ruc'
+
+    # ------------------------------------------------------------ Owner onboarding
+    OneTimeToken:
+      type: string
+      minLength: 16
+      maxLength: 512
+      writeOnly: true
+      description: One-time token taken from the URL fragment of the link (ADR-014). Never logged.
+
+    OwnerInvitationTokenRequest:
+      type: object
+      additionalProperties: false
+      required: [token]
+      properties:
+        token:
+          $ref: '#/components/schemas/OneTimeToken'
+
+    OwnerInvitationPreview:
+      type: object
+      required: [clinicName, ownerName, maskedEmail, expiresAt, termsVersion, dataPolicyVersion]
+      properties:
+        clinicName:
+          type: string
+        ownerName:
+          type: string
+        maskedEmail:
+          type: string
+          description: Email with most of the local part hidden, for example `j***@example.com`.
+        expiresAt:
+          type: string
+          format: date-time
+        termsVersion:
+          type: string
+          description: Version of the terms of service to accept; the text is versioned content provided by Kuador.
+        dataPolicyVersion:
+          type: string
+          description: Version of the data processing policy to accept.
+
+    AcceptOwnerInvitationRequest:
+      type: object
+      additionalProperties: false
+      required: [token, password, acceptTerms, termsVersion, acceptDataPolicy, dataPolicyVersion]
+      properties:
+        token:
+          $ref: '#/components/schemas/OneTimeToken'
+        password:
+          type: string
+          format: password
+          maxLength: 128
+          writeOnly: true
+          description: New password; the policy is enforced as `WEAK_PASSWORD`.
+        acceptTerms:
+          type: boolean
+          const: true
+        termsVersion:
+          type: string
+          maxLength: 40
+        acceptDataPolicy:
+          type: boolean
+          const: true
+        dataPolicyVersion:
+          type: string
+          maxLength: 40
+
+    Session:
+      type: object
+      description: Same shape as `AuthenticatedResult` of `user-registration.openapi.yaml`.
+      required: [status, accessToken, tokenType, expiresIn, refreshToken, refreshExpiresIn, scope, mustChangePassword]
+      properties:
+        status:
+          type: string
+          const: AUTHENTICATED
+        accessToken:
+          type: string
+        tokenType:
+          type: string
+          const: Bearer
+        expiresIn:
+          type: integer
+          minimum: 1
+        refreshToken:
+          type: string
+        refreshExpiresIn:
+          type: integer
+          minimum: 1
+        scope:
+          type: string
+          enum: [TENANT, PLATFORM]
+        clinic:
+          type: object
+          required: [id, name]
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+        branch:
+          oneOf:
+            - type: object
+              required: [id, name]
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                name:
+                  type: string
+            - type: 'null'
+        mustChangePassword:
+          type: boolean
+
+    # ------------------------------------------------------------ Two-factor
+    TwoFactorEnrollment:
+      type: object
+      required: [secret, otpauthUri, issuer, digits, period]
+      properties:
+        secret:
+          type: string
+          pattern: '^[A-Z2-7]+=*$'
+          description: Base32 TOTP secret, shown only once for manual entry.
+        otpauthUri:
+          type: string
+          description: '`otpauth://totp/...` URI to render as a QR code.'
+        issuer:
+          type: string
+        digits:
+          type: integer
+          const: 6
+        period:
+          type: integer
+          const: 30
+
+    TwoFactorCodeRequest:
+      type: object
+      additionalProperties: false
+      required: [code]
+      properties:
+        code:
+          type: string
+          pattern: '^\d{6}$'
+          writeOnly: true
+
+    # ------------------------------------------------------------ Clinic subscription
+    LimitUsage:
+      type: object
+      required: [limit, limitValue, usage]
+      properties:
+        limit:
+          $ref: '#/components/schemas/LimitCode'
+        limitValue:
+          $ref: '#/components/schemas/LimitValue'
+        usage:
+          type: [integer, 'null']
+          minimum: 0
+          description: Current usage; null while the owning module does not report it yet.
+
+    NoticeKind:
+      type: string
+      description: Notice to show to the clinic.
+      enum: [TRIAL_ENDING, PAYMENT_OVERDUE, SUSPENDED, CANCELLED, PRICE_CHANGE, DOWNGRADE_EXCESS]
+
+    Notice:
+      type: object
+      required: [kind, effectiveAt]
+      properties:
+        kind:
+          $ref: '#/components/schemas/NoticeKind'
+        effectiveAt:
+          type: [string, 'null']
+          format: date-time
+          description: When the noticed change happens (end of trial, of grace, of retention, new price or downgrade).
+
+    ClinicSubscription:
+      type: object
+      required: [status, accessMode, plan, billingPeriod, priceAmount, currency, currentPeriodEnd, trialEndsAt, graceEndsAt, retentionEndsAt, modules, limits, scheduledPlanChange, notices]
+      properties:
+        status:
+          $ref: '#/components/schemas/SubscriptionStatus'
+        accessMode:
+          $ref: '#/components/schemas/AccessMode'
+        plan:
+          $ref: '#/components/schemas/PlanSummary'
+        billingPeriod:
+          $ref: '#/components/schemas/BillingPeriod'
+        priceAmount:
+          oneOf:
+            - $ref: '#/components/schemas/Money'
+            - type: 'null'
+        currency:
+          $ref: '#/components/schemas/Currency'
+        currentPeriodEnd:
+          type: [string, 'null']
+          format: date-time
+        trialEndsAt:
+          type: [string, 'null']
+          format: date-time
+        graceEndsAt:
+          type: [string, 'null']
+          format: date-time
+        retentionEndsAt:
+          type: [string, 'null']
+          format: date-time
+        modules:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModuleCode'
+        limits:
+          type: array
+          items:
+            $ref: '#/components/schemas/LimitUsage'
+        scheduledPlanChange:
+          oneOf:
+            - $ref: '#/components/schemas/PlanChange'
+            - type: 'null'
+        notices:
+          type: array
+          items:
+            $ref: '#/components/schemas/Notice'
+
+    # ------------------------------------------------------------ Export
+    ExportFormat:
+      type: string
+      enum: [JSON, CSV]
+
+    ExportStatus:
+      type: string
+      enum: [PENDING, READY, FAILED, EXPIRED]
+
+    CreateExportRequest:
+      type: object
+      additionalProperties: false
+      required: [format]
+      properties:
+        id:
+          $ref: '#/components/schemas/ClientId'
+        format:
+          $ref: '#/components/schemas/ExportFormat'
+
+    TenantExport:
+      type: object
+      required: [id, format, status, createdAt, expiresAt, downloadUrl]
+      properties:
+        id:
+          type: string
+          format: uuid
+        format:
+          $ref: '#/components/schemas/ExportFormat'
+        status:
+          $ref: '#/components/schemas/ExportStatus'
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: [string, 'null']
+          format: date-time
+        downloadUrl:
+          type: [string, 'null']
+          format: uri
+          description: Short-lived download URL, only when `READY`.
