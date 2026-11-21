@@ -43,6 +43,14 @@ export function transitionConsequence(
   }
 }
 
+/** Activation refused because the trial plan has no price: the plan change panel solves it. */
+export const ACTIVATION_NEEDS_PAID_PLAN_TRIAL =
+  'No se puede activar: el plan actual no tiene tarifa para la periodicidad contratada. Primero cambia la clínica a un plan pagado en «Cambiar el plan» y luego actívala.';
+
+/** Activation refused because the plan has no price, in a state where the plan cannot change. */
+export const ACTIVATION_NEEDS_PAID_PLAN =
+  'No se puede activar: el plan actual no tiene tarifa para la periodicidad contratada y en este estado no se permite cambiar de plan.';
+
 /**
  * Manual transitions of the subscription (ADR-016): the targets the api allows now, always with
  * a reason for the audit trail and an explicit confirmation. Reactivating a CANCELLED clinic is
@@ -141,6 +149,15 @@ export class TransitionPanel {
           const code = toProblem(error)?.code;
           if (code === 'VALIDATION') {
             applyServerErrors(this.form, error);
+          }
+          // The api offered ACTIVE for this very version, so refusing it means the plan has no
+          // price for the billing period (e.g. the trial plan), not stale data: reloading won't help.
+          if (code === 'INVALID_SUBSCRIPTION_TRANSITION' && target === 'ACTIVE') {
+            this.failure.set(
+              from === 'TRIAL' ? ACTIVATION_NEEDS_PAID_PLAN_TRIAL : ACTIVATION_NEEDS_PAID_PLAN,
+            );
+            this.focus('[data-testid="transition-failure"]');
+            return;
           }
           this.stale.set(
             code === 'VERSION_CONFLICT' ||
