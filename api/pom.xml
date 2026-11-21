@@ -70,7 +70,7 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
-        <!-- MEDK-16: SMTP adapter of notifications.NotificationSender (spring.mail.*, KUADOR_SMTP_*). -->
+        <!-- MEDK-16, MEDK-64: SMTP adapter of notifications.EmailGateway (ADR-005; spring.mail.*, KUADOR_SMTP_*). -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-mail</artifactId>
@@ -87,11 +87,6 @@
         <dependency>
             <groupId>org.springframework.modulith</groupId>
             <artifactId>spring-modulith-starter-core</artifactId>
-        </dependency>
-        <!-- Outgoing email behind NotificationSender (ADR-005); SMTP provider [POR DEFINIR], Mailpit locally. -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-mail</artifactId>
         </dependency>
         <!-- ADR-006: Argon2id password hashes (DelegatingPasswordEncoder) and HS256 access tokens. -->
         <dependency>
@@ -144,6 +139,13 @@
             <groupId>com.tngtech.archunit</groupId>
             <artifactId>archunit-junit5</artifactId>
             <version>1.4.1</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- MEDK-64: in-process SMTP server for the tests of the SMTP email adapter. -->
+        <dependency>
+            <groupId>com.icegreen</groupId>
+            <artifactId>greenmail-junit5</artifactId>
+            <version>2.1.15</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

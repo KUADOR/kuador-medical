@@ -12,17 +12,22 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
 
 /**
- * SMTP adapter (spring.mail.*, {@code KUADOR_SMTP_*}): Mailpit in local, the provider of each
- * environment elsewhere [POR DEFINIR: provider]. Without SMTP configuration it refuses to send.
+ * SMTP adapter of {@link com.kuador.medical.notifications.EmailGateway} (ADR-005), configured per
+ * environment through spring.mail.* ({@code KUADOR_SMTP_*}) and {@code KUADOR_MAIL_FROM}: Mailpit in
+ * local, the provider of each environment elsewhere [POR DEFINIR: provider]. Without SMTP
+ * configuration it refuses to send. It is the only class allowed to use the mail SDK.
+ *
+ * <p>It logs nothing, and its errors carry neither the recipient, the subject, the body nor the
+ * provider exception (whose message may quote the addresses), so callers can log them safely.
  */
 @Component
 @EnableConfigurationProperties(MailProperties.class)
-class SmtpNotificationSender implements NotificationSender {
+class SmtpEmailGateway implements NotificationSender {
 
     private final ObjectProvider<JavaMailSender> mailSender;
     private final MailProperties properties;
 
-    SmtpNotificationSender(ObjectProvider<JavaMailSender> mailSender, MailProperties properties) {
+    SmtpEmailGateway(ObjectProvider<JavaMailSender> mailSender, MailProperties properties) {
         this.mailSender = mailSender;
         this.properties = properties;
     }
@@ -31,7 +36,7 @@ class SmtpNotificationSender implements NotificationSender {
     public void sendEmail(EmailMessage message) {
         JavaMailSender sender = mailSender.getIfAvailable();
         if (sender == null || properties.from().isBlank()) {
-            throw new NotificationException("SMTP is not configured (KUADOR_SMTP_HOST, KUADOR_MAIL_FROM)", null);
+            throw new NotificationException("SMTP is not configured (KUADOR_SMTP_HOST, KUADOR_MAIL_FROM)");
         }
         try {
             var mime = sender.createMimeMessage();
@@ -42,7 +47,8 @@ class SmtpNotificationSender implements NotificationSender {
             helper.setText(message.body(), false);
             sender.send(mime);
         } catch (MailException | jakarta.mail.MessagingException e) {
-            throw new NotificationException("The SMTP server did not accept the email", e);
+            throw new NotificationException(
+                    "The SMTP server did not accept the email (%s)".formatted(e.getClass().getSimpleName()));
         }
     }
 }
