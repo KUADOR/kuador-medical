@@ -1,0 +1,10 @@
+// OWNER invitation (MEDK-74). Tokens only (ADR-007).
+.owner-invitation__steps {
+  margin: var(--kd-space-4) 0;
+  color: var(--kd-text-muted);
+}
+
+.owner-invitation__form {
+  display: grid;
+  gap: var(--kd-space-4);
+}

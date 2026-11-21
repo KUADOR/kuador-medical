@@ -1,0 +1,74 @@
+<kd-page
+  heading="Activa la verificación en dos pasos"
+  headingId="two-factor-enroll-title"
+  width="narrow"
+  description="Es obligatoria para la cuenta OWNER de la clínica: protege los datos de tus pacientes aunque alguien conozca tu contraseña."
+>
+  @switch (state()) {
+    @case ('loading') {
+      <kd-loading-state label="Preparando la verificación…" data-testid="loading" />
+    }
+    @case ('error') {
+      <kd-alert tone="error" data-testid="load-error">{{ loadError() }}</kd-alert>
+      <kd-actions>
+        <button kdButton type="button" icon="refresh-cw" (click)="load()">Intentar de nuevo</button>
+      </kd-actions>
+    }
+    @case ('ready') {
+      @if (enrollment(); as data) {
+        <ol class="two-factor__steps">
+          <li>
+            Instala en tu teléfono una app de autenticación compatible con códigos TOTP, si aún no
+            tienes una.
+          </li>
+          <li>
+            En la app, agrega una cuenta y escanea este código QR.
+            <div class="two-factor__qr">
+              <mk-qr-code
+                data-testid="two-factor-qr"
+                [value]="data.otpauthUri"
+                label="Código QR para agregar Medical Kuador a tu app de autenticación"
+              />
+            </div>
+            <p class="two-factor__secret-help">
+              Si no puedes escanearlo, escribe esta clave en la app (tipo «basada en tiempo»):
+            </p>
+            <p class="two-factor__secret">
+              <code data-testid="two-factor-secret">{{ groupSecret(data.secret) }}</code>
+            </p>
+          </li>
+          <li>Escribe el código de {{ data.digits }} dígitos que muestra la app.</li>
+        </ol>
+      }
+
+      <form class="two-factor__form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        @if (failure(); as message) {
+          <kd-alert tone="error" data-testid="form-error">{{ message }}</kd-alert>
+        }
+        <kd-field label="Código de verificación" hint="6 dígitos; cambia cada 30 segundos.">
+          <input
+            kdInput
+            id="two-factor-code"
+            type="text"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            maxlength="7"
+            formControlName="code"
+          />
+        </kd-field>
+        <kd-actions>
+          <button kdButton variant="primary" type="submit" [disabled]="submitting()">
+            {{ submitting() ? 'Activando…' : 'Activar y continuar' }}
+          </button>
+        </kd-actions>
+      </form>
+    }
+  }
+
+  <p class="two-factor__help">{{ lostDeviceHelp }}</p>
+  <kd-actions>
+    <button kdButton variant="tertiary" type="button" icon="log-out" (click)="logout()">
+      Salir
+    </button>
+  </kd-actions>
+</kd-page>

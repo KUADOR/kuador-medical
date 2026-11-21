@@ -32,7 +32,8 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   PRIVILEGE_ESCALATION: 'No puedes otorgar permisos o roles que tú no tienes.',
   SELF_MODIFICATION_FORBIDDEN: 'No puedes cambiar tus propios roles ni tu propio acceso.',
   LAST_OWNER: 'La clínica debe conservar al menos una persona con el rol OWNER.',
-  PLAN_LIMIT_REACHED: 'Tu clínica alcanzó el límite de usuarios de su plan.',
+  PLAN_LIMIT_REACHED:
+    'Tu clínica alcanzó un límite de su plan (por ejemplo, de usuarios o sucursales), así que no puedes crear más de este tipo. No se borró ningún dato: libera cupo o pide a Kuador un plan mayor.',
   IDEMPOTENCY_KEY_REUSED:
     'Esta solicitud ya se envió con otros datos. Recarga la página e intenta de nuevo.',
   RESOURCE_ID_TAKEN: 'Esta solicitud ya se envió. Recarga la página e intenta de nuevo.',

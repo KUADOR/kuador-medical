@@ -1,0 +1,29 @@
+// Second factor pages (MEDK-74). Tokens only (ADR-007).
+.two-factor__steps {
+  display: grid;
+  gap: var(--kd-space-4);
+  margin: 0 0 var(--kd-space-6);
+  padding-inline-start: var(--kd-space-6);
+}
+
+.two-factor__qr {
+  margin-block: var(--kd-space-3);
+}
+
+.two-factor__secret-help,
+.two-factor__help {
+  margin: 0;
+  color: var(--kd-text-muted);
+}
+
+.two-factor__secret {
+  margin: var(--kd-space-2) 0 0;
+  font-family: var(--kd-type-family-mono);
+  overflow-wrap: anywhere;
+}
+
+.two-factor__form {
+  display: grid;
+  gap: var(--kd-space-4);
+  margin-block-end: var(--kd-space-6);
+}

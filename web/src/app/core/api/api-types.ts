@@ -124,11 +124,10 @@ export type Plan = Platform['Plan'];
 export type CreatePlanRequest = Platform['CreatePlanRequest'];
 export type UpdatePlanRequest = Platform['UpdatePlanRequest'];
 export type PlatformSettings = Platform['PlatformSettings'];
-// Clinics (tenants) and subscriptions of the SUPER_ADMIN (MEDK-73).
+// Clinics (tenants) and subscriptions of the SUPER_ADMIN (MEDK-73). SubscriptionStatus and
+// AccessMode are declared with the OWNER flows (MEDK-74) below.
 export type ClinicType = Platform['ClinicType'];
 export type PlanSummary = Platform['PlanSummary'];
-export type SubscriptionStatus = Platform['SubscriptionStatus'];
-export type AccessMode = Platform['AccessMode'];
 export type Tenant = Platform['Tenant'];
 export type TenantOwner = Platform['TenantOwner'];
 export type TenantListItem = Platform['TenantListItem'];
@@ -307,4 +306,41 @@ export function confirmPurgePath(
   requestId: string,
 ): `/platform/tenants/${string}/purge-requests/${string}/confirm` {
   return `${platformTenantPath(id)}/purge-requests/${encodeURIComponent(requestId)}/confirm`;
+}
+
+// ---------------------------------------------------------------- platform contract: OWNER (MEDK-74)
+export type OwnerInvitationPreview = Platform['OwnerInvitationPreview'];
+export type OwnerInvitationTokenRequest = Platform['OwnerInvitationTokenRequest'];
+export type AcceptOwnerInvitationRequest = Platform['AcceptOwnerInvitationRequest'];
+/** Tokens returned by the invitation and second factor operations (shape of AuthenticatedResult). */
+export type PlatformSession = Platform['Session'];
+export type TwoFactorEnrollment = Platform['TwoFactorEnrollment'];
+export type TwoFactorCodeRequest = Platform['TwoFactorCodeRequest'];
+/** What a session that has not passed the second factor must do (Problem.twoFactor). */
+export type TwoFactorStep = NonNullable<Problem['twoFactor']>;
+export type SubscriptionStatus = Platform['SubscriptionStatus'];
+export type AccessMode = Platform['AccessMode'];
+export type NoticeKind = Platform['NoticeKind'];
+export type SubscriptionNotice = Platform['Notice'];
+export type LimitUsage = Platform['LimitUsage'];
+export type ClinicSubscription = Platform['ClinicSubscription'];
+export type ExportFormat = Platform['ExportFormat'];
+export type ExportStatus = Platform['ExportStatus'];
+export type CreateExportRequest = Platform['CreateExportRequest'];
+export type TenantExport = Platform['TenantExport'];
+
+/** Paths of the platform contract used by the OWNER flows (MEDK-74). */
+export const OwnerPaths = {
+  invitationPreview: '/public/owner-invitations/preview',
+  invitationAccept: '/public/owner-invitations/accept',
+  twoFactorEnrollment: '/auth/two-factor/enrollment',
+  twoFactorEnrollmentConfirm: '/auth/two-factor/enrollment/confirm',
+  twoFactorVerify: '/auth/two-factor/verify',
+  subscription: '/tenant/subscription',
+  exports: '/tenant/exports',
+} as const satisfies Record<string, keyof PlatformContractPaths>;
+
+/** GET /tenant/exports/{exportId}. */
+export function tenantExportPath(id: string): `/tenant/exports/${string}` {
+  return `${OwnerPaths.exports}/${encodeURIComponent(id)}`;
 }
