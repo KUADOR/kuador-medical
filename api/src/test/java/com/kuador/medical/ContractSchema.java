@@ -19,6 +19,7 @@ public final class ContractSchema {
 
     private static final Path CONTRACT = Path.of("..", "contracts", "identity.openapi.yaml");
     private static final Path USER_REGISTRATION = Path.of("..", "contracts", "user-registration.openapi.yaml");
+    private static final Path PLATFORM = Path.of("..", "contracts", "platform.openapi.yaml");
 
     private final Map<String, Object> document;
 
@@ -33,6 +34,11 @@ public final class ContractSchema {
     /** {@code contracts/user-registration.openapi.yaml}, the target contract of epic MEDK-12. */
     public static ContractSchema userRegistration() {
         return load(USER_REGISTRATION);
+    }
+
+    /** {@code contracts/platform.openapi.yaml}, the target contract of epic MEDK-49. */
+    public static ContractSchema platform() {
+        return load(PLATFORM);
     }
 
     private static ContractSchema load(Path contract) {

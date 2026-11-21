@@ -41,5 +41,11 @@ public enum AuditAction {
     PATIENT_BECAME_ADULT,
     /** The new adult has no usable contact channel: the staff invites it later. */
     ADULTHOOD_INVITATION_PENDING,
-    GUARDIAN_LINK_AUTHORIZED
+    GUARDIAN_LINK_AUTHORIZED,
+    // MEDK-65 platform plans, prices and settings (platform-level events, no tenant)
+    PLAN_CREATED,
+    PLAN_UPDATED,
+    PLAN_ARCHIVED,
+    PLAN_PRICE_CREATED,
+    PLATFORM_SETTINGS_UPDATED
 }

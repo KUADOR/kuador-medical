@@ -35,7 +35,8 @@ class EndpointPermissionContractTest {
 
     private static final List<Path> CONTRACTS = List.of(
             Path.of("..", "contracts", "user-registration.openapi.yaml"),
-            Path.of("..", "contracts", "identity.openapi.yaml"));
+            Path.of("..", "contracts", "identity.openapi.yaml"),
+            Path.of("..", "contracts", "platform.openapi.yaml"));
 
     @Test
     void everyRequiredPermissionBelongsToTheCatalog() {
@@ -68,7 +69,12 @@ class EndpointPermissionContractTest {
                 "POST /patients/{id}/guardian-links", "POST /patients/{id}/guardian-links/{linkId}/end",
                 "POST /patients/{id}/account-invitation", "GET /patient-registration-settings",
                 "PUT /patient-registration-settings", "POST /public/clinics/{publicCode}/patient-registrations",
-                "POST /auth/email-verification/confirm", "GET /me/guardian-links", "POST /me/guardian-links");
+                "POST /auth/email-verification/confirm", "GET /me/guardian-links", "POST /me/guardian-links",
+                "GET /platform/plans", "POST /platform/plans", "GET /platform/plans/{planId}",
+                "PUT /platform/plans/{planId}", "POST /platform/plans/{planId}/archive",
+                "GET /platform/plans/{planId}/prices", "POST /platform/plans/{planId}/prices",
+                "GET /platform/catalog/modules", "GET /platform/catalog/limits",
+                "GET /platform/settings", "PUT /platform/settings");
         handlers.forEach((operation, handler) -> {
             if (required.containsKey(operation)) {
                 assertThat(accessOf(handler)).as("access of %s", operation).isEqualTo(required.get(operation));

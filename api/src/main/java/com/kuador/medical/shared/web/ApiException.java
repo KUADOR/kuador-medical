@@ -42,6 +42,11 @@ public class ApiException extends RuntimeException {
         return new ApiException(HttpStatus.BAD_REQUEST, ErrorCode.VALIDATION, "The request is not valid.", errors);
     }
 
+    /** 409 {@code VALIDATION} for a field that clashes with existing data, for example a duplicate code. */
+    public static ApiException validationConflict(List<FieldViolation> errors) {
+        return new ApiException(HttpStatus.CONFLICT, ErrorCode.VALIDATION, "The request conflicts with existing data.", errors);
+    }
+
     public static ApiException conflict(ErrorCode code, String detail) {
         return new ApiException(HttpStatus.CONFLICT, code, detail);
     }

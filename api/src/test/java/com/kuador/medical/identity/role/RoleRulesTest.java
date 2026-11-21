@@ -12,6 +12,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.HttpStatus;
 
 /** Domain rules of clinic roles (FR-006, FR-008, FR-012), without the database. */
@@ -116,9 +117,16 @@ class RoleRulesTest {
                 });
     }
 
-    @Test
-    void platformPermissionIsNeverAssignableToAClinicRole() {
-        assertThatThrownBy(() -> AssignablePermissions.parse(List.of("platform.permissions.read")))
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "platform.permissions.read",
+        "platform.plans.manage",
+        "platform.tenants.manage",
+        "platform.tenants.purge",
+        "platform.settings.manage"
+    })
+    void platformPermissionIsNeverAssignableToAClinicRole(String code) {
+        assertThatThrownBy(() -> AssignablePermissions.parse(List.of(code)))
                 .asInstanceOf(type(ApiException.class))
                 .satisfies(e -> {
                     assertThat(e.code()).isEqualTo(ErrorCode.VALIDATION);
