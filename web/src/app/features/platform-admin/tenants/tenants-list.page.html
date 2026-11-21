@@ -1,0 +1,138 @@
+<kd-page heading="Clínicas" headingId="tenants-title" width="wide">
+  <p kdPageDescription class="tenants-muted">
+    Clínicas de Medical Kuador, su plan y el estado de su suscripción.
+  </p>
+  @if (canCreate()) {
+    <a
+      kdPageActions
+      kdButton
+      variant="primary"
+      icon="plus"
+      [routerLink]="newLink"
+      data-testid="new-tenant"
+      >Registrar clínica</a
+    >
+  }
+
+  <div aria-live="polite">
+    @if (notice(); as message) {
+      <kd-alert tone="ok" data-testid="notice">{{ message }}</kd-alert>
+    }
+  </div>
+
+  <form
+    class="tenants-filters"
+    [formGroup]="filters"
+    (ngSubmit)="search()"
+    role="search"
+    aria-label="Buscar clínicas"
+  >
+    <kd-field label="Nombre o RUC">
+      <input
+        kdInput
+        id="tenants-q"
+        type="text"
+        formControlName="q"
+        maxlength="120"
+        autocomplete="off"
+      />
+    </kd-field>
+    <kd-field label="Estado de la suscripción">
+      <select kdInput id="tenants-status" formControlName="status">
+        <option value="">Todos</option>
+        @for (status of statuses; track status) {
+          <option [value]="status">{{ statusLabels[status] }}</option>
+        }
+      </select>
+    </kd-field>
+    <kd-actions>
+      <button kdButton type="submit" icon="search">Buscar</button>
+      <button kdButton variant="tertiary" type="button" (click)="clearFilters()">Limpiar</button>
+    </kd-actions>
+  </form>
+
+  <div class="tenants-results" [attr.aria-busy]="state().kind === 'loading'">
+    @switch (state().kind) {
+      @case ('loading') {
+        <kd-loading-state label="Cargando clínicas…" />
+      }
+      @case ('failed') {
+        <kd-alert tone="error" data-testid="load-error">{{ loadFailure() }}</kd-alert>
+        <kd-actions>
+          <button kdButton type="button" icon="refresh-cw" (click)="load()">
+            Volver a intentar
+          </button>
+        </kd-actions>
+      }
+      @default {
+        @if (items().length === 0) {
+          <kd-empty-state
+            icon="building-2"
+            heading="No hay clínicas que coincidan con la búsqueda."
+            data-testid="empty"
+          />
+        } @else {
+          <kd-table label="Clínicas registradas">
+            <table>
+              <caption class="visually-hidden">
+                Clínicas registradas
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Clínica</th>
+                  <th scope="col">RUC</th>
+                  <th scope="col">Tipo</th>
+                  <th scope="col">Plan</th>
+                  <th scope="col">Suscripción</th>
+                  <th scope="col">Fecha de alta</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (tenant of items(); track tenant.id) {
+                  <tr data-testid="tenant-row">
+                    <th scope="row">
+                      <a [routerLink]="tenantUrl(tenant.id)">{{ tenant.legalName }}</a>
+                      @if (tenant.tradeName) {
+                        <span class="tenants-muted tenants-block">{{ tenant.tradeName }}</span>
+                      }
+                    </th>
+                    <td>{{ tenant.ruc }}</td>
+                    <td>{{ clinicTypes[tenant.clinicType] }}</td>
+                    <td>{{ tenant.planName }}</td>
+                    <td>
+                      <kd-badge
+                        [tone]="statusTones[tenant.subscriptionStatus]"
+                        data-testid="status"
+                        >{{ statusLabels[tenant.subscriptionStatus] }}</kd-badge
+                      >
+                    </td>
+                    <td>{{ formatDate(tenant.createdAt) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </kd-table>
+        }
+        @if (range(); as pages) {
+          <nav class="tenants-pagination" aria-label="Páginas de clínicas">
+            <p class="tenants-muted" data-testid="range">{{ pages.text }}</p>
+            <kd-actions>
+              <button
+                kdButton
+                type="button"
+                icon="chevron-left"
+                [disabled]="!pages.hasPrevious"
+                (click)="goTo(-1)"
+              >
+                Anterior
+              </button>
+              <button kdButton type="button" [disabled]="!pages.hasNext" (click)="goTo(1)">
+                Siguiente
+              </button>
+            </kd-actions>
+          </nav>
+        }
+      }
+    }
+  </div>
+</kd-page>

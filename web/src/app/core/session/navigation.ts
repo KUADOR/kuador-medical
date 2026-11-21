@@ -14,6 +14,8 @@ export const AppRoutes = {
   plans: '/platform/plans',
   newPlan: '/platform/plans/new',
   platformSettings: '/platform/settings',
+  platformTenants: '/platform/tenants',
+  newPlatformTenant: '/platform/tenants/new',
   patients: '/patients',
   newPatient: '/patients/new',
   selfRegistrationSettings: '/patients/self-registration',
@@ -34,6 +36,11 @@ export function planUrl(id: string): string {
 /** Edit page of a patient. */
 export function editPatientUrl(id: string): string {
   return `${patientUrl(id)}/edit`;
+}
+
+/** Detail page of a clinic in the SUPER_ADMIN panel. */
+export function platformTenantUrl(id: string): string {
+  return `${AppRoutes.platformTenants}/${encodeURIComponent(id)}`;
 }
 
 /** Modules of the clinic plan (CurrentSession.enabledModules). */
@@ -90,6 +97,12 @@ export const MENU_ITEMS: readonly MenuItem[] = [
     link: AppRoutes.myGuardianLinks,
     icon: 'user-plus',
     kinds: ['PATIENT'],
+  },
+  {
+    label: 'Clínicas',
+    link: AppRoutes.platformTenants,
+    icon: 'building-2',
+    permissions: ['platform.tenants.manage'],
   },
   {
     label: 'Catálogo de permisos',

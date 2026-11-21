@@ -9,8 +9,8 @@
 //   logout, password reset, invitations, email verification, switch-branch, GET /me and
 //   patient self-registration), staff users, branch role assignments and roles use it.
 // - platform.schema.d.ts (contracts/platform.openapi.yaml): target contract of MEDK-49. Plans,
-//   prices, catalogs and platform settings of the SUPER_ADMIN (MEDK-72) use it, and its
-//   ErrorCode, a superset of the user registration one.
+//   prices, catalogs and platform settings (MEDK-72) and the clinics and subscriptions panel
+//   (MEDK-73) of the SUPER_ADMIN use it, and its ErrorCode, a superset of the user registration one.
 import type { components as IdentityComponents, paths as IdentityPaths } from './identity.schema';
 import type {
   components as RegistrationComponents,
@@ -124,6 +124,33 @@ export type Plan = Platform['Plan'];
 export type CreatePlanRequest = Platform['CreatePlanRequest'];
 export type UpdatePlanRequest = Platform['UpdatePlanRequest'];
 export type PlatformSettings = Platform['PlatformSettings'];
+// Clinics (tenants) and subscriptions of the SUPER_ADMIN (MEDK-73). SubscriptionStatus and
+// AccessMode are declared with the OWNER flows (MEDK-74) below.
+export type ClinicType = Platform['ClinicType'];
+export type PlanSummary = Platform['PlanSummary'];
+export type Tenant = Platform['Tenant'];
+export type TenantOwner = Platform['TenantOwner'];
+export type TenantListItem = Platform['TenantListItem'];
+export type TenantPage = Platform['TenantPage'];
+export type CreateTenantRequest = Platform['CreateTenantRequest'];
+export type InvitationStatus = Platform['InvitationStatus'];
+export type OwnerInvitation = Platform['OwnerInvitation'];
+export type ResendOwnerInvitationRequest = Platform['ResendOwnerInvitationRequest'];
+export type ReasonRequest = Platform['ReasonRequest'];
+export type Subscription = Platform['Subscription'];
+export type SubscriptionTransition = Platform['SubscriptionTransition'];
+export type SubscriptionPeriod = Platform['SubscriptionPeriod'];
+export type TransitionCause = Platform['TransitionCause'];
+export type TransitionRequest = Platform['TransitionRequest'];
+export type PlanChangeKind = Platform['PlanChangeKind'];
+export type PlanChange = Platform['PlanChange'];
+export type PlanChangeRequest = Platform['PlanChangeRequest'];
+export type PlanChangePreview = Platform['PlanChangePreview'];
+export type LimitExcess = Platform['LimitExcess'];
+export type PriceLockRequest = Platform['PriceLockRequest'];
+export type PurgeRequest = Platform['PurgeRequest'];
+export type CreatePurgeRequest = Platform['CreatePurgeRequest'];
+export type ConfirmPurgeRequest = Platform['ConfirmPurgeRequest'];
 
 /** Paths of the identity contract, relative to API_BASE_URL. */
 export const ApiPaths = {
@@ -234,6 +261,7 @@ export const PlatformPaths = {
   moduleCatalog: '/platform/catalog/modules',
   limitCatalog: '/platform/catalog/limits',
   settings: '/platform/settings',
+  tenants: '/platform/tenants',
 } as const satisfies Record<string, keyof PlatformContractPaths>;
 
 /** Path of a single plan (GET, PUT /platform/plans/{planId}). */
@@ -247,6 +275,37 @@ export function planSubPath(
   resource: 'archive' | 'prices',
 ): `/platform/plans/${string}/${typeof resource}` {
   return `${planPath(id)}/${resource}`;
+}
+
+/** Path of a single clinic (GET /platform/tenants/{tenantId}, MEDK-73). */
+export function platformTenantPath(id: string): `/platform/tenants/${string}` {
+  return `${PlatformPaths.tenants}/${encodeURIComponent(id)}`;
+}
+
+/** Sub-resources of a clinic managed by the SUPER_ADMIN. */
+export type PlatformTenantAction =
+  | 'owner-invitations'
+  | 'owner/two-factor-reset'
+  | 'subscription'
+  | 'subscription/plan-change-preview'
+  | 'subscription/plan-changes'
+  | 'subscription/transitions'
+  | 'subscription/price-lock'
+  | 'purge-requests';
+
+export function platformTenantActionPath(
+  id: string,
+  action: PlatformTenantAction,
+): `/platform/tenants/${string}/${PlatformTenantAction}` {
+  return `${platformTenantPath(id)}/${action}`;
+}
+
+/** POST /platform/tenants/{tenantId}/purge-requests/{requestId}/confirm. */
+export function confirmPurgePath(
+  id: string,
+  requestId: string,
+): `/platform/tenants/${string}/purge-requests/${string}/confirm` {
+  return `${platformTenantPath(id)}/purge-requests/${encodeURIComponent(requestId)}/confirm`;
 }
 
 // ---------------------------------------------------------------- platform contract: OWNER (MEDK-74)

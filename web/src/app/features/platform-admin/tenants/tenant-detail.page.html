@@ -1,0 +1,225 @@
+<kd-page [heading]="heading()" headingId="tenant-detail-title" width="wide">
+  <a kdPageBefore kdButton variant="tertiary" icon="arrow-left" [routerLink]="listLink"
+    >Volver a clínicas</a
+  >
+  @if (subscription(); as sub) {
+    <div kdPageDescription>
+      <kd-badge [tone]="statusTones[sub.status]" data-testid="status">{{
+        statusLabels[sub.status]
+      }}</kd-badge>
+    </div>
+  }
+
+  @switch (state().kind) {
+    @case ('loading') {
+      <kd-loading-state label="Cargando la clínica…" />
+    }
+    @case ('failed') {
+      <kd-alert tone="error" data-testid="load-error">{{ loadFailure()?.message }}</kd-alert>
+      @if (!loadFailure()?.notFound) {
+        <kd-actions>
+          <button kdButton type="button" icon="refresh-cw" (click)="load()">
+            Volver a intentar
+          </button>
+        </kd-actions>
+      }
+    }
+    @default {
+      @if (tenant(); as clinic) {
+        @if (subscription(); as sub) {
+          <div aria-live="polite">
+            @if (notice(); as message) {
+              <kd-alert tone="ok" data-testid="notice">{{ message }}</kd-alert>
+            }
+          </div>
+
+          <!-- Clinic data -->
+          <section class="tenants-section" aria-labelledby="tenant-data-title" data-testid="data">
+            <h2 id="tenant-data-title" class="tenants-section__title">Datos de la clínica</h2>
+            <dl kdDetails>
+              <dt>Razón social</dt>
+              <dd>{{ clinic.legalName }}</dd>
+              @if (clinic.tradeName) {
+                <dt>Nombre comercial</dt>
+                <dd>{{ clinic.tradeName }}</dd>
+              }
+              <dt>RUC</dt>
+              <dd data-testid="ruc">{{ clinic.ruc }}</dd>
+              <dt>Tipo</dt>
+              <dd>{{ clinicTypes[clinic.clinicType] }}</dd>
+              <dt>Dirección</dt>
+              <dd>
+                {{ clinic.address }}, {{ clinic.city }},
+                {{ countries[clinic.countryCode] ?? clinic.countryCode }}
+              </dd>
+              <dt>Teléfono</dt>
+              <dd>{{ clinic.phone }}</dd>
+              <dt>Correo de contacto</dt>
+              <dd>{{ clinic.contactEmail }}</dd>
+              @if (clinic.mspEstablishmentNumber) {
+                <dt>Establecimiento del MSP</dt>
+                <dd>{{ clinic.mspEstablishmentNumber }}</dd>
+              }
+              <dt>Fecha de alta</dt>
+              <dd>{{ formatDate(clinic.createdAt) }}</dd>
+            </dl>
+          </section>
+
+          <mk-owner-panel [tenant]="clinic" (changed)="reloadTenant()" />
+
+          <!-- Subscription -->
+          <section
+            class="tenants-section"
+            aria-labelledby="tenant-subscription-title"
+            data-testid="subscription"
+          >
+            <h2 id="tenant-subscription-title" class="tenants-section__title">Suscripción</h2>
+            <dl kdDetails>
+              <dt>Estado</dt>
+              <dd data-testid="subscription-status">{{ statusLabels[sub.status] }}</dd>
+              <dt>Acceso</dt>
+              <dd data-testid="access-mode">{{ accessLabels[sub.accessMode] }}</dd>
+              <dt>Plan</dt>
+              <dd data-testid="plan">{{ sub.plan.name }}</dd>
+              <dt>Periodicidad</dt>
+              <dd>{{ periodLabels[sub.billingPeriod] }}</dd>
+              <dt>Precio contratado</dt>
+              <dd data-testid="price">
+                @if (formatMoney(sub.priceAmount, sub.currency); as price) {
+                  {{ price }} sin IVA
+                } @else {
+                  Sin costo durante la prueba
+                }
+              </dd>
+              @for (date of dates(); track date.term) {
+                <dt>{{ date.term }}</dt>
+                <dd>{{ date.value }}</dd>
+              }
+              <dt>Precio congelado</dt>
+              <dd data-testid="price-lock">
+                {{ sub.priceLockedUntil ? 'Hasta el ' + formatDay(sub.priceLockedUntil) : 'No' }}
+              </dd>
+            </dl>
+            @if (sub.scheduledPlanChange; as change) {
+              <kd-alert tone="info" data-testid="scheduled-change">
+                Cambio programado a {{ change.toPlan.name }} ({{
+                  periodLabels[change.billingPeriod]
+                }}) desde el {{ formatDate(change.effectiveAt) }}.
+                {{ changeKindLabels[change.kind] }}.
+              </kd-alert>
+            }
+            @if (sub.purged) {
+              <kd-alert tone="warning" data-testid="purged">
+                Los datos de esta clínica fueron purgados: no tiene acceso y no se puede reactivar.
+              </kd-alert>
+            }
+          </section>
+
+          <mk-transition-panel
+            [tenantId]="clinic.id"
+            [clinic]="heading()"
+            [subscription]="sub"
+            (changed)="subscriptionChanged($event)"
+            (reload)="refresh()"
+          />
+
+          @if (canManagePlans()) {
+            <mk-plan-change-panel
+              [tenantId]="clinic.id"
+              [subscription]="sub"
+              (changed)="refresh()"
+              (reload)="refresh()"
+            />
+          }
+
+          <mk-price-lock-panel
+            [tenantId]="clinic.id"
+            [subscription]="sub"
+            (changed)="subscriptionChanged($event)"
+            (reload)="refresh()"
+          />
+
+          @if (canPurge() && sub.status === 'CANCELLED') {
+            <mk-purge-panel [tenant]="clinic" [subscription]="sub" (changed)="refresh()" />
+          }
+
+          <!-- History -->
+          <section
+            class="tenants-section"
+            aria-labelledby="tenant-history-title"
+            data-testid="history"
+          >
+            <h2 id="tenant-history-title" class="tenants-section__title">Historial</h2>
+
+            <h3 class="tenants-subtitle">Períodos contratados</h3>
+            @if (sub.periods.length === 0) {
+              <p class="tenants-muted" data-testid="no-periods">Todavía no hay períodos pagados.</p>
+            } @else {
+              <kd-table label="Períodos contratados">
+                <table>
+                  <caption class="visually-hidden">
+                    Períodos contratados, del más reciente al más antiguo
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Plan</th>
+                      <th scope="col">Desde</th>
+                      <th scope="col">Hasta</th>
+                      <th scope="col">Precio sin IVA</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (period of sub.periods; track period.periodStart) {
+                      <tr data-testid="period-row">
+                        <th scope="row">{{ period.planName }}</th>
+                        <td>{{ formatDate(period.periodStart) }}</td>
+                        <td>{{ formatDate(period.periodEnd) }}</td>
+                        <td>{{ formatMoney(period.amount, period.currency) }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </kd-table>
+            }
+
+            <h3 class="tenants-subtitle">Cambios de estado</h3>
+            @if (sub.transitions.length === 0) {
+              <p class="tenants-muted">Todavía no hay cambios de estado.</p>
+            } @else {
+              <kd-table label="Cambios de estado">
+                <table>
+                  <caption class="visually-hidden">
+                    Cambios de estado, del más reciente al más antiguo
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Fecha</th>
+                      <th scope="col">Cambio</th>
+                      <th scope="col">Causa</th>
+                      <th scope="col">Quién</th>
+                      <th scope="col">Motivo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (transition of sub.transitions; track $index) {
+                      <tr data-testid="transition-row">
+                        <th scope="row">{{ formatDateTime(transition.at) }}</th>
+                        <td>
+                          {{ transition.from ? statusLabels[transition.from] : 'Alta' }} →
+                          {{ statusLabels[transition.to] }}
+                        </td>
+                        <td>{{ causeLabels[transition.cause] }}</td>
+                        <td>{{ transition.actor ?? 'Sistema' }}</td>
+                        <td>{{ transition.reason ?? '—' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </kd-table>
+            }
+          </section>
+        }
+      }
+    }
+  }
+</kd-page>

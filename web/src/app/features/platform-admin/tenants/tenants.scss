@@ -1,0 +1,77 @@
+// Clinics panel of the SUPER_ADMIN (MEDK-73): list, onboarding and clinic record. Tokens only
+// (ADR-007).
+.tenants-muted {
+  margin: 0;
+  font: var(--kd-type-body);
+  color: var(--kd-text-muted);
+}
+
+.tenants-block {
+  display: block;
+}
+
+.tenants-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(calc(var(--kd-space-12) * 4), 1fr));
+  align-items: end;
+  gap: var(--kd-space-3) var(--kd-space-4);
+  padding: var(--kd-space-4);
+  border: var(--kd-border-hairline);
+  border-radius: var(--kd-radius-lg);
+  background: var(--kd-surface-raised);
+}
+
+.tenants-results,
+.tenants-form,
+.tenants-stack {
+  display: grid;
+  gap: var(--kd-space-4);
+}
+
+.tenants-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--kd-space-3);
+}
+
+// One raised section per part of the clinic record.
+.tenants-section {
+  display: grid;
+  gap: var(--kd-space-4);
+  padding: var(--kd-space-4);
+  border: var(--kd-border-hairline);
+  border-radius: var(--kd-radius-lg);
+  background: var(--kd-surface-raised);
+}
+
+.tenants-section__title {
+  margin: 0;
+  font: var(--kd-type-title);
+}
+
+.tenants-subtitle {
+  margin: 0;
+  font: var(--kd-type-subtitle);
+}
+
+.tenants-text {
+  margin: 0;
+}
+
+.tenants-list {
+  margin: 0;
+  padding-inline-start: var(--kd-space-6);
+}
+
+// Inline confirmation of a sensitive action: a sunken panel inside the section.
+.tenants-confirm {
+  display: grid;
+  gap: var(--kd-space-3);
+  padding: var(--kd-space-4);
+  border: var(--kd-border-strong);
+  border-color: var(--kd-color-warning);
+  border-radius: var(--kd-radius-md);
+  background: var(--kd-surface-sunken);
+}
