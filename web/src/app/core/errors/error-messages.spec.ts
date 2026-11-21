@@ -10,7 +10,7 @@ import {
   toProblem,
 } from './error-messages';
 
-// Mirrors the ErrorCode enum of contracts/identity.openapi.yaml.
+// Mirrors the ErrorCode enum of contracts/platform.openapi.yaml (a superset of the others).
 const CONTRACT_CODES: ErrorCode[] = [
   'VALIDATION',
   'EMAIL_TAKEN',
@@ -41,6 +41,18 @@ const CONTRACT_CODES: ErrorCode[] = [
   'ADULT_AUTHORIZATION_REQUIRED',
   'LAST_LEGAL_GUARDIAN',
   'CONTACT_CHANNEL_UNAVAILABLE',
+  'TENANT_READ_ONLY',
+  'MODULE_NOT_IN_PLAN',
+  'INVALID_SUBSCRIPTION_TRANSITION',
+  'REACTIVATION_WINDOW_CLOSED',
+  'INVITATION_INVALID_OR_EXPIRED',
+  'TWO_FACTOR_REQUIRED',
+  'TWO_FACTOR_CODE_INVALID',
+  'TWO_FACTOR_ALREADY_ENABLED',
+  'RUC_ALREADY_REGISTERED',
+  'PLAN_ARCHIVED',
+  'PLAN_CHANGE_NOT_ALLOWED',
+  'PURGE_NOT_ALLOWED',
 ];
 
 function problemResponse(status: number, code: string): HttpErrorResponse {
