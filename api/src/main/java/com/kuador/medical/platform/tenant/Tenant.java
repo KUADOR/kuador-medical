@@ -118,6 +118,27 @@ public class Tenant {
         this.updatedAt = now;
     }
 
+    /**
+     * The clinic was purged (MEDK-70, ADR-018): the contact data of the clinic and of its OWNER is
+     * erased. The legal name, the RUC and the clinic type stay as the record of the customer of
+     * Kuador (its own billing history); the RUC is free again for a new clinic (plan D8).
+     */
+    void purge(Instant now) {
+        this.purgedAt = now;
+        this.updatedAt = now;
+        this.ownerFullName = null;
+        this.ownerEmail = null;
+        this.contactEmail = null;
+        this.phone = null;
+        this.address = null;
+        this.city = null;
+    }
+
+    /** The RUC typed to confirm a purge (plan D6); {@code null} for self-signup clinics. */
+    public @Nullable String getRuc() {
+        return ruc;
+    }
+
     /** The clinic data as stored; only meaningful for onboarded clinics. */
     ClinicData data() {
         return new ClinicData(legalName, tradeName, ruc, clinicType, countryCode, city, address, phone, contactEmail,

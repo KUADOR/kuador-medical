@@ -2823,6 +2823,7 @@ components:
         - patients.guardians.manage
         - patients.selfRegistration.configure
         - subscription.read
+        - tenant.data.export
         - platform.permissions.read
         - platform.plans.manage
         - platform.tenants.manage

@@ -38,4 +38,12 @@ public record AuditTarget(String type, UUID id) {
     public static AuditTarget subscription(UUID id) {
         return new AuditTarget("SUBSCRIPTION", id);
     }
+
+    public static AuditTarget tenantExport(UUID id) {
+        return new AuditTarget("TENANT_EXPORT", id);
+    }
+
+    public static AuditTarget purgeRequest(UUID id) {
+        return new AuditTarget("PURGE_REQUEST", id);
+    }
 }

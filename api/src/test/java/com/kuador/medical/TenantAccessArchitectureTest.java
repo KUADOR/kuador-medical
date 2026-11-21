@@ -43,7 +43,9 @@ class TenantAccessArchitectureTest {
             "AuthController.changePassword",
             "TwoFactorController.start",
             "TwoFactorController.confirm",
-            "TwoFactorController.verify");
+            "TwoFactorController.verify",
+            // MEDK-70: a suspended or cancelled clinic still takes its data (FR-021)
+            "TenantExportController.request");
 
     @Test
     void everyRequiredModuleBelongsToTheCatalog() {

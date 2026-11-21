@@ -268,6 +268,17 @@ public class SubscriptionLifecycle {
         return subscriptions.findCurrent().orElseThrow(ApiException::notFound);
     }
 
+    /**
+     * The subscription of the clinic bound in the tenant context, locked until the end of the
+     * transaction and with its version incremented, so the purge (MEDK-70) checks its status
+     * again without racing a reactivation (plan D12).
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public Optional<Subscription> lockForPurge() {
+        requireTenant();
+        return subscriptions.findCurrentForPurge();
+    }
+
     /** Whether the clinic bound in the tenant context was purged. */
     boolean purged() {
         return tenants.findById(tenantId()).map(tenant -> tenant.getPurgedAt() != null).orElse(false);

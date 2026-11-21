@@ -73,5 +73,14 @@ public enum AuditAction {
     PLAN_CHANGE_APPLIED,
     PLAN_CHANGE_SCHEDULED,
     /** A scheduled change replaced by a new request, or that could no longer be applied. */
-    PLAN_CHANGE_CANCELLED
+    PLAN_CHANGE_CANCELLED,
+    // MEDK-70 data export and purge (ADR-018): who exported, downloaded, requested and confirmed
+    TENANT_EXPORT_REQUESTED,
+    TENANT_EXPORT_DOWNLOADED,
+    TENANT_PURGE_REQUESTED,
+    TENANT_PURGE_CONFIRMED,
+    /** A pending request cancelled by the reactivation of the clinic (plan D12). */
+    TENANT_PURGE_CANCELLED,
+    /** Every purger ran; the clinic has no access any more. */
+    TENANT_PURGED
 }

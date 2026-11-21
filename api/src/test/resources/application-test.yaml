@@ -30,3 +30,6 @@ kuador:
     subscription-lifecycle:
       # Tests run the lifecycle job explicitly (SubscriptionLifecycleJob.runOnce).
       cron: "-"
+    exports:
+      # Tests run the export cleanup job explicitly (TenantExportCleanupJob.runOnce).
+      cleanup-cron: "-"

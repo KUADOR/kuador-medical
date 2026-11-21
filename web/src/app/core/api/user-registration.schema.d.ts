@@ -1082,7 +1082,7 @@ export interface components {
          *     catalog; clinic roles accept only `TENANT` codes.
          * @enum {string}
          */
-        PermissionCode: "roles.read" | "roles.create" | "roles.update" | "roles.delete" | "identity.users.read" | "identity.users.manage" | "identity.assignments.manage" | "patients.read" | "patients.register" | "patients.edit" | "patients.guardians.manage" | "patients.selfRegistration.configure" | "subscription.read" | "platform.permissions.read" | "platform.plans.manage" | "platform.tenants.manage" | "platform.tenants.purge" | "platform.settings.manage";
+        PermissionCode: "roles.read" | "roles.create" | "roles.update" | "roles.delete" | "identity.users.read" | "identity.users.manage" | "identity.assignments.manage" | "patients.read" | "patients.register" | "patients.edit" | "patients.guardians.manage" | "patients.selfRegistration.configure" | "subscription.read" | "tenant.data.export" | "platform.permissions.read" | "platform.plans.manage" | "platform.tenants.manage" | "platform.tenants.purge" | "platform.settings.manage";
         /**
          * @description `TENANT` permissions are assignable to clinic roles; `PLATFORM` permissions never are.
          * @enum {string}

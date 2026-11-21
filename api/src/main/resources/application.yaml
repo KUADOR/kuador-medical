@@ -128,6 +128,14 @@ kuador:
       # suspension, and price change notices. Hourly by default (cron in UTC); idempotent. "-" disables it.
       cron: ${KUADOR_LIFECYCLE_JOB_CRON:0 15 * * * *}
       lock-at-most-for: ${KUADOR_LIFECYCLE_JOB_LOCK_AT_MOST_FOR:PT1H}
+    exports:
+      # Data export of a clinic (MEDK-70, ADR-018): a ready file is kept 7 days, then the cleanup
+      # job (hourly, cron in UTC) drops it; each download link lasts 5 minutes.
+      retention: P7D
+      link-ttl: PT5M
+      cleanup-cron: 0 45 * * * *
+      # Optional secret (32+ bytes) that signs the download links; empty: derived from KUADOR_JWT_SECRET.
+      signing-key: ${KUADOR_EXPORT_SIGNING_KEY:}
   sms:
     # SMS provider [POR DEFINIR]. Empty provider: SMS invitations stay disabled.
     provider: ${KUADOR_SMS_PROVIDER:}

@@ -66,7 +66,9 @@ class PlatformContractTest {
             "POST /auth/two-factor/verify",
             "GET /tenant/subscription",
             "POST /tenant/exports",
-            "GET /tenant/exports/{exportId}");
+            "GET /tenant/exports/{exportId}",
+            // MEDK-70: target of downloadUrl, opened by the browser with a signed grant
+            "GET /public/tenant-exports/download");
 
     /** Permission codes introduced by the plan; MEDK-65 adds them to {@code Permission}. */
     private static final Set<String> PLATFORM_PERMISSIONS = Set.of(

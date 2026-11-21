@@ -643,10 +643,12 @@ export interface paths {
         put?: never;
         /**
          * Request a data export of the current clinic
-         * @description Starts an asynchronous export of the clinic data in the chosen format; each
-         *     module adds its own data. Allowed while the clinic is read-only (`SUSPENDED`,
-         *     or `CANCELLED` during retention). The file is available until `expiresAt`.
-         *     Audited (who exported and when).
+         * @description Starts an export of the clinic data in the chosen format; each module adds its
+         *     own data. The file is generated right after the request is recorded, so the
+         *     response is usually already `READY` (or `FAILED`); clients poll
+         *     `GET /tenant/exports/{exportId}` while it is `PENDING`. Allowed while the clinic
+         *     is read-only (`SUSPENDED`, or `CANCELLED` during retention). The file is kept
+         *     until `expiresAt` (7 days). Audited (who exported and when).
          */
         post: operations["requestTenantExport"];
         delete?: never;
@@ -667,10 +669,40 @@ export interface paths {
         };
         /**
          * Get a data export of the current clinic
-         * @description Returns the status of an export. When `READY`, `downloadUrl` is a short-lived
-         *     URL to download the file. Exports of another clinic respond `404`.
+         * @description Returns the status of an export. When `READY`, `downloadUrl` is a new signed
+         *     URL, valid for 5 minutes, to download the file without an access token
+         *     (`GET /public/tenant-exports/download`); each download is audited. Past
+         *     `expiresAt` the export is `EXPIRED` and its file is deleted. Exports of another
+         *     clinic respond `404`.
          */
         get: operations["getTenantExport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/public/tenant-exports/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download the file of a data export
+         * @description Target of `downloadUrl` (MEDK-70): opened by the browser without an access
+         *     token, like a presigned URL. The `grant` is opaque, signed by the API
+         *     (HMAC-SHA256) and valid for 5 minutes; it names the clinic, the export and the
+         *     account that obtained it, so the clinic never travels as a parameter of its
+         *     own (ADR-007) and the download is audited with that account. `JSON` exports are
+         *     one `application/json` document; `CSV` exports are an `application/zip` with
+         *     one UTF-8 CSV file per section. An invalid, expired or tampered grant, an
+         *     expired export or a purged clinic respond `404`. Never cached (`no-store`).
+         */
+        get: operations["downloadTenantExport"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2489,6 +2521,34 @@ export interface operations {
             };
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    downloadTenantExport: {
+        parameters: {
+            query: {
+                /** @description Signed grant taken from `downloadUrl`. Opaque; never logged. */
+                grant: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The file, as an attachment. */
+            200: {
+                headers: {
+                    /** @description `attachment` with the file name, for example `kuador-medical-export-2030-07-01.json`. */
+                    "Content-Disposition"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                    "application/zip": string;
+                };
+            };
             404: components["responses"]["NotFound"];
             500: components["responses"]["InternalError"];
         };

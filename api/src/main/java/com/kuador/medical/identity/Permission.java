@@ -35,6 +35,8 @@ public enum Permission {
             "Habilitar o deshabilitar el autorregistro de pacientes"),
     // MEDK-69 (epic MEDK-49): the clinic reads its own subscription, plan, limits and usage
     SUBSCRIPTION_READ("subscription.read", PermissionScope.TENANT, "Ver la suscripción, el plan y el uso de la clínica"),
+    // MEDK-70 (epic MEDK-49): the clinic exports its own data, also while read-only
+    TENANT_DATA_EXPORT("tenant.data.export", PermissionScope.TENANT, "Exportar los datos de la clínica"),
     PLATFORM_PERMISSIONS_READ(
             "platform.permissions.read", PermissionScope.PLATFORM, "Ver el catálogo completo de permisos"),
     // MEDK-65 (epic MEDK-49): platform administration, SUPER_ADMIN only
