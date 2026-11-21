@@ -1,6 +1,7 @@
 package com.kuador.medical;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.kuador.medical.shared.security.AuthenticatedEndpoint;
@@ -19,13 +20,14 @@ import com.tngtech.archunit.lang.SimpleConditionEvent;
 import java.lang.annotation.Annotation;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Build-breaking architecture rules (ADR-008).
+ * Build-breaking architecture rules (ADR-005, ADR-008).
  */
 class ArchitectureTests {
 
@@ -38,6 +40,18 @@ class ArchitectureTests {
             .should(declareExactlyOneAccessLevel())
             .allowEmptyShould(true);
 
+    /** The only class allowed to use the mail SDK (SMTP, Jakarta Mail) is the email adapter (ADR-005). */
+    static final String SMTP_EMAIL_ADAPTER = "com.kuador.medical.notifications.internal.SmtpEmailGateway";
+
+    static final ArchRule ONLY_THE_EMAIL_ADAPTER_USES_THE_MAIL_SDK = noClasses()
+            .that().doNotHaveFullyQualifiedName(SMTP_EMAIL_ADAPTER)
+            .should().dependOnClassesThat().resideInAnyPackage(
+                    "jakarta.mail..",
+                    "org.eclipse.angus.mail..",
+                    "com.sun.mail..",
+                    "org.springframework.mail..",
+                    "org.springframework.boot.mail..")
+            .because("email goes through notifications.EmailGateway; only its SMTP adapter knows the provider (ADR-005)");
 
     private static final JavaClasses PRODUCTION_CLASSES = new ClassFileImporter()
             .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
@@ -48,6 +62,19 @@ class ArchitectureTests {
         EVERY_ENDPOINT_DECLARES_ITS_ACCESS.check(PRODUCTION_CLASSES);
     }
 
+    @Test
+    void onlyTheEmailAdapterUsesTheMailSdk() {
+        ONLY_THE_EMAIL_ADAPTER_USES_THE_MAIL_SDK.check(PRODUCTION_CLASSES);
+    }
+
+    @Test
+    void mailSdkRuleFailsForAClassOutsideTheAdapter() {
+        var result = ONLY_THE_EMAIL_ADAPTER_USES_THE_MAIL_SDK.evaluate(
+                new ClassFileImporter().importClasses(DirectMailUser.class));
+
+        assertThat(result.hasViolation()).isTrue();
+        assertThat(result.getFailureReport().getDetails()).anySatisfy(detail -> assertThat(detail).contains("DirectMailUser"));
+    }
 
     @Test
     void accessRuleFailsForAControllerWithoutDeclaration() {
@@ -159,6 +186,20 @@ class ArchitectureTests {
         @GetMapping("/roles")
         String list() {
             return "";
+        }
+    }
+
+    /** Fixture: a class outside the adapter that sends email with the SDK directly. */
+    static class DirectMailUser {
+
+        private final JavaMailSender mailSender;
+
+        DirectMailUser(JavaMailSender mailSender) {
+            this.mailSender = mailSender;
+        }
+
+        void send() {
+            mailSender.send(mailSender.createMimeMessage());
         }
     }
 }
