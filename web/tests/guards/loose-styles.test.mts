@@ -7,14 +7,15 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { LEGACY_CLASSES } from '../../src/testing/legacy-classes';
 
 const webRoot = fileURLToPath(new URL('../../', import.meta.url));
 const features = join(webRoot, 'src/app/features');
 
 /**
- * Secondary screens of the inventory (audit.md § 1.1, type V). The main screens (login and its
- * selection, patient search, patient record and the app frame) are redesigned in MEDK-42 and
- * MEDK-43, as is the guardian link list shared with the patient record.
+ * Secondary screens of the inventory (audit.md § 1.1, type V), with every component they render.
+ * The main screens (login and its selection, patient search, patient record and the app frame)
+ * were redesigned in MEDK-42 and MEDK-43; the last test below covers the whole app.
  */
 const SECONDARY_SCREENS = [
   'auth/accept-invitation',
@@ -27,22 +28,13 @@ const SECONDARY_SCREENS = [
   'patients/my-guardian-links',
   'patients/patient-form',
   'patients/self-registration-settings',
-  'patients/shared/guardian-person-fields.ts',
+  // Shared by my authorized contacts (secondary) and the patient record (main, MEDK-43).
+  'patients/shared',
   'platform',
   'roles',
   'signup',
   'staff-users',
   'status',
-];
-
-/** Same list as src/testing/migrated-screen.ts (global classes of styles.scss before MEDK-44). */
-const LEGACY_CLASSES = [
-  'page', 'page--wide', 'page--narrow', 'page__header', 'hint', 'form', 'field', 'field__hint',
-  'field__error', 'checkbox', 'checkbox__code', 'actions', 'alert', 'alert--success',
-  'alert--info', 'button', 'button--secondary', 'button--danger', 'badge', 'card-list', 'card',
-  'card__title', 'tag-list', 'table-wrapper', 'table', 'radio-group', 'details', 'filters',
-  'pagination', 'choice-list', 'choice-list__button', 'fieldset', 'search', 'search__row',
-  'choice-row', 'data-list', 'switch', 'switch__track',
 ];
 
 interface Finding {
@@ -60,8 +52,8 @@ const STYLE_PATTERNS: [string, RegExp][] = [
   ['old variable alias', /var\(--(color|space)-|var\(--radius\)/],
 ];
 
-function filesOf(path: string): string[] {
-  const full = join(features, path);
+function filesOf(path: string, root = features): string[] {
+  const full = join(root, path);
   if (statSync(full).isFile()) {
     return [full];
   }
@@ -81,16 +73,22 @@ function classTokens(line: string): string[] {
   return tokens.filter(Boolean);
 }
 
-function looseStyles(): Finding[] {
+const legacyClasses: readonly string[] = LEGACY_CLASSES;
+
+/**
+ * Findings in `files`. Stylesheets: literals and old aliases (only with `checkLiterals`).
+ * Templates and code: inline styles and the global classes of the old pages.
+ */
+function looseStyles(files: string[], checkLiterals = true): Finding[] {
   const findings: Finding[] = [];
-  for (const file of SECONDARY_SCREENS.flatMap(filesOf)) {
+  for (const file of files) {
     const isStyle = /\.(s?css)$/.test(file);
     readFileSync(file, 'utf8')
       .split('\n')
       .forEach((text, index) => {
         const at = { file: relative(webRoot, file), line: index + 1, text: text.trim() };
         if (isStyle) {
-          if (/^\s*(\/\/|\/?\*)/.test(text)) {
+          if (!checkLiterals || /^\s*(\/\/|\/?\*)/.test(text)) {
             return;
           }
           for (const [kind, pattern] of STYLE_PATTERNS) {
@@ -104,7 +102,7 @@ function looseStyles(): Finding[] {
         if (/\bstyle="|\[style[.\]]|\[ngStyle\]/.test(text)) {
           findings.push({ ...at, kind: 'inline style' });
         }
-        for (const name of classTokens(text).filter((c) => LEGACY_CLASSES.includes(c))) {
+        for (const name of classTokens(text).filter((c) => legacyClasses.includes(c))) {
           findings.push({ ...at, kind: `legacy class .${name}` });
         }
       });
@@ -112,10 +110,29 @@ function looseStyles(): Finding[] {
   return findings;
 }
 
+const report = (findings: Finding[]) =>
+  findings.map((f) => `${f.file}:${f.line} ${f.kind} · ${f.text}`);
+
 describe('loose styles of the secondary screens (MEDK-44)', () => {
   it('counts zero in the web inventory', () => {
-    const report = looseStyles().map((f) => `${f.file}:${f.line} ${f.kind} · ${f.text}`);
+    const files = SECONDARY_SCREENS.flatMap((path) => filesOf(path));
 
-    expect(report).toEqual([]);
+    expect(report(looseStyles(files))).toEqual([]);
+  });
+
+  it('finds no global class of the old pages and no inline style anywhere in the app', () => {
+    const files = filesOf('.', join(webRoot, 'src/app'));
+
+    expect(report(looseStyles(files, false))).toEqual([]);
+  });
+
+  it('leaves no old global class nor variable alias in the global stylesheet', () => {
+    const css = readFileSync(join(webRoot, 'src/styles.scss'), 'utf8');
+    const rules = legacyClasses.filter((name) =>
+      new RegExp(`\\.${name.replace(/-/g, '\\-')}(?![\\w-])`).test(css),
+    );
+
+    expect(rules, 'old global classes in styles.scss').toEqual([]);
+    expect(css).not.toMatch(/--(color|space)-[\w-]+\s*:|--radius\s*:/);
   });
 });

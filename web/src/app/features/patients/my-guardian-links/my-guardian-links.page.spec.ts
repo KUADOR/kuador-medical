@@ -134,23 +134,14 @@ describe('MyGuardianLinksPage', () => {
     expect(byTestId(app.page(), 'form-error')?.textContent?.trim()).toBe(ERROR_MESSAGES.FORBIDDEN);
   });
 
-  /**
-   * The page without the guardian link list, shared with the patient record and migrated with
-   * it in MEDK-43.
-   */
-  function ownMarkup(): Element {
-    const copy = app.page().cloneNode(true) as Element;
-    copy.querySelectorAll('mk-guardian-link-list').forEach((list) => list.remove());
-    return copy;
-  }
 
   it('uses only the design system (MEDK-44)', async () => {
     await open();
-    expectMigratedScreen(ownMarkup());
+    expectMigratedScreen(app.page());
 
     submit(app.page());
     await app.settle();
-    expectMigratedScreen(ownMarkup());
+    expectMigratedScreen(app.page());
     const group = app.page().querySelector('fieldset[aria-invalid="true"]');
     expect(group?.getAttribute('aria-describedby')).toBe('linkType-error');
     expect(document.activeElement).toBe(radio('Contacto de emergencia'));
@@ -161,7 +152,7 @@ describe('MyGuardianLinksPage', () => {
     submit(app.page());
     await app.settle();
 
-    expectMigratedScreen(ownMarkup());
+    expectMigratedScreen(app.page());
     const number = app.page().querySelector('#authorized-documentNumber');
     expect(app.page().querySelector('label[for="authorized-documentNumber"]')).not.toBeNull();
     expect(number?.getAttribute('aria-invalid')).toBe('true');

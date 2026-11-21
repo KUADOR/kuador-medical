@@ -108,7 +108,12 @@ export async function restPointer(page: Page): Promise<void> {
  */
 export async function captureScreen(page: Page, api: SimulatedApi, name: string): Promise<void> {
   await restPointer(page);
-  await expect(page.locator('main')).toHaveScreenshot(name);
+  // Full page clipped to `main`: the page is not scrolled, so the sticky top bar of the app
+  // frame (MEDK-42) never covers the top of a tall screen.
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const box = await page.locator('main').boundingBox();
+  expect(box, 'main landmark').not.toBeNull();
+  await expect(page).toHaveScreenshot(name, { fullPage: true, clip: box! });
   await expectNoAxeViolations(page);
   api.expectNoUnexpectedCalls();
 }

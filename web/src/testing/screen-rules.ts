@@ -1,28 +1,6 @@
 // Rules of the redesigned staff screens (MEDK-33 plan, acceptance criterion 5; DESIGN.md R-02):
 // built only with design system components and at most one primary action per view.
-
-/** Global classes of the pages before the redesign; redesigned screens must not use them. */
-const LEGACY_CLASSES = [
-  'page',
-  'page__header',
-  'button',
-  'button--secondary',
-  'field',
-  'field__error',
-  'field__hint',
-  'alert',
-  'alert--success',
-  'hint',
-  'actions',
-  'form',
-  'badge',
-  'table',
-  'table-wrapper',
-  'search',
-  'search__row',
-  'choice-list',
-  'pagination',
-];
+import { LEGACY_CLASSES } from './legacy-classes';
 
 /** Primary (filled accent) actions rendered in `root`. */
 export function primaryActions(root: Element): HTMLElement[] {
