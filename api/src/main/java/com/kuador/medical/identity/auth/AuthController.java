@@ -1,6 +1,7 @@
 package com.kuador.medical.identity.auth;
 
 import com.kuador.medical.identity.CurrentUser;
+import com.kuador.medical.shared.security.AllowedWhenReadOnly;
 import com.kuador.medical.shared.security.AllowedWhilePasswordChangeRequired;
 import com.kuador.medical.shared.security.AuthenticatedEndpoint;
 import com.kuador.medical.shared.security.PublicEndpoint;
@@ -87,6 +88,7 @@ class AuthController {
     }
 
     @AuthenticatedEndpoint
+    @AllowedWhenReadOnly
     @PostMapping("/switch-branch")
     LoginResponses.AuthenticatedResponse switchBranch(@Valid @RequestBody AuthRequests.SwitchBranchRequest request) {
         return LoginResponses.authenticated(sessions.switchBranch(
@@ -97,6 +99,7 @@ class AuthController {
 
     @AuthenticatedEndpoint
     @AllowedWhilePasswordChangeRequired
+    @AllowedWhenReadOnly
     @PostMapping("/password")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void changePassword(@Valid @RequestBody ChangePasswordRequest request) {

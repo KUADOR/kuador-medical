@@ -5,7 +5,7 @@
  * Public API: {@link com.kuador.medical.identity.AccountProvisioning},
  * {@link com.kuador.medical.identity.CurrentUser}, {@link com.kuador.medical.identity.Permission},
  * {@link com.kuador.medical.identity.OwnerOnboarding} (OWNER invitation and second factor, MEDK-67)
- * and the {@link com.kuador.medical.identity.TenantDirectory}, {@link com.kuador.medical.identity.PlanLimits}
+ * and the {@link com.kuador.medical.identity.TenantDirectory}, {@link com.kuador.medical.identity.PlanLimits}, {@link com.kuador.medical.identity.StaffSeats} (usage of the user limit, MEDK-69)
  * and {@link com.kuador.medical.identity.OwnerInvitationPolicy} ports implemented by the platform module.
  */
 @ApplicationModule(displayName = "Identity")

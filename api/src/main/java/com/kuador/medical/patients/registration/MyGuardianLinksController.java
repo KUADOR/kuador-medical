@@ -4,6 +4,7 @@ import com.kuador.medical.identity.AuthenticatedAccount;
 import com.kuador.medical.identity.CurrentUser;
 import com.kuador.medical.patients.registration.Responses.GuardianLinkResponse;
 import com.kuador.medical.shared.security.AuthenticatedEndpoint;
+import com.kuador.medical.shared.security.RequiresModule;
 import com.kuador.medical.shared.web.ApiException;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 /** {@code /me/guardian-links}: links of the adult patient behind the calling account (MEDK-18). */
 @RestController
 @RequestMapping("/me/guardian-links")
+@RequiresModule("PATIENTS")
 class MyGuardianLinksController {
 
     private final MyGuardianLinkService links;

@@ -151,7 +151,7 @@ class RolePermissionIT {
         assertThat(catalog).allSatisfy(permission -> {
             assertThat(permission).containsEntry("scope", "TENANT");
             assertThat(permission.get("description")).asString().isNotBlank();
-            assertThat(permission.get("module")).isIn("identity", "patients");
+            assertThat(permission.get("module")).isIn("identity", "patients", "subscription");
         });
         assertThat(catalog).filteredOn(permission -> permission.get("code").toString().startsWith("roles."))
                 .allSatisfy(permission -> assertThat(permission).containsEntry("module", "identity"));

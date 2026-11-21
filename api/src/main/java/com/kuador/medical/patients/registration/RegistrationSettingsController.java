@@ -2,6 +2,7 @@ package com.kuador.medical.patients.registration;
 
 import com.kuador.medical.identity.CurrentUser;
 import com.kuador.medical.patients.registration.Responses.RegistrationSettingsResponse;
+import com.kuador.medical.shared.security.RequiresModule;
 import com.kuador.medical.shared.security.RequiresPermission;
 import com.kuador.medical.shared.web.ApiException;
 import jakarta.validation.Valid;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 /** {@code /patient-registration-settings}: self-registration of patients, disabled by default (MEDK-17). */
 @RestController
 @RequestMapping("/patient-registration-settings")
+@RequiresModule("PATIENTS")
 class RegistrationSettingsController {
 
     private final RegistrationSettingsService settings;

@@ -2,9 +2,15 @@ package com.kuador.medical.platform.plan;
 
 import java.math.BigDecimal;
 import java.time.Clock;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.Optional;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +40,8 @@ public class PlanCatalog {
                 plan.getName(),
                 plan.isTrial(),
                 plan.getStatus() == PlanStatus.ARCHIVED,
+                plan.getModules(),
+                limited(plan.getLimits()),
                 CurrentPrices.at(prices.findHistory(planId), clock.instant()).stream()
                         .map(price -> new CurrentPrice(
                                 price.getId(), price.getBillingPeriod(), price.getCurrency(), price.getAmount()))
@@ -53,12 +61,38 @@ public class PlanCatalog {
                 .map(price -> new PriceVersion(price.getId(), price.getCurrency(), price.getAmount(), price.getEffectiveFrom()));
     }
 
+    private static Map<LimitCode, Integer> limited(Map<LimitCode, @Nullable Integer> limits) {
+        Map<LimitCode, Integer> limited = new EnumMap<>(LimitCode.class);
+        limits.forEach((code, value) -> {
+            if (value != null) {
+                limited.put(code, value);
+            }
+        });
+        return limited;
+    }
+
     /** A price version of a plan, without VAT. */
     public record PriceVersion(UUID priceId, String currency, BigDecimal amount, java.time.Instant effectiveFrom) {}
 
-    /** A plan as it is offered now. */
+    /**
+     * A plan as it is offered now: its enabled modules and its limits ({@code limits} only holds the
+     * limited ones; a missing limit is unlimited).
+     */
     public record OfferedPlan(
-            UUID id, String code, String name, boolean trial, boolean archived, List<CurrentPrice> currentPrices) {
+            UUID id,
+            String code,
+            String name,
+            boolean trial,
+            boolean archived,
+            Set<ModuleCode> modules,
+            Map<LimitCode, Integer> limits,
+            List<CurrentPrice> currentPrices) {
+
+        public OfferedPlan {
+            modules = modules.isEmpty() ? Set.of() : Collections.unmodifiableSet(EnumSet.copyOf(modules));
+            limits = limits.isEmpty() ? Map.of() : Collections.unmodifiableMap(new EnumMap<>(limits));
+            currentPrices = List.copyOf(currentPrices);
+        }
 
         public Optional<CurrentPrice> priceFor(BillingPeriod billingPeriod) {
             return currentPrices.stream().filter(price -> price.billingPeriod() == billingPeriod).findFirst();

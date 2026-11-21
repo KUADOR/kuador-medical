@@ -19,6 +19,7 @@ import jakarta.persistence.OptimisticLockException;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
@@ -55,6 +56,7 @@ public class SubscriptionLifecycle {
     private final AuditRecorder audit;
     private final ApplicationEventPublisher events;
     private final SubscriptionNotifications notifications;
+    private final PlanChangeService planChanges;
 
     SubscriptionLifecycle(
             EntityManager entityManager,
@@ -65,7 +67,8 @@ public class SubscriptionLifecycle {
             TenantRepository tenants,
             AuditRecorder audit,
             ApplicationEventPublisher events,
-            SubscriptionNotifications notifications) {
+            SubscriptionNotifications notifications,
+            PlanChangeService planChanges) {
         this.entityManager = entityManager;
         this.subscriptions = subscriptions;
         this.history = history;
@@ -75,6 +78,7 @@ public class SubscriptionLifecycle {
         this.audit = audit;
         this.events = events;
         this.notifications = notifications;
+        this.planChanges = planChanges;
     }
 
     // ------------------------------------------------------------------ manual
@@ -189,7 +193,11 @@ public class SubscriptionLifecycle {
             }
             switch (from) {
                 case TRIAL -> subscription.suspend(due, now);
-                case ACTIVE -> subscription.markPastDue(LifecycleDates.daysAfter(due, periods.graceDays()), now);
+                case ACTIVE -> {
+                    // The renewal date arrived: a scheduled downgrade or period change applies even unpaid (MEDK-69).
+                    planChanges.applyDue(subscription, due);
+                    subscription.markPastDue(LifecycleDates.daysAfter(due, periods.graceDays()), now);
+                }
                 case PAST_DUE -> subscription.suspend(due, now);
                 case SUSPENDED -> subscription.cancel(due, LifecycleDates.daysAfter(due, periods.retentionDays()), now);
                 case CANCELLED -> throw new IllegalStateException("A cancelled subscription has no deadline");
@@ -281,8 +289,13 @@ public class SubscriptionLifecycle {
         Instant start = continuesPeriod && subscription.getCurrentPeriodEnd() != null
                 ? subscription.getCurrentPeriodEnd()
                 : LifecycleDates.startOfDay(now);
+        // A change scheduled for this renewal applies first: the new period has the new plan, billing period and price.
+        boolean planChanged = planChanges.applyDue(subscription, start);
         Instant end = InitialTerms.periodEnd(start, subscription.getBillingPeriod());
-        ContractedPrice price = priceFor(subscription, start, continuesPeriod);
+        ContractedPrice price = planChanged
+                ? new ContractedPrice(Objects.requireNonNull(subscription.getPriceAmountSnapshot()),
+                        Objects.requireNonNull(subscription.getPriceCurrencySnapshot()))
+                : priceFor(subscription, start, continuesPeriod);
         subscription.activate(start, end, price.amount(), price.currency(), now);
         entityManager.persist(new SubscriptionPeriod(
                 subscription.getId(), subscription.getPlanId(), start, end, price.amount(), price.currency()));
@@ -302,7 +315,8 @@ public class SubscriptionLifecycle {
                 return new ContractedPrice(contracted, currency);
             }
             if (renewal) {
-                return history.latestNoticeApplyingAt(subscription.getId(), periodStart)
+                return history.latestNoticeApplyingAt(subscription.getId(), subscription.getPlanId(),
+                                subscription.getBillingPeriod(), periodStart)
                         .map(notice -> new ContractedPrice(notice.getAmount(), notice.getCurrency()))
                         .orElse(new ContractedPrice(contracted, currency));
             }

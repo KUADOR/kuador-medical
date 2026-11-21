@@ -83,6 +83,18 @@ public class ApiException extends RuntimeException {
                 "The second factor must be completed first.", List.of(), Map.of("twoFactor", step));
     }
 
+    /** 403 {@code TENANT_READ_ONLY} (ADR-017): the clinic is suspended or cancelled; it can only read and export. */
+    public static ApiException tenantReadOnly() {
+        return new ApiException(HttpStatus.FORBIDDEN, ErrorCode.TENANT_READ_ONLY,
+                "The clinic is read-only: it can only read and export its data.");
+    }
+
+    /** 403 {@code MODULE_NOT_IN_PLAN} (ADR-017): the plan of the clinic does not enable {@code module}. */
+    public static ApiException moduleNotInPlan(String module) {
+        return new ApiException(HttpStatus.FORBIDDEN, ErrorCode.MODULE_NOT_IN_PLAN,
+                "The plan of the clinic does not include the module " + module + ".");
+    }
+
     public static ApiException notFound() {
         return new ApiException(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND, "The resource does not exist.");
     }

@@ -3,6 +3,7 @@ package com.kuador.medical.identity.auth;
 import com.kuador.medical.identity.AuthenticatedAccount;
 import com.kuador.medical.identity.CurrentUser;
 import com.kuador.medical.identity.twofactor.TwoFactorService;
+import com.kuador.medical.shared.security.AllowedWhenReadOnly;
 import com.kuador.medical.shared.security.AllowedWhileTwoFactorPending;
 import com.kuador.medical.shared.security.AuthenticatedEndpoint;
 import com.kuador.medical.shared.web.ApiException;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/auth/two-factor")
 @AuthenticatedEndpoint
 @AllowedWhileTwoFactorPending
+@AllowedWhenReadOnly
 class TwoFactorController {
 
     private final TwoFactorService twoFactors;

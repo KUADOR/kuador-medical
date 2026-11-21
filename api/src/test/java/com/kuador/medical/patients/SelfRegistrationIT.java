@@ -74,6 +74,23 @@ class SelfRegistrationIT {
     }
 
     @Test
+    void aSuspendedClinicDoesNotAcceptSelfRegistrations() {
+        enable();
+        // MEDK-69: the clinic is suspended (read-only) on the seeded trial plan, which includes PATIENTS.
+        jdbc.update("""
+                insert into subscription (id, tenant_id, plan_id, billing_period, status, suspended_at)
+                values (?, ?, '6b5a4c3d-2e1f-4a0b-8c9d-7e6f5a4b3c2d', 'MONTHLY', 'SUSPENDED', now())""",
+                java.util.UUID.randomUUID(), clinic.tenantId());
+        Map<String, Object> request = PatientApi.selfRegistration(IdentityApi.uniqueEmail("self"), IdentityApi.randomPassword());
+
+        assertThat(patients.selfRegister(publicCode, request, null))
+                .hasStatus(HttpStatus.FORBIDDEN)
+                .bodyJson()
+                .hasPathSatisfying("$.code", code -> assertThat(code).asString().isEqualTo("TENANT_READ_ONLY"));
+        assertThat(countPatients()).isZero();
+    }
+
+    @Test
     void theAccountIsActiveOnlyAfterTheEmailIsVerified() {
         enable();
         String email = IdentityApi.uniqueEmail("self");

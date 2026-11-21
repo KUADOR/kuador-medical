@@ -1,5 +1,7 @@
 package com.kuador.medical;
 
+import com.kuador.medical.identity.PlanLimits;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Bean;
@@ -29,7 +31,7 @@ public class TestcontainersConfiguration {
 
     @Bean
     @Primary
-    AdjustablePlanLimits adjustablePlanLimits() {
-        return new AdjustablePlanLimits();
+    AdjustablePlanLimits adjustablePlanLimits(@Qualifier("subscriptionCapabilities") PlanLimits plan) {
+        return new AdjustablePlanLimits(plan);
     }
 }

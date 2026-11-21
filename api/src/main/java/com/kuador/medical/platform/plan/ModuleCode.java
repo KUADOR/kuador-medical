@@ -1,9 +1,12 @@
 package com.kuador.medical.platform.plan;
 
+import org.springframework.modulith.NamedInterface;
+
 /**
  * Fixed catalog of modules a plan can enable ({@code ModuleCode} in {@code platform.openapi.yaml}).
  * Codes are stable: they are stored in {@code plan_module}. Labels are shown to people.
  */
+@NamedInterface("catalog")
 public enum ModuleCode {
     AGENDA("Agenda y citas"),
     PATIENTS("Pacientes"),
