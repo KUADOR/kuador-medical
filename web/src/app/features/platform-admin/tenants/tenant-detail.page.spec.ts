@@ -28,6 +28,10 @@ import {
   UPGRADE_PREVIEW,
 } from '../../../../testing/platform-tenant-fixtures';
 import { RUC_MISMATCH_MESSAGE } from './panels/purge-panel';
+import {
+  ACTIVATION_NEEDS_PAID_PLAN,
+  ACTIVATION_NEEDS_PAID_PLAN_TRIAL,
+} from './panels/transition-panel';
 import type { CurrentSession } from '../../../core/api/api-types';
 
 const BASE = `/api/v1/platform/tenants/${TENANT_ID}`;
@@ -345,6 +349,70 @@ describe('TenantDetailPage', () => {
     await flushRefresh(CANCELLED_RETENTION_OVER);
 
     expect(text('reactivation-closed')).toContain('ya no se puede reactivar');
+  });
+
+  it('explains that a trial clinic must move to a paid plan before activating it (MEDK-75)', async () => {
+    // Real api: TRIAL offers ACTIVE, but activating a plan without a price for the billing
+    // period answers 409 INVALID_SUBSCRIPTION_TRANSITION until the plan is changed.
+    await open({
+      ...ACTIVE_SUBSCRIPTION,
+      status: 'TRIAL',
+      priceAmount: null,
+      periods: [],
+      allowedTargets: ['ACTIVE', 'CANCELLED'],
+    });
+
+    select('#transition-target', 'ACTIVE');
+    type(app.page(), '#transition-reason', 'Payment received by bank transfer.');
+    submitIn('transition-form');
+    await app.settle();
+    click('confirm-transition');
+    await app.settle();
+    const { body, init } = problem(409, 'INVALID_SUBSCRIPTION_TRANSITION');
+    app.backend.expectOne(`${BASE}/subscription/transitions`).flush(body, init);
+    await app.settle();
+
+    expect(text('transition-failure')).toBe(ACTIVATION_NEEDS_PAID_PLAN_TRIAL);
+    const buttons = Array.from(
+      byTestId(app.page(), 'transition-failure')!.querySelectorAll('button'),
+    );
+    expect(buttons.some((button) => button.textContent?.includes('Recargar'))).toBe(false);
+  });
+
+  it('explains that a suspended clinic on a plan without price cannot be activated yet', async () => {
+    await open({ ...SUSPENDED_SUBSCRIPTION, allowedTargets: ['ACTIVE', 'CANCELLED'] });
+
+    select('#transition-target', 'ACTIVE');
+    type(app.page(), '#transition-reason', 'Payment received by bank transfer.');
+    submitIn('transition-form');
+    await app.settle();
+    click('confirm-transition');
+    await app.settle();
+    const { body, init } = problem(409, 'INVALID_SUBSCRIPTION_TRANSITION');
+    app.backend.expectOne(`${BASE}/subscription/transitions`).flush(body, init);
+    await app.settle();
+
+    expect(text('transition-failure')).toBe(ACTIVATION_NEEDS_PAID_PLAN);
+  });
+
+  it('keeps the generic message and the reload for other invalid transitions', async () => {
+    await open();
+
+    select('#transition-target', 'SUSPENDED');
+    type(app.page(), '#transition-reason', 'Requested by the clinic owner.');
+    submitIn('transition-form');
+    await app.settle();
+    click('confirm-transition');
+    await app.settle();
+    const { body, init } = problem(409, 'INVALID_SUBSCRIPTION_TRANSITION');
+    app.backend.expectOne(`${BASE}/subscription/transitions`).flush(body, init);
+    await app.settle();
+
+    expect(text('transition-failure')).toContain(ERROR_MESSAGES.INVALID_SUBSCRIPTION_TRANSITION);
+    const buttons = Array.from(
+      byTestId(app.page(), 'transition-failure')!.querySelectorAll('button'),
+    );
+    expect(buttons.some((button) => button.textContent?.includes('Recargar'))).toBe(true);
   });
 
   // ------------------------------------------------------------------ plan change

@@ -21,6 +21,7 @@
     "test": "ng test",
     "test:guards": "vitest run --config vitest.guards.config.mts",
     "test:visual": "playwright test",
+    "test:integration": "playwright test -c playwright.integration.config.ts",
     "test:visual:update": "playwright test --update-snapshots",
     "test:visual:docker": "docker run --rm --ipc=host -v \"$PWD/..:/repo\" -v medical-kuador-web-visual-modules:/repo/web/node_modules -w /repo/web -e CI=1 mcr.microsoft.com/playwright:v1.65.1-noble sh -c \"npm ci && npx playwright test --update-snapshots\"",
     "lighthouse": "npx --yes @lhci/cli@0.16.1 autorun",
