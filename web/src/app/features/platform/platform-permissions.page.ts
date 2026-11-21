@@ -3,6 +3,14 @@ import type { PlatformPermissionInfo } from '../../core/api/api-types';
 import { errorMessage } from '../../core/errors/error-messages';
 import { PlatformService } from '../../core/platform/platform.service';
 import { PERMISSION_SCOPE_LABELS, permissionLabel } from '../../core/roles/permission-labels';
+import {
+  KdActions,
+  KdAlert,
+  KdButton,
+  KdLoadingState,
+  KdPage,
+  KdTable,
+} from '../../design-system';
 
 type LoadState =
   | { kind: 'loading' }
@@ -13,7 +21,9 @@ type LoadState =
 @Component({
   selector: 'mk-platform-permissions-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [KdActions, KdAlert, KdButton, KdLoadingState, KdPage, KdTable],
   templateUrl: './platform-permissions.page.html',
+  styleUrl: './platform-permissions.page.scss',
 })
 export class PlatformPermissionsPage {
   private readonly platform = inject(PlatformService);

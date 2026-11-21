@@ -13,12 +13,7 @@ import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angula
 import { Router, RouterLink } from '@angular/router';
 import type { Role } from '../../core/api/api-types';
 import { ERROR_MESSAGES, errorMessage, toProblem } from '../../core/errors/error-messages';
-import {
-  applyServerErrors,
-  controlErrorMessage,
-  focusFirstInvalid,
-  notBlank,
-} from '../../core/forms/form-errors';
+import { applyServerErrors, focusFirstInvalid, notBlank } from '../../core/forms/form-errors';
 import { NoticeService } from '../../core/notice/notice.service';
 import { RolesService } from '../../core/roles/roles.service';
 import { AppRoutes, isOwner } from '../../core/session/navigation';
@@ -28,6 +23,15 @@ import {
   StaffUsersService,
   newCreationKey,
 } from '../../core/staff/staff-users.service';
+import {
+  KdActions,
+  KdAlert,
+  KdButton,
+  KdField,
+  KdInput,
+  KdLoadingState,
+  KdPage,
+} from '../../design-system';
 import { RoleAssignmentsEditor } from './role-assignments/role-assignments-editor';
 import {
   AssignmentDraft,
@@ -41,16 +45,26 @@ import { STAFF_LIMITS, fullName } from './staff-labels';
 type LoadState =
   { kind: 'loading' } | { kind: 'ready'; roles: Role[] } | { kind: 'failed'; message: string };
 
-type Field = 'firstNames' | 'lastNames' | 'email' | 'jobTitle' | 'professionalRegistration';
-
 export const ASSIGNMENT_REQUIRED_MESSAGE = 'Elige un rol para al menos una sucursal.';
 
 /** Registers a staff user and sends the invitation (/staff/new). */
 @Component({
   selector: 'mk-staff-user-form-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, RouterLink, RoleAssignmentsEditor],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    RoleAssignmentsEditor,
+    KdActions,
+    KdAlert,
+    KdButton,
+    KdField,
+    KdInput,
+    KdLoadingState,
+    KdPage,
+  ],
   templateUrl: './staff-user-form.page.html',
+  styleUrl: './staff-form.scss',
 })
 export class StaffUserFormPage {
   private readonly staff = inject(StaffUsersService);
@@ -109,11 +123,6 @@ export class StaffUserFormPage {
       next: (roles) => this.state.set({ kind: 'ready', roles }),
       error: (error: unknown) => this.state.set({ kind: 'failed', message: errorMessage(error) }),
     });
-  }
-
-  protected error(name: Field): string | null {
-    const control = this.form.controls[name];
-    return control.touched ? controlErrorMessage(control) : null;
   }
 
   protected changeDraft(draft: AssignmentDraft): void {

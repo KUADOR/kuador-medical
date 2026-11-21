@@ -27,6 +27,7 @@ import {
   REGISTRATION_NEEDED_WHILE_CLINICAL,
   changedFields,
 } from './staff-user-detail.page';
+import { expectMigratedScreen } from '../../../testing/migrated-screen';
 
 const ROLES = [OWNER_ROLE, ADMIN_ROLE, RECEPTION_ROLE, DOCTOR_ROLE];
 
@@ -58,6 +59,17 @@ describe('StaffUserDetailPage', () => {
   function input(selector: string): HTMLInputElement {
     return app.page().querySelector(selector) as HTMLInputElement;
   }
+
+  it('uses only the design system (MEDK-44)', async () => {
+    await open(INVITED_DOCTOR);
+    expectMigratedScreen(app.page());
+
+    (byTestId(app.page(), 'mode-per-branch') as HTMLInputElement).click();
+    buttonByText(app.page(), 'Deshabilitar acceso').click();
+    await app.settle();
+    expect(byTestId(app.page(), 'confirm-disable')).not.toBeNull();
+    expectMigratedScreen(app.page());
+  });
 
   describe('personal data', () => {
     it('shows the record and saves only the fields that changed, with the version', async () => {

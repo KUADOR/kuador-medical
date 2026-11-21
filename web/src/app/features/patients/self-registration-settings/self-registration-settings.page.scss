@@ -1,0 +1,25 @@
+// Layout of the self-registration settings (MEDK-44). Tokens only (ADR-007).
+.settings__back,
+.settings__text {
+  margin: 0;
+}
+
+.settings__muted {
+  color: var(--kd-text-muted);
+}
+
+.settings__group {
+  display: grid;
+  gap: var(--kd-space-2);
+}
+
+.settings__link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--kd-space-2);
+
+  kd-field {
+    flex: 1 1 auto;
+  }
+}

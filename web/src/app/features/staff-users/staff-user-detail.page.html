@@ -1,62 +1,66 @@
-<section class="page" aria-labelledby="staff-detail-title">
-  <p><a [routerLink]="staffLink">← Volver al personal</a></p>
+<kd-page [heading]="heading()" headingId="staff-detail-title">
+  <a kdPageBefore kdButton variant="tertiary" icon="arrow-left" [routerLink]="staffLink"
+    >Volver al personal</a
+  >
+  @if (user(); as person) {
+    <div kdPageDescription>
+      <kd-badge [tone]="statusTones[person.status]" data-testid="status">{{
+        statusLabels[person.status]
+      }}</kd-badge>
+    </div>
+  }
 
   @switch (state().kind) {
     @case ('loading') {
-      <h1 id="staff-detail-title">Persona del personal</h1>
-      <p class="hint" aria-live="polite">Cargando…</p>
+      <kd-loading-state label="Cargando…" />
     }
     @case ('failed') {
-      <h1 id="staff-detail-title">Persona del personal</h1>
-      <p class="alert" role="alert" data-testid="load-error">{{ loadFailure()?.message }}</p>
+      <kd-alert tone="error" data-testid="load-error">{{ loadFailure()?.message }}</kd-alert>
       @if (!loadFailure()?.notFound) {
-        <div class="actions">
-          <button type="button" class="button" (click)="load()">Volver a intentar</button>
-        </div>
+        <kd-actions>
+          <button kdButton type="button" icon="refresh-cw" (click)="load()">
+            Volver a intentar
+          </button>
+        </kd-actions>
       }
     }
     @default {
       @if (user(); as person) {
-        <div class="page__header">
-          <h1 id="staff-detail-title">{{ fullName(person) }}</h1>
-          <span class="badge" data-testid="status">{{ statusLabels[person.status] }}</span>
-        </div>
-
         <div aria-live="polite">
           @if (notice(); as message) {
-            <p class="alert alert--success" role="status" data-testid="notice">{{ message }}</p>
+            <kd-alert tone="ok" data-testid="notice">{{ message }}</kd-alert>
           }
         </div>
 
         @if (isSelf()) {
-          <p class="alert alert--info" data-testid="self-notice">
+          <kd-alert tone="info" data-testid="self-notice">
             Este es tu propio registro: no puedes cambiar tus datos, tus roles ni tu acceso desde
             aquí.
-          </p>
+          </kd-alert>
         }
 
         <!-- Personal data -->
         <form
-          class="form"
+          class="staff-section"
           [formGroup]="form"
           (ngSubmit)="save()"
           novalidate
           aria-labelledby="staff-data-title"
           data-testid="data-form"
         >
-          <h2 id="staff-data-title">Datos personales</h2>
+          <h2 id="staff-data-title" class="staff-section__title">Datos personales</h2>
           @if (dataFailure(); as message) {
-            <div class="alert" role="alert" data-testid="data-error" tabindex="-1">
-              <p>{{ message }}</p>
+            <kd-alert tone="error" data-testid="data-error" tabindex="-1">
+              <p class="staff-alert-text">{{ message }}</p>
               @if (versionConflict()) {
-                <button type="button" class="button button--secondary" (click)="load()">
+                <button kdButton type="button" icon="refresh-cw" (click)="load()">
                   Recargar los datos
                 </button>
               }
-            </div>
+            </kd-alert>
           }
 
-          <dl class="details">
+          <dl kdDetails>
             <dt>Correo</dt>
             <dd data-testid="email">{{ person.email }}</dd>
             @if (invitationExpiry(); as expiry) {
@@ -65,93 +69,66 @@
             }
           </dl>
 
-          <div class="field">
-            <label for="staff-first-names">Nombres</label>
+          <kd-field label="Nombres">
             <input
+              kdInput
               id="staff-first-names"
               type="text"
               formControlName="firstNames"
               autocomplete="off"
               [attr.maxlength]="limits.name"
-              [attr.aria-invalid]="error('firstNames') ? 'true' : null"
-              [attr.aria-describedby]="error('firstNames') ? 'staff-first-names-error' : null"
             />
-            @if (error('firstNames'); as message) {
-              <p id="staff-first-names-error" class="field__error">{{ message }}</p>
-            }
-          </div>
+          </kd-field>
 
-          <div class="field">
-            <label for="staff-last-names">Apellidos</label>
+          <kd-field label="Apellidos">
             <input
+              kdInput
               id="staff-last-names"
               type="text"
               formControlName="lastNames"
               autocomplete="off"
               [attr.maxlength]="limits.name"
-              [attr.aria-invalid]="error('lastNames') ? 'true' : null"
-              [attr.aria-describedby]="error('lastNames') ? 'staff-last-names-error' : null"
             />
-            @if (error('lastNames'); as message) {
-              <p id="staff-last-names-error" class="field__error">{{ message }}</p>
-            }
-          </div>
+          </kd-field>
 
-          <div class="field">
-            <label for="staff-job-title">Puesto de trabajo</label>
+          <kd-field label="Puesto de trabajo">
             <input
+              kdInput
               id="staff-job-title"
               type="text"
               formControlName="jobTitle"
               autocomplete="off"
               [attr.maxlength]="limits.jobTitle"
-              [attr.aria-invalid]="error('jobTitle') ? 'true' : null"
-              [attr.aria-describedby]="error('jobTitle') ? 'staff-job-title-error' : null"
             />
-            @if (error('jobTitle'); as message) {
-              <p id="staff-job-title-error" class="field__error">{{ message }}</p>
-            }
-          </div>
+          </kd-field>
 
-          <div class="field">
-            <label for="staff-registration">Registro profesional</label>
+          <kd-field label="Registro profesional" hint="Obligatorio mientras tenga un rol clínico.">
             <input
+              kdInput
               id="staff-registration"
               type="text"
               formControlName="professionalRegistration"
               autocomplete="off"
               [attr.maxlength]="limits.professionalRegistration"
-              [attr.aria-invalid]="error('professionalRegistration') ? 'true' : null"
-              [attr.aria-describedby]="
-                error('professionalRegistration')
-                  ? 'staff-registration-error'
-                  : 'staff-registration-hint'
-              "
             />
-            <p id="staff-registration-hint" class="field__hint">
-              Obligatorio mientras tenga un rol clínico.
-            </p>
-            @if (error('professionalRegistration'); as message) {
-              <p id="staff-registration-error" class="field__error">{{ message }}</p>
-            }
-          </div>
+          </kd-field>
 
           @if (canManage()) {
-            <div class="actions">
-              <button type="submit" class="button" [disabled]="saving()">
+            <kd-actions>
+              <button kdButton variant="primary" type="submit" [disabled]="saving()">
                 {{ saving() ? 'Guardando…' : 'Guardar datos' }}
               </button>
-            </div>
+            </kd-actions>
           }
         </form>
 
         <!-- Branch role assignments -->
-        <section class="form" aria-labelledby="staff-roles-title" data-testid="assignments">
-          <h2 id="staff-roles-title">Roles por sucursal</h2>
+        <section class="staff-section" aria-labelledby="staff-roles-title" data-testid="assignments">
+          <h2 id="staff-roles-title" class="staff-section__title">Roles por sucursal</h2>
           @if (assignmentFailure(); as message) {
-            <p class="alert" role="alert" data-testid="assignments-failure" tabindex="-1">
+            <kd-alert tone="error" data-testid="assignments-failure" tabindex="-1">
               {{ message }}
-            </p>
+            </kd-alert>
           }
           @if (canAssign()) {
             <mk-role-assignments-editor
@@ -164,19 +141,19 @@
               [disabled]="savingAssignments()"
               [error]="assignmentError()"
             />
-            <div class="actions">
+            <kd-actions>
               <button
+                kdButton
                 type="button"
-                class="button"
                 [disabled]="savingAssignments()"
                 (click)="saveAssignments()"
                 data-testid="save-assignments"
               >
                 {{ savingAssignments() ? 'Guardando…' : 'Guardar roles' }}
               </button>
-            </div>
+            </kd-actions>
           } @else {
-            <p data-testid="assignments-summary">
+            <p class="staff-summary" data-testid="assignments-summary">
               {{ describeAssignments(person.roleAssignments) }}
             </p>
           }
@@ -184,50 +161,52 @@
 
         <!-- Access -->
         @if (canManage()) {
-          <section class="form" aria-labelledby="staff-access-title" data-testid="access">
-            <h2 id="staff-access-title">Acceso</h2>
+          <section class="staff-section" aria-labelledby="staff-access-title" data-testid="access">
+            <h2 id="staff-access-title" class="staff-section__title">Acceso</h2>
             @if (accessFailure(); as message) {
-              <p class="alert" role="alert" data-testid="access-failure" tabindex="-1">
+              <kd-alert tone="error" data-testid="access-failure" tabindex="-1">
                 {{ message }}
-              </p>
+              </kd-alert>
             }
 
             @if (confirmingDisable()) {
               <div
-                class="alert alert--info"
+                class="staff-confirm"
                 role="alertdialog"
                 aria-labelledby="confirm-disable-title"
                 aria-describedby="confirm-disable-text"
               >
-                <h3 id="confirm-disable-title">
+                <h3 id="confirm-disable-title" class="staff-confirm__title">
                   ¿Deshabilitar el acceso de {{ fullName(person) }}?
                 </h3>
-                <p id="confirm-disable-text">
+                <p id="confirm-disable-text" class="staff-confirm__text">
                   No podrá ingresar desde ahora y sus sesiones abiertas se cerrarán. Sus datos y su
                   historial se conservan y puedes volver a habilitarlo.
                 </p>
-                <div class="actions">
+                <kd-actions>
                   <button
+                    kdButton
+                    variant="danger"
                     type="button"
-                    class="button button--danger"
                     data-testid="confirm-disable"
                     [disabled]="accessBusy() !== null"
                     (click)="confirmDisable()"
                   >
                     {{ accessBusy() === 'disable' ? 'Deshabilitando…' : 'Sí, deshabilitar' }}
                   </button>
-                  <button type="button" class="button button--secondary" (click)="cancelDisable()">
+                  <button kdButton variant="tertiary" type="button" (click)="cancelDisable()">
                     Cancelar
                   </button>
-                </div>
+                </kd-actions>
               </div>
             }
 
-            <div class="actions">
+            <kd-actions>
               @if (person.status === 'INVITED') {
                 <button
+                  kdButton
                   type="button"
-                  class="button button--secondary"
+                  icon="mail"
                   data-testid="resend"
                   [disabled]="accessBusy() !== null"
                   (click)="resendInvitation()"
@@ -237,8 +216,8 @@
               }
               @if (person.status === 'DISABLED') {
                 <button
+                  kdButton
                   type="button"
-                  class="button"
                   data-testid="enable"
                   [disabled]="accessBusy() !== null"
                   (click)="enable()"
@@ -247,8 +226,9 @@
                 </button>
               } @else if (!confirmingDisable()) {
                 <button
+                  kdButton
+                  variant="danger"
                   type="button"
-                  class="button button--danger"
                   data-testid="disable"
                   [disabled]="accessBusy() !== null"
                   (click)="askDisable()"
@@ -256,10 +236,10 @@
                   Deshabilitar acceso
                 </button>
               }
-            </div>
+            </kd-actions>
           </section>
         }
       }
     }
   }
-</section>
+</kd-page>

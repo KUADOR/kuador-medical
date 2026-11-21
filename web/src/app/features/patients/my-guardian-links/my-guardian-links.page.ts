@@ -14,14 +14,21 @@ import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angula
 import { startWith } from 'rxjs';
 import type { AuthorizeLinkRequest, GuardianLink } from '../../../core/api/api-types';
 import { errorMessage } from '../../../core/errors/error-messages';
-import {
-  applyServerErrors,
-  controlErrorMessage,
-  focusFirstInvalid,
-  notBlank,
-} from '../../../core/forms/form-errors';
+import { applyServerErrors, controlErrorMessage, notBlank } from '../../../core/forms/form-errors';
 import { LINK_TYPE_LABELS, fullName } from '../../../core/patients/patient-labels';
 import { PatientsService, newAttempt } from '../../../core/patients/patients.service';
+import {
+  KdActions,
+  KdAlert,
+  KdButton,
+  KdCard,
+  KdErrorState,
+  KdField,
+  KdFieldGroup,
+  KdInput,
+  KdLoadingState,
+  KdPage,
+} from '../../../design-system';
 import { GuardianLinkList } from '../shared/guardian-link-list';
 import {
   GuardianPersonFields,
@@ -63,8 +70,23 @@ export function knownPeople(
 @Component({
   selector: 'mk-my-guardian-links-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, GuardianLinkList, GuardianPersonFields],
+  imports: [
+    ReactiveFormsModule,
+    GuardianLinkList,
+    GuardianPersonFields,
+    KdActions,
+    KdAlert,
+    KdButton,
+    KdCard,
+    KdErrorState,
+    KdField,
+    KdFieldGroup,
+    KdInput,
+    KdLoadingState,
+    KdPage,
+  ],
   templateUrl: './my-guardian-links.page.html',
+  styleUrl: './my-guardian-links.page.scss',
 })
 export class MyGuardianLinksPage {
   private readonly patients = inject(PatientsService);
@@ -154,7 +176,7 @@ export class MyGuardianLinksPage {
     this.notice.set(null);
     if (this.form.invalid) {
       this.form.markAllAsTouched();
-      afterNextRender(() => focusFirstInvalid(this.host.nativeElement), {
+      afterNextRender(() => firstInvalidControl(this.host.nativeElement)?.focus(), {
         injector: this.injector,
       });
       return;
@@ -193,7 +215,7 @@ export class MyGuardianLinksPage {
           () => {
             const host = this.host.nativeElement;
             (
-              host.querySelector<HTMLElement>('[aria-invalid="true"]') ??
+              firstInvalidControl(host) ??
               host.querySelector<HTMLElement>('[data-testid="form-error"]')
             )?.focus();
           },
@@ -217,4 +239,16 @@ export class MyGuardianLinksPage {
       }
     }
   }
+}
+
+/**
+ * First control with an error. A radio group carries its error on the fieldset (KdFieldGroup),
+ * which cannot take focus: its first enabled control gets it instead.
+ */
+function firstInvalidControl(host: HTMLElement): HTMLElement | null {
+  const invalid = host.querySelector<HTMLElement>('[aria-invalid="true"]');
+  if (invalid instanceof HTMLFieldSetElement) {
+    return invalid.querySelector<HTMLElement>('input:not(:disabled)') ?? invalid;
+  }
+  return invalid;
 }

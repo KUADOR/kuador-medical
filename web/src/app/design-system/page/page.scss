@@ -67,3 +67,12 @@
     padding: var(--kd-space-4);
   }
 }
+
+// A back link above the heading keeps its own width instead of stretching across the grid.
+.kd-page__before {
+  display: flex;
+
+  &:empty {
+    display: none;
+  }
+}

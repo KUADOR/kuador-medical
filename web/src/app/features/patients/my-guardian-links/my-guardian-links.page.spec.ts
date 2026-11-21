@@ -15,6 +15,7 @@ import {
 } from '../../../../testing/app-harness';
 import { ERROR_MESSAGES } from '../../../core/errors/error-messages';
 import type { GuardianLink } from '../../../core/api/api-types';
+import { expectMigratedScreen } from '../../../../testing/migrated-screen';
 import { knownPeople } from './my-guardian-links.page';
 
 describe('MyGuardianLinksPage', () => {
@@ -38,7 +39,9 @@ describe('MyGuardianLinksPage', () => {
     const match = Array.from(app.page().querySelectorAll('label')).find((element) =>
       element.textContent?.trim().startsWith(label),
     );
-    const input = match?.querySelector<HTMLInputElement>('input[type="radio"]');
+    const input = match?.htmlFor
+      ? app.page().querySelector<HTMLInputElement>(`input[type="radio"][id="${match.htmlFor}"]`)
+      : null;
     if (!input) {
       throw new Error(`No radio ${label}`);
     }
@@ -129,6 +132,43 @@ describe('MyGuardianLinksPage', () => {
     request.flush(body, init);
     await app.settle();
     expect(byTestId(app.page(), 'form-error')?.textContent?.trim()).toBe(ERROR_MESSAGES.FORBIDDEN);
+  });
+
+  /**
+   * The page without the guardian link list, shared with the patient record and migrated with
+   * it in MEDK-43.
+   */
+  function ownMarkup(): Element {
+    const copy = app.page().cloneNode(true) as Element;
+    copy.querySelectorAll('mk-guardian-link-list').forEach((list) => list.remove());
+    return copy;
+  }
+
+  it('uses only the design system (MEDK-44)', async () => {
+    await open();
+    expectMigratedScreen(ownMarkup());
+
+    submit(app.page());
+    await app.settle();
+    expectMigratedScreen(ownMarkup());
+    const group = app.page().querySelector('fieldset[aria-invalid="true"]');
+    expect(group?.getAttribute('aria-describedby')).toBe('linkType-error');
+    expect(document.activeElement).toBe(radio('Contacto de emergencia'));
+  });
+
+  it('uses only the design system for someone new (MEDK-44)', async () => {
+    await open([]);
+    submit(app.page());
+    await app.settle();
+
+    expectMigratedScreen(ownMarkup());
+    const number = app.page().querySelector('#authorized-documentNumber');
+    expect(app.page().querySelector('label[for="authorized-documentNumber"]')).not.toBeNull();
+    expect(number?.getAttribute('aria-invalid')).toBe('true');
+    expect(number?.getAttribute('aria-describedby')).toBe('authorized-documentNumber-error');
+    expect(app.page().querySelector('#authorized-phone')?.getAttribute('aria-describedby')).toBe(
+      'authorized-phone-hint',
+    );
   });
 
   it('is only for patient accounts', async () => {

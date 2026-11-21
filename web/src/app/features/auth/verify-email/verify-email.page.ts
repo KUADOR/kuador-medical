@@ -3,6 +3,13 @@ import { RouterLink } from '@angular/router';
 import { ERROR_MESSAGES, errorMessage, toProblem } from '../../../core/errors/error-messages';
 import { AuthRoutes } from '../../../core/session/auth-routes';
 import { AuthService } from '../../../core/session/auth.service';
+import {
+  KdActions,
+  KdAlert,
+  KdButton,
+  KdLoadingState,
+  KdPage,
+} from '../../../design-system';
 import { takeLinkToken } from '../one-time-link';
 
 export const EMAIL_VERIFIED_MESSAGE =
@@ -14,33 +21,37 @@ type State = 'verifying' | 'verified' | 'invalid' | 'error';
 @Component({
   selector: 'mk-verify-email-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink],
+  imports: [RouterLink, KdActions, KdAlert, KdButton, KdLoadingState, KdPage],
   template: `
-    <section class="page page--narrow" aria-labelledby="verify-title">
-      <h1 id="verify-title">Verificar correo</h1>
+    <kd-page heading="Verificar correo" headingId="verify-title" width="narrow">
       @switch (state()) {
         @case ('verifying') {
-          <p role="status" data-testid="loading">Verificando tu correo…</p>
+          <kd-loading-state label="Verificando tu correo…" data-testid="loading" />
         }
         @case ('verified') {
-          <p class="alert alert--success" role="status" data-testid="notice">
-            {{ verifiedMessage }}
-          </p>
+          <kd-alert tone="ok" data-testid="notice">{{ verifiedMessage }}</kd-alert>
         }
         @case ('invalid') {
-          <p class="alert" role="alert" data-testid="link-error">{{ invalidMessage }}</p>
+          <kd-alert tone="error" data-testid="link-error">{{ invalidMessage }}</kd-alert>
         }
         @case ('error') {
-          <p class="alert" role="alert" data-testid="form-error">{{ failure() }}</p>
-          <div class="actions">
-            <button type="button" class="button button--secondary" (click)="verify()">
+          <kd-alert tone="error" data-testid="form-error">{{ failure() }}</kd-alert>
+          <kd-actions>
+            <button kdButton type="button" icon="refresh-cw" (click)="verify()">
               Intentar de nuevo
             </button>
-          </div>
+          </kd-actions>
         }
       }
-      <p><a [routerLink]="loginLink">Ir a ingresar</a></p>
-    </section>
+      <kd-actions>
+        <a
+          kdButton
+          [variant]="state() === 'verified' ? 'primary' : 'tertiary'"
+          [routerLink]="loginLink"
+          >Ir a ingresar</a
+        >
+      </kd-actions>
+    </kd-page>
   `,
 })
 export class VerifyEmailPage {

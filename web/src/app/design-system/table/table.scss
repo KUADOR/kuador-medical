@@ -31,9 +31,14 @@
   vertical-align: top;
 }
 
-:host ::ng-deep th {
+:host ::ng-deep thead th {
   background: var(--kd-surface-sunken);
   color: var(--kd-text-muted);
+  font: var(--kd-type-label);
+}
+
+// Row headers (th scope="row") read like the rest of the row, only in the label weight.
+:host ::ng-deep tbody th {
   font: var(--kd-type-label);
 }
 

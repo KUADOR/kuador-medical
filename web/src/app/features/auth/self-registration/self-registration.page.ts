@@ -31,6 +31,7 @@ import {
 } from '../../../core/forms/form-errors';
 import { AuthRoutes } from '../../../core/session/auth-routes';
 import { AuthService } from '../../../core/session/auth.service';
+import { KdActions, KdAlert, KdButton, KdField, KdInput, KdPage } from '../../../design-system';
 
 /** Same text whether the person is new or already registered: never reveals patients. */
 export const SELF_REGISTRATION_DONE_MESSAGE =
@@ -59,8 +60,18 @@ type Field =
 @Component({
   selector: 'mk-self-registration-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    KdActions,
+    KdAlert,
+    KdButton,
+    KdField,
+    KdInput,
+    KdPage,
+  ],
   templateUrl: './self-registration.page.html',
+  styleUrl: './self-registration.page.scss',
 })
 export class SelfRegistrationPage {
   private readonly auth = inject(AuthService);

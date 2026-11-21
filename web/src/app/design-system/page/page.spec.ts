@@ -80,7 +80,8 @@ describe('KdPage and the layout pieces of MEDK-44', () => {
     expect(page.querySelector('.kd-page__description')?.textContent?.trim()).toBe(
       'Personas de la clínica.',
     );
-    expect(page.firstElementChild?.textContent?.trim()).toBe('Volver');
+    expect(page.querySelector('.kd-page__before')?.textContent?.trim()).toBe('Volver');
+    expect(page.firstElementChild?.classList).toContain('kd-page__before');
     expect(page.querySelector('.kd-page__actions a')?.textContent?.trim()).toBe('Invitar');
   });
 

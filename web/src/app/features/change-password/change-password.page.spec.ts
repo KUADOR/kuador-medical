@@ -10,6 +10,7 @@ import {
   type,
 } from '../../../testing/app-harness';
 import { CURRENT_PASSWORD_WRONG_MESSAGE } from './change-password.page';
+import { expectMigratedScreen } from '../../../testing/migrated-screen';
 
 const PENDING = { ...SUPER_ADMIN, mustChangePassword: true };
 
@@ -104,5 +105,14 @@ describe('ChangePasswordPage', () => {
     app.backend
       .expectOne('/api/v1/auth/logout')
       .flush(null, { status: 204, statusText: 'No Content' });
+  });
+
+  it('uses only the design system (MEDK-44)', async () => {
+    expectMigratedScreen(app.page());
+
+    submit(app.page());
+    await app.settle();
+    expect(app.page().querySelector('#current-password-error')).not.toBeNull();
+    expectMigratedScreen(app.page());
   });
 });

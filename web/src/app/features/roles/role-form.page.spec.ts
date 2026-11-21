@@ -21,6 +21,7 @@ import {
   submit,
   type,
 } from '../../../testing/app-harness';
+import { expectMigratedScreen } from '../../../testing/migrated-screen';
 
 describe('RoleFormPage', () => {
   let app: AppHarness;
@@ -206,6 +207,37 @@ describe('RoleFormPage', () => {
       await signIn(app, READ_ONLY_ACCOUNT);
       await app.harness.navigateByUrl('/roles/new');
       expect(app.router.url).toBe('/forbidden');
+    });
+  });
+
+  describe('design system (MEDK-44)', () => {
+    it('builds the new role form, with its errors, only with the design system', async () => {
+      await openNew();
+      expectMigratedScreen(app.page());
+
+      submit(app.page());
+      await app.settle();
+      expect(app.page().querySelector('#role-name-error')).not.toBeNull();
+      expectMigratedScreen(app.page());
+    });
+
+    it('builds the read-only role only with the design system', async () => {
+      await openExisting(OWNER_ROLE);
+      expectMigratedScreen(app.page());
+      app.backend.verify();
+    });
+
+    it('wires the permission group hint and error to its fieldset', async () => {
+      await openNew();
+      check('roles.read');
+      check('roles.read');
+      await app.settle();
+
+      const group = app.page().querySelector('fieldset[data-testid]')?.parentElement?.closest(
+        'fieldset',
+      ) as HTMLFieldSetElement;
+      expect(group.querySelector('legend')?.textContent?.trim()).toBe('Permisos');
+      expect(group.getAttribute('aria-describedby')).toBe('role-permissions-hint');
     });
   });
 

@@ -7,8 +7,25 @@ import { NoticeService } from '../../core/notice/notice.service';
 import { AppRoutes } from '../../core/session/navigation';
 import { SessionStore } from '../../core/session/session.store';
 import { StaffUserQuery, StaffUsersService } from '../../core/staff/staff-users.service';
+import {
+  KdActions,
+  KdAlert,
+  KdBadge,
+  KdButton,
+  KdEmptyState,
+  KdField,
+  KdInput,
+  KdLoadingState,
+  KdPage,
+  KdTable,
+} from '../../design-system';
 import { describeAssignments } from './role-assignments/role-assignments';
-import { ACCOUNT_STATUSES, ACCOUNT_STATUS_LABELS, fullName } from './staff-labels';
+import {
+  ACCOUNT_STATUSES,
+  ACCOUNT_STATUS_LABELS,
+  ACCOUNT_STATUS_TONES,
+  fullName,
+} from './staff-labels';
 
 export const STAFF_PAGE_SIZE = 20;
 
@@ -21,8 +38,22 @@ type LoadState =
 @Component({
   selector: 'mk-staff-users-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    KdActions,
+    KdAlert,
+    KdBadge,
+    KdButton,
+    KdEmptyState,
+    KdField,
+    KdInput,
+    KdLoadingState,
+    KdPage,
+    KdTable,
+  ],
   templateUrl: './staff-users.page.html',
+  styleUrl: './staff-users.page.scss',
 })
 export class StaffUsersPage {
   private readonly staff = inject(StaffUsersService);
@@ -32,6 +63,7 @@ export class StaffUsersPage {
   protected readonly staffLink = AppRoutes.staff;
   protected readonly statuses = ACCOUNT_STATUSES;
   protected readonly statusLabels = ACCOUNT_STATUS_LABELS;
+  protected readonly statusTones = ACCOUNT_STATUS_TONES;
   protected readonly fullName = fullName;
   protected readonly describeAssignments = describeAssignments;
 

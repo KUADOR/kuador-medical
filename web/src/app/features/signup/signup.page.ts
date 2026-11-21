@@ -17,21 +17,36 @@ import {
   PASSWORD_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
   applyServerErrors,
-  controlErrorMessage,
   focusFirstInvalid,
   matchingFields,
   notBlank,
 } from '../../core/forms/form-errors';
 import { NoticeService } from '../../core/notice/notice.service';
-
-type SignupField = 'clinicName' | 'ownerDisplayName' | 'email' | 'password' | 'confirmPassword';
+import {
+  KdActions,
+  KdAlert,
+  KdButton,
+  KdField,
+  KdInput,
+  KdPage,
+} from '../../design-system';
 
 /** Clinic self-signup: the person who signs up becomes OWNER and ADMIN of the new clinic. */
 @Component({
   selector: 'mk-signup-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    KdActions,
+    KdAlert,
+    KdButton,
+    KdField,
+    KdInput,
+    KdPage,
+  ],
   templateUrl: './signup.page.html',
+  styleUrl: './signup.page.scss',
 })
 export class SignupPage {
   private readonly auth = inject(AuthService);
@@ -61,11 +76,6 @@ export class SignupPage {
     },
     { validators: matchingFields('password', 'confirmPassword') },
   );
-
-  protected error(name: SignupField): string | null {
-    const control = this.form.controls[name];
-    return control.touched ? controlErrorMessage(control) : null;
-  }
 
   protected async submit(): Promise<void> {
     if (this.submitting()) {

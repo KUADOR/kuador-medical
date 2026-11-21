@@ -8,6 +8,7 @@ import {
   submit,
   type,
 } from '../../../testing/app-harness';
+import { expectMigratedScreen } from '../../../testing/migrated-screen';
 
 describe('SignupPage', () => {
   let app: AppHarness;
@@ -110,5 +111,15 @@ describe('SignupPage', () => {
     await app.harness.navigateByUrl('/signup');
     expect(app.router.url).toBe('/roles');
     app.backend.expectOne('/api/v1/roles').flush([]);
+  });
+
+  it('uses only the design system (MEDK-44)', async () => {
+    expectMigratedScreen(app.page());
+
+    submit(app.page());
+    await app.settle();
+    expect(app.page().querySelector('#signup-clinic')?.getAttribute('aria-invalid')).toBe('true');
+    expect(app.page().querySelector('#signup-clinic-error')).not.toBeNull();
+    expectMigratedScreen(app.page());
   });
 });

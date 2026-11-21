@@ -2,7 +2,7 @@
 // patient or platform session without going through the login form, and one capture helper.
 // Synthetic data only: fictitious names, ids and addresses, never copied from a real clinic.
 import { type Page, expect } from '@playwright/test';
-import type { CurrentSession } from '../../src/app/core/api/api-types';
+import type { CurrentSession } from '../../../src/app/core/api/api-types';
 import { expectNoAxeViolations } from './axe';
 import { type SimulatedApi, type SimulatedRoutes, simulateApi } from './simulated-api';
 

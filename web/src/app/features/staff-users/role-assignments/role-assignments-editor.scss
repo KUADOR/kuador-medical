@@ -1,0 +1,26 @@
+// Roles per branch editor (MEDK-44). Tokens only (ADR-007). The group error sits after the
+// controls; it is not set on the fieldset so the first invalid control gets the focus.
+.assignments__modes {
+  display: grid;
+  gap: var(--kd-space-1);
+}
+
+.assignments__branches {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(calc(var(--kd-space-12) * 5), 1fr));
+  gap: var(--kd-space-3) var(--kd-space-4);
+}
+
+.assignments__empty {
+  margin: 0;
+  color: var(--kd-text-muted);
+}
+
+.assignments__error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--kd-space-1);
+  margin: 0;
+  font: var(--kd-type-label);
+  color: var(--kd-color-error);
+}

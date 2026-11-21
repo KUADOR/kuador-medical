@@ -1,62 +1,12 @@
+// System status (MEDK-44): the data on one raised panel. Tokens only (ADR-007).
 .status {
   display: grid;
-  gap: var(--space-4);
-  max-width: 40rem;
-}
-
-.status__body {
-  display: grid;
-  gap: var(--space-3);
-}
-
-.status__hint {
-  color: var(--color-text-muted);
+  gap: var(--kd-space-3);
 }
 
 .status__list {
-  display: grid;
-  gap: var(--space-2);
-  margin: 0;
-}
-
-.status__row {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: var(--space-2);
-  padding: var(--space-3);
+  padding: var(--kd-space-4);
   border: var(--kd-border-hairline);
-  border-radius: var(--radius);
-  background: var(--color-surface);
-
-  dt {
-    font-weight: 600;
-  }
-
-  dd {
-    margin: 0;
-  }
-}
-
-.status__alert {
-  margin: 0;
-  padding: var(--space-3);
-  border-left: var(--kd-space-1) solid var(--color-danger);
-  border-radius: var(--radius);
-  background: var(--color-danger-surface);
-  color: var(--color-danger-text);
-}
-
-.badge {
-  display: inline-block;
-  padding: 0.125rem 0.5rem;
-  border-radius: var(--kd-radius-full);
-  background: var(--color-success-surface);
-  color: var(--color-success-text);
-  font-weight: 600;
-}
-
-.badge--down {
-  background: var(--color-danger-surface);
-  color: var(--color-danger-text);
+  border-radius: var(--kd-radius-lg);
+  background: var(--kd-surface-raised);
 }

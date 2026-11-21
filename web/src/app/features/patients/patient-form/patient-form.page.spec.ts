@@ -15,6 +15,7 @@ import {
   submit,
   type,
 } from '../../../../testing/app-harness';
+import { expectMigratedScreen } from '../../../../testing/migrated-screen';
 
 describe('PatientFormPage', () => {
   let app: AppHarness;
@@ -56,6 +57,28 @@ describe('PatientFormPage', () => {
   function expectRegister(): TestRequest {
     return app.backend.expectOne({ method: 'POST', url: '/api/v1/patients' });
   }
+
+  describe('design system (MEDK-44)', () => {
+    it('builds the registration form, with its errors, only with the design system', async () => {
+      await openNew();
+      expectMigratedScreen(app.page());
+
+      submit(app.page());
+      await app.settle();
+      expect(app.page().querySelector('#patient-consent-error')).not.toBeNull();
+      expectMigratedScreen(app.page());
+    });
+
+    it('builds the guardian section of a minor only with the design system', async () => {
+      await openNew();
+      await fillPatient('2015-06-01');
+
+      expect(byTestId(app.page(), 'guardian-section')?.querySelector('legend')?.textContent).toContain(
+        'Representante legal',
+      );
+      expectMigratedScreen(app.page());
+    });
+  });
 
   describe('register', () => {
     it('sends the mandatory data, the consent and an Idempotency-Key', async () => {

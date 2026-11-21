@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import type { SystemInfo } from '../../core/api/api-types';
 import { ERROR_MESSAGES, NETWORK_ERROR_MESSAGE } from '../../core/errors/error-messages';
+import { expectMigratedScreen } from '../../../testing/migrated-screen';
 import { StatusPage } from './status.page';
 
 const UP: SystemInfo = {
@@ -39,6 +40,17 @@ describe('StatusPage', () => {
     backend.expectOne('/api/v1/system/info').flush(body, init);
     await fixture.whenStable();
   }
+
+  it('uses only the design system (MEDK-44)', async () => {
+    const root = fixture.nativeElement as HTMLElement;
+    expectMigratedScreen(root);
+
+    await respond({ ...UP, database: 'DOWN' });
+    expectMigratedScreen(root);
+    expect(root.querySelector('[data-testid="db-status"]')?.classList).toContain(
+      'kd-badge--error',
+    );
+  });
 
   it('shows a loading message while it asks the API', () => {
     expect((fixture.nativeElement as HTMLElement).textContent).toContain(

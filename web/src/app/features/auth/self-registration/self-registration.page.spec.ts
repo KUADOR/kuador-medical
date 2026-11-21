@@ -1,4 +1,5 @@
 import { problem } from '../../../../testing/fixtures';
+import { expectMigratedScreen } from '../../../../testing/migrated-screen';
 import {
   AppHarness,
   byTestId,
@@ -136,5 +137,23 @@ describe('SelfRegistrationPage', () => {
     expect(app.page().textContent).toContain(
       'Solo las personas mayores de edad pueden registrarse por su cuenta.',
     );
+  });
+
+  it('uses only the design system (MEDK-44)', async () => {
+    expectMigratedScreen(app.page());
+
+    submit(app.page());
+    await app.settle();
+    expectMigratedScreen(app.page());
+    expect(app.page().querySelector('#sr-consent-error')).not.toBeNull();
+    expect(app.page().querySelector('#sr-birthDate')?.getAttribute('aria-describedby')).toContain(
+      'sr-birthDate-hint',
+    );
+
+    fillValid();
+    submit(app.page());
+    app.backend.expectOne(URL).flush(null, { status: 202, statusText: 'Accepted' });
+    await app.settle();
+    expectMigratedScreen(app.page());
   });
 });

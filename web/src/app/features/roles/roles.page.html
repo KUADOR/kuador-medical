@@ -1,118 +1,123 @@
-<section class="page" aria-labelledby="roles-title">
-  <div class="page__header">
-    <div>
-      <h1 id="roles-title">Roles</h1>
-      @if (clinicName(); as clinic) {
-        <p class="hint">Roles y permisos de {{ clinic }}.</p>
-      }
-    </div>
-    @if (canCreate()) {
-      <a class="button" [routerLink]="newRoleLink" data-testid="new-role">Nuevo rol</a>
-    }
-  </div>
+<kd-page
+  heading="Roles"
+  headingId="roles-title"
+  [description]="clinicName() ? 'Roles y permisos de ' + clinicName() + '.' : null"
+>
+  @if (canCreate()) {
+    <a kdPageActions kdButton variant="primary" icon="plus" [routerLink]="newRoleLink" data-testid="new-role"
+      >Nuevo rol</a
+    >
+  }
 
   <div aria-live="polite">
     @if (notice(); as message) {
-      <p class="alert alert--success" role="status" data-testid="notice">{{ message }}</p>
+      <kd-alert tone="ok" data-testid="notice">{{ message }}</kd-alert>
     }
   </div>
 
   @if (actionFailure(); as message) {
-    <p class="alert" role="alert" data-testid="action-error">{{ message }}</p>
+    <kd-alert tone="error" data-testid="action-error">{{ message }}</kd-alert>
   }
 
   @if (confirming(); as role) {
     <div
-      class="alert alert--info"
+      class="roles__confirm"
       role="alertdialog"
       aria-labelledby="confirm-title"
       aria-describedby="confirm-text"
     >
-      <h2 id="confirm-title">¿Eliminar el rol «{{ role.name }}»?</h2>
-      <p id="confirm-text">Esta acción no se puede deshacer.</p>
-      <div class="actions">
+      <h2 id="confirm-title" class="roles__confirm-title">¿Eliminar el rol «{{ role.name }}»?</h2>
+      <p id="confirm-text" class="roles__text">Esta acción no se puede deshacer.</p>
+      <kd-actions>
         <button
+          kdButton
+          variant="danger"
+          icon="trash-2"
           type="button"
-          class="button button--danger"
           data-testid="confirm-delete"
           [disabled]="deleting()"
           (click)="confirmDelete()"
         >
           {{ deleting() ? 'Eliminando…' : 'Sí, eliminar' }}
         </button>
-        <button type="button" class="button button--secondary" (click)="cancelDelete()">
-          Cancelar
-        </button>
-      </div>
+        <button kdButton variant="tertiary" type="button" (click)="cancelDelete()">Cancelar</button>
+      </kd-actions>
     </div>
   }
 
-  <div [attr.aria-busy]="state().kind === 'loading'">
+  <div class="roles__content" [attr.aria-busy]="state().kind === 'loading'">
     @switch (state().kind) {
       @case ('loading') {
-        <p class="hint">Cargando roles…</p>
+        <kd-loading-state label="Cargando roles…" />
       }
       @case ('failed') {
-        <p class="alert" role="alert" data-testid="load-error">{{ loadFailure() }}</p>
-        <div class="actions">
-          <button type="button" class="button" (click)="load()">Volver a intentar</button>
-        </div>
+        <kd-alert tone="error" data-testid="load-error">{{ loadFailure() }}</kd-alert>
+        <kd-actions>
+          <button kdButton type="button" icon="refresh-cw" (click)="load()">Volver a intentar</button>
+        </kd-actions>
       }
       @default {
         @if (roles().length === 0) {
-          <p class="hint" data-testid="empty">Tu clínica todavía no tiene roles.</p>
+          <kd-empty-state
+            data-testid="empty"
+            icon="users"
+            heading="Tu clínica todavía no tiene roles."
+          />
         } @else {
-          <ul class="card-list" aria-label="Roles de la clínica">
+          <ul class="roles__list" aria-label="Roles de la clínica">
             @for (role of roles(); track role.id) {
-              <li class="card" data-testid="role">
-                <div class="card__title">
-                  <h2>{{ role.name }}</h2>
-                  @if (isOwnerRole(role)) {
-                    <span class="badge" data-testid="system-badge"
-                      >Rol protegido · solo lectura</span
-                    >
-                  } @else if (role.systemRole) {
-                    <span class="badge" data-testid="system-badge"
-                      >Rol del sistema · no se puede eliminar</span
-                    >
-                  }
-                  @if (role.clinical) {
-                    <span class="badge" data-testid="clinical-badge">Rol clínico</span>
-                  }
-                </div>
-                @if (role.description) {
-                  <p class="hint">{{ role.description }}</p>
-                }
-                @if (role.permissions.length) {
-                  <ul class="tag-list" [attr.aria-label]="'Permisos de ' + role.name">
-                    @for (code of role.permissions; track code) {
-                      <li class="badge">{{ permissionLabel({ code }) }}</li>
+              <li data-testid="role">
+                <kd-card [heading]="role.name">
+                  <div class="roles__badges">
+                    @if (isOwnerRole(role)) {
+                      <kd-badge data-testid="system-badge" icon="lock"
+                        >Rol protegido · solo lectura</kd-badge
+                      >
+                    } @else if (role.systemRole) {
+                      <kd-badge data-testid="system-badge" icon="lock"
+                        >Rol del sistema · no se puede eliminar</kd-badge
+                      >
                     }
-                  </ul>
-                } @else {
-                  <p class="hint">Sin permisos asignados.</p>
-                }
-                <div class="actions">
-                  @if (canEdit(role)) {
-                    <a class="button button--secondary" [routerLink]="[rolesLink, role.id]">
-                      Editar<span class="visually-hidden"> {{ role.name }}</span>
-                    </a>
+                    @if (role.clinical) {
+                      <kd-badge tone="info" data-testid="clinical-badge">Rol clínico</kd-badge>
+                    }
+                  </div>
+                  @if (role.description) {
+                    <p class="roles__text">{{ role.description }}</p>
+                  }
+                  @if (role.permissions.length) {
+                    <ul class="roles__tags" [attr.aria-label]="'Permisos de ' + role.name">
+                      @for (code of role.permissions; track code) {
+                        <li><kd-badge>{{ permissionLabel({ code }) }}</kd-badge></li>
+                      }
+                    </ul>
                   } @else {
-                    <a class="button button--secondary" [routerLink]="[rolesLink, role.id]">
-                      Ver<span class="visually-hidden"> {{ role.name }}</span>
-                    </a>
+                    <p class="roles__text">Sin permisos asignados.</p>
                   }
-                  @if (canRemove(role)) {
-                    <button
-                      type="button"
-                      class="button button--danger"
-                      [attr.data-delete-role]="role.id"
-                      (click)="askDelete(role)"
-                    >
-                      Eliminar<span class="visually-hidden"> {{ role.name }}</span>
-                    </button>
-                  }
-                </div>
+                  <div kdCardActions class="roles__actions">
+                    @if (canEdit(role)) {
+                      <a kdButton icon="pencil" [routerLink]="[rolesLink, role.id]">
+                        Editar<span class="visually-hidden"> {{ role.name }}</span>
+                      </a>
+                    } @else {
+                      <a kdButton icon="eye" [routerLink]="[rolesLink, role.id]">
+                        Ver<span class="visually-hidden"> {{ role.name }}</span>
+                      </a>
+                    }
+                    @if (canRemove(role)) {
+                      <button
+                        kdButton
+                        variant="danger"
+                        icon="trash-2"
+                        type="button"
+                        [attr.data-delete-role]="role.id"
+                        (click)="askDelete(role)"
+                      >
+                        Eliminar<span class="visually-hidden"> {{ role.name }}</span>
+                      </button>
+                    }
+                  </div>
+                </kd-card>
               </li>
             }
           </ul>
@@ -120,4 +125,4 @@
       }
     }
   </div>
-</section>
+</kd-page>

@@ -20,7 +20,7 @@ let nextId = 0;
   selector: 'kd-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <ng-content select="[kdPageBefore]" />
+    <div class="kd-page__before"><ng-content select="[kdPageBefore]" /></div>
     <header class="kd-page__header">
       <div class="kd-page__titles">
         <h1 class="kd-page__heading" [id]="headingId()" tabindex="-1">{{ heading() }}</h1>

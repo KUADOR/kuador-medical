@@ -15,16 +15,22 @@ import { RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import type { Role, StaffUser, UpdateStaffUserRequest } from '../../core/api/api-types';
 import { errorMessage, toProblem } from '../../core/errors/error-messages';
-import {
-  applyServerErrors,
-  controlErrorMessage,
-  focusFirstInvalid,
-  notBlank,
-} from '../../core/forms/form-errors';
+import { applyServerErrors, focusFirstInvalid, notBlank } from '../../core/forms/form-errors';
 import { RolesService } from '../../core/roles/roles.service';
 import { AppRoutes, isOwner } from '../../core/session/navigation';
 import { SessionStore } from '../../core/session/session.store';
 import { StaffUsersService } from '../../core/staff/staff-users.service';
+import {
+  KdActions,
+  KdAlert,
+  KdBadge,
+  KdButton,
+  KdDetails,
+  KdField,
+  KdInput,
+  KdLoadingState,
+  KdPage,
+} from '../../design-system';
 import { RoleAssignmentsEditor } from './role-assignments/role-assignments-editor';
 import {
   AssignmentDraft,
@@ -35,14 +41,19 @@ import {
   requiresProfessionalRegistration,
 } from './role-assignments/role-assignments';
 import { ASSIGNMENT_REQUIRED_MESSAGE } from './staff-user-form.page';
-import { ACCOUNT_STATUS_LABELS, STAFF_LIMITS, formatDateTime, fullName } from './staff-labels';
+import {
+  ACCOUNT_STATUS_LABELS,
+  ACCOUNT_STATUS_TONES,
+  STAFF_LIMITS,
+  formatDateTime,
+  fullName,
+} from './staff-labels';
 
 type LoadState =
   | { kind: 'loading' }
   | { kind: 'ready'; user: StaffUser; roles: Role[] | null }
   | { kind: 'failed'; message: string; notFound: boolean };
 
-type Field = 'firstNames' | 'lastNames' | 'jobTitle' | 'professionalRegistration';
 type AccessAction = 'resend' | 'disable' | 'enable';
 
 export const REGISTRATION_NEEDED_FOR_CLINICAL_ROLE =
@@ -58,8 +69,22 @@ export const REGISTRATION_NEEDED_WHILE_CLINICAL =
 @Component({
   selector: 'mk-staff-user-detail-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, RouterLink, RoleAssignmentsEditor],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    RoleAssignmentsEditor,
+    KdActions,
+    KdAlert,
+    KdBadge,
+    KdButton,
+    KdDetails,
+    KdField,
+    KdInput,
+    KdLoadingState,
+    KdPage,
+  ],
   templateUrl: './staff-user-detail.page.html',
+  styleUrl: './staff-user-detail.page.scss',
 })
 export class StaffUserDetailPage implements OnInit {
   private readonly staff = inject(StaffUsersService);
@@ -74,6 +99,7 @@ export class StaffUserDetailPage implements OnInit {
   protected readonly staffLink = AppRoutes.staff;
   protected readonly limits = STAFF_LIMITS;
   protected readonly statusLabels = ACCOUNT_STATUS_LABELS;
+  protected readonly statusTones = ACCOUNT_STATUS_TONES;
   protected readonly fullName = fullName;
   protected readonly describeAssignments = describeAssignments;
 
@@ -83,6 +109,11 @@ export class StaffUserDetailPage implements OnInit {
   protected readonly user = computed(() => {
     const current = this.state();
     return current.kind === 'ready' ? current.user : null;
+  });
+  /** Name of the person once loaded; a generic title while loading or after a failure. */
+  protected readonly heading = computed(() => {
+    const person = this.user();
+    return person ? fullName(person) : 'Persona del personal';
   });
   protected readonly roles = computed(() => {
     const current = this.state();
@@ -173,11 +204,6 @@ export class StaffUserDetailPage implements OnInit {
           notFound: toProblem(error)?.code === 'NOT_FOUND',
         }),
     });
-  }
-
-  protected error(name: Field): string | null {
-    const control = this.form.controls[name];
-    return control.touched ? controlErrorMessage(control) : null;
   }
 
   // ------------------------------------------------------------------ personal data

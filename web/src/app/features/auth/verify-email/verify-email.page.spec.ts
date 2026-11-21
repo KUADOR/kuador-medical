@@ -4,6 +4,7 @@ import { ERROR_MESSAGES } from '../../../core/errors/error-messages';
 import { problem } from '../../../../testing/fixtures';
 import { AppHarness, byTestId, createAppHarness } from '../../../../testing/app-harness';
 import { EMAIL_VERIFIED_MESSAGE } from './verify-email.page';
+import { expectMigratedScreen } from '../../../../testing/migrated-screen';
 
 const TOKEN = 'verification-token-0123456789';
 
@@ -46,5 +47,26 @@ describe('VerifyEmailPage', () => {
   it('rejects a link without token without calling the API', async () => {
     await open('/email-verification');
     expect(byTestId(app.page(), 'link-error')).not.toBeNull();
+  });
+
+  it('uses only the design system (MEDK-44)', async () => {
+    await open();
+    expect(byTestId(app.page(), 'loading')?.getAttribute('role')).toBe('status');
+    expectMigratedScreen(app.page());
+
+    const { body, init } = problem(503, 'SERVICE_UNAVAILABLE');
+    app.backend.expectOne('/api/v1/auth/email-verification/confirm').flush(body, init);
+    await app.settle();
+    expect(byTestId(app.page(), 'form-error')?.getAttribute('role')).toBe('alert');
+    expectMigratedScreen(app.page());
+
+    (app.page().querySelector('kd-actions button') as HTMLButtonElement).click();
+    app.harness.detectChanges();
+    app.backend
+      .expectOne('/api/v1/auth/email-verification/confirm')
+      .flush(null, { status: 204, statusText: 'No Content' });
+    await app.settle();
+    expect(byTestId(app.page(), 'notice')?.getAttribute('role')).toBe('status');
+    expectMigratedScreen(app.page());
   });
 });

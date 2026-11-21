@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, booleanAttribute, computed, input } from '@angular/core';
 import { KdIcon } from '../icon/icon';
 
 let nextId = 0;
@@ -47,7 +47,7 @@ export class KdFieldGroup {
    */
   readonly projectedHintId = input<string | null>(null);
   /** Hairline frame around the group (sections of a long form). */
-  readonly boxed = input(false);
+  readonly boxed = input(false, { transform: booleanAttribute });
 
   readonly hintId = computed(() => `${this.groupId()}-hint`);
   readonly errorId = computed(() => `${this.groupId()}-error`);

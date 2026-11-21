@@ -26,6 +26,16 @@ import {
 import { NoticeService } from '../../core/notice/notice.service';
 import { groupByModule, permissionLabel } from '../../core/roles/permission-labels';
 import { RolesService, isOwnerRole } from '../../core/roles/roles.service';
+import {
+  KdActions,
+  KdAlert,
+  KdButton,
+  KdField,
+  KdFieldGroup,
+  KdInput,
+  KdLoadingState,
+  KdPage,
+} from '../../design-system';
 
 type LoadState =
   | { kind: 'loading' }
@@ -47,8 +57,20 @@ export type ReadOnlyReason = 'owner' | 'admin' | 'permission';
 @Component({
   selector: 'mk-role-form-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    KdActions,
+    KdAlert,
+    KdButton,
+    KdField,
+    KdFieldGroup,
+    KdInput,
+    KdLoadingState,
+    KdPage,
+  ],
   templateUrl: './role-form.page.html',
+  styleUrl: './role-form.page.scss',
 })
 export class RoleFormPage implements OnInit {
   private readonly rolesService = inject(RolesService);

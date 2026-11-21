@@ -1,79 +1,84 @@
-<section class="page page--narrow" aria-labelledby="settings-title">
-  <p><a [routerLink]="patientsLink">← Volver a pacientes</a></p>
-  <h1 id="settings-title">Autorregistro de pacientes</h1>
-  <p class="hint">
-    Si lo habilitas, las personas mayores de edad pueden registrarse como pacientes desde el enlace
-    público de la clínica, con los mismos datos obligatorios y el consentimiento.
+<kd-page
+  heading="Autorregistro de pacientes"
+  headingId="settings-title"
+  width="narrow"
+  description="Si lo habilitas, las personas mayores de edad pueden registrarse como pacientes desde el enlace público de la clínica, con los mismos datos obligatorios y el consentimiento."
+>
+  <p kdPageBefore class="settings__back">
+    <a kdButton variant="tertiary" icon="arrow-left" [routerLink]="patientsLink"
+      >Volver a pacientes</a
+    >
   </p>
 
   @switch (state().kind) {
     @case ('loading') {
-      <p class="hint" aria-live="polite">Cargando…</p>
+      <kd-loading-state />
     }
     @case ('failed') {
-      <p class="alert" role="alert" data-testid="load-error">{{ loadFailure() }}</p>
-      <div class="actions">
-        <button type="button" class="button" (click)="load()">Volver a intentar</button>
-      </div>
+      <kd-error-state
+        data-testid="load-error"
+        [description]="loadFailure() ?? ''"
+        retryLabel="Volver a intentar"
+        (retry)="load()"
+      />
     }
     @default {
       @if (settings(); as s) {
         <div aria-live="polite">
           @if (notice(); as message) {
-            <p class="alert alert--success" role="status" data-testid="notice">{{ message }}</p>
+            <kd-alert tone="ok" data-testid="notice">{{ message }}</kd-alert>
           }
         </div>
         @if (failure(); as message) {
-          <div class="alert" role="alert" data-testid="form-error">
-            <p>{{ message }}</p>
+          <kd-alert tone="error" data-testid="form-error">
+            <p class="settings__text">{{ message }}</p>
             @if (versionConflict()) {
-              <button type="button" class="button button--secondary" (click)="load()">
-                Recargar
-              </button>
+              <button kdButton type="button" (click)="load()">Recargar</button>
             }
-          </div>
+          </kd-alert>
         }
 
-        <div class="field">
+        <div class="settings__group">
           @if (canConfigure()) {
             <button
+              kdSwitch
               type="button"
-              role="switch"
-              class="switch"
               data-testid="self-registration-switch"
               aria-labelledby="switch-label"
-              [attr.aria-checked]="s.selfRegistrationEnabled"
+              [checked]="s.selfRegistrationEnabled"
               [disabled]="saving()"
               (click)="toggle()"
             >
-              <span class="switch__track" aria-hidden="true"></span>
               <span id="switch-label">Permitir el autorregistro de pacientes</span>
             </button>
           }
-          <p data-testid="status">
+          <p class="settings__text" data-testid="status">
             Estado:
-            <strong>{{ s.selfRegistrationEnabled ? 'Habilitado' : 'Deshabilitado' }}</strong>
+            <kd-badge
+              [tone]="s.selfRegistrationEnabled ? 'ok' : 'neutral'"
+              [icon]="s.selfRegistrationEnabled ? 'circle-check' : null"
+              >{{ s.selfRegistrationEnabled ? 'Habilitado' : 'Deshabilitado' }}</kd-badge
+            >
             @if (saving()) {
-              <span class="hint"> · Guardando…</span>
+              <span class="settings__muted"> · Guardando…</span>
             }
           </p>
           @if (!canConfigure()) {
-            <p class="hint" data-testid="read-only">
+            <p class="settings__text settings__muted" data-testid="read-only">
               No tienes permiso para cambiar esta configuración.
             </p>
           }
         </div>
 
         @if (s.selfRegistrationEnabled) {
-          <div class="field" data-testid="public-link">
-            <label for="public-link">Enlace público de registro</label>
-            <div class="search__row">
-              <input id="public-link" type="text" readonly [value]="publicLink()" />
-              <button type="button" class="button button--secondary" (click)="copy()">
-                Copiar enlace
-              </button>
+          <div class="settings__group" data-testid="public-link">
+            <div class="settings__link">
+              <kd-field label="Enlace público de registro">
+                <input kdInput id="public-link" type="text" readonly [value]="publicLink()" />
+              </kd-field>
+              <button kdButton type="button" (click)="copy()">Copiar enlace</button>
             </div>
-            <p class="field__hint" aria-live="polite">
+            <p class="settings__text settings__muted" aria-live="polite">
               @if (copied()) {
                 Enlace copiado.
               } @else {
@@ -82,11 +87,11 @@
             </p>
           </div>
         } @else {
-          <p class="hint" data-testid="no-link">
+          <p class="settings__text settings__muted" data-testid="no-link">
             Mientras esté deshabilitado, el enlace público no permite registrarse.
           </p>
         }
       }
     }
   }
-</section>
+</kd-page>

@@ -1,214 +1,142 @@
-<section class="page page--narrow" aria-labelledby="patient-form-title">
-  <p><a [routerLink]="cancelLink()">← Volver</a></p>
-  <h1 id="patient-form-title">{{ heading() }}</h1>
+<kd-page [heading]="heading()" headingId="patient-form-title" width="narrow">
+  <a kdPageBefore kdButton variant="tertiary" icon="arrow-left" [routerLink]="cancelLink()"
+    >Volver</a
+  >
 
   @switch (state().kind) {
     @case ('loading') {
-      <p class="hint" aria-live="polite">Cargando…</p>
+      <kd-loading-state label="Cargando…" />
     }
     @case ('failed') {
-      <p class="alert" role="alert" data-testid="load-error">{{ loadFailure()?.message }}</p>
+      <kd-alert tone="error" data-testid="load-error">{{ loadFailure()?.message }}</kd-alert>
       @if (!loadFailure()?.notFound) {
-        <div class="actions">
-          <button type="button" class="button" (click)="load()">Volver a intentar</button>
-        </div>
+        <kd-actions>
+          <button kdButton type="button" icon="refresh-cw" (click)="load()">Volver a intentar</button>
+        </kd-actions>
       }
     }
     @default {
-      <form class="form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <form class="patient-form__form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
         @if (failure(); as message) {
-          <div class="alert" role="alert" data-testid="form-error" tabindex="-1">
-            <p>{{ message }}</p>
+          <kd-alert tone="error" data-testid="form-error" tabindex="-1">
+            <p class="patient-form__message">{{ message }}</p>
             @if (versionConflict()) {
-              <button type="button" class="button button--secondary" (click)="load()">
-                Recargar los datos
-              </button>
+              <kd-actions>
+                <button kdButton type="button" icon="refresh-cw" (click)="load()">
+                  Recargar los datos
+                </button>
+              </kd-actions>
             }
-          </div>
+          </kd-alert>
         }
 
-        <fieldset class="fieldset">
-          <legend>Datos del paciente</legend>
-
-          <div class="field">
-            <label for="patient-documentType">Tipo de documento</label>
-            <select
-              id="patient-documentType"
-              formControlName="documentType"
-              [attr.aria-invalid]="error('documentType') ? 'true' : null"
-              [attr.aria-describedby]="error('documentType') ? 'patient-documentType-error' : null"
-            >
+        <fieldset kdFieldGroup [boxed]="true" legend="Datos del paciente">
+          <kd-field label="Tipo de documento" [error]="error('documentType')">
+            <select kdInput id="patient-documentType" formControlName="documentType">
               @for (option of documentTypes; track option.code) {
                 <option [value]="option.code">{{ option.label }}</option>
               }
             </select>
-            @if (error('documentType'); as message) {
-              <p id="patient-documentType-error" class="field__error">{{ message }}</p>
-            }
-          </div>
+          </kd-field>
 
-          <div class="field">
-            <label for="patient-documentNumber">Número de documento</label>
+          <kd-field label="Número de documento" [error]="error('documentNumber')">
             <input
+              kdInput
               id="patient-documentNumber"
               type="text"
               formControlName="documentNumber"
               autocomplete="off"
-              [attr.aria-invalid]="error('documentNumber') ? 'true' : null"
-              [attr.aria-describedby]="
-                error('documentNumber') ? 'patient-documentNumber-error' : null
-              "
             />
-            @if (error('documentNumber'); as message) {
-              <p id="patient-documentNumber-error" class="field__error">{{ message }}</p>
-            }
-          </div>
+          </kd-field>
 
-          <div class="field">
-            <label for="patient-firstNames">Nombres</label>
+          <kd-field label="Nombres" [error]="error('firstNames')">
             <input
+              kdInput
               id="patient-firstNames"
               type="text"
               formControlName="firstNames"
               autocomplete="off"
-              [attr.aria-invalid]="error('firstNames') ? 'true' : null"
-              [attr.aria-describedby]="error('firstNames') ? 'patient-firstNames-error' : null"
             />
-            @if (error('firstNames'); as message) {
-              <p id="patient-firstNames-error" class="field__error">{{ message }}</p>
-            }
-          </div>
+          </kd-field>
 
-          <div class="field">
-            <label for="patient-lastNames">Apellidos</label>
+          <kd-field label="Apellidos" [error]="error('lastNames')">
             <input
+              kdInput
               id="patient-lastNames"
               type="text"
               formControlName="lastNames"
               autocomplete="off"
-              [attr.aria-invalid]="error('lastNames') ? 'true' : null"
-              [attr.aria-describedby]="error('lastNames') ? 'patient-lastNames-error' : null"
             />
-            @if (error('lastNames'); as message) {
-              <p id="patient-lastNames-error" class="field__error">{{ message }}</p>
-            }
-          </div>
+          </kd-field>
 
-          <div class="field">
-            <label for="patient-birthDate">Fecha de nacimiento</label>
-            <input
-              id="patient-birthDate"
-              type="date"
-              formControlName="birthDate"
-              [attr.aria-invalid]="error('birthDate') ? 'true' : null"
-              [attr.aria-describedby]="
-                error('birthDate')
-                  ? 'patient-birthDate-hint patient-birthDate-error'
-                  : 'patient-birthDate-hint'
-              "
-            />
-            <p id="patient-birthDate-hint" class="field__hint">
-              Si es menor de {{ majorityAge }} años se pedirán los datos de su representante.
-            </p>
-            @if (error('birthDate'); as message) {
-              <p id="patient-birthDate-error" class="field__error">{{ message }}</p>
-            }
-          </div>
+          <kd-field
+            label="Fecha de nacimiento"
+            [hint]="
+              'Si es menor de ' + majorityAge + ' años se pedirán los datos de su representante.'
+            "
+            [error]="error('birthDate')"
+          >
+            <input kdInput id="patient-birthDate" type="date" formControlName="birthDate" />
+          </kd-field>
 
-          <div class="field">
-            <label for="patient-sex">Sexo</label>
-            <select
-              id="patient-sex"
-              formControlName="sex"
-              [attr.aria-invalid]="error('sex') ? 'true' : null"
-              [attr.aria-describedby]="error('sex') ? 'patient-sex-error' : null"
-            >
+          <kd-field label="Sexo" [error]="error('sex')">
+            <select kdInput id="patient-sex" formControlName="sex">
               <option value="" disabled>Elige una opción</option>
               @for (option of sexOptions; track option.code) {
                 <option [value]="option.code">{{ option.label }}</option>
               }
             </select>
-            @if (error('sex'); as message) {
-              <p id="patient-sex-error" class="field__error">{{ message }}</p>
-            }
-          </div>
+          </kd-field>
 
-          <div class="field">
-            <label for="patient-email">Correo (opcional)</label>
+          <kd-field label="Correo (opcional)" [error]="error('email')">
             <input
+              kdInput
               id="patient-email"
               type="email"
               formControlName="email"
               autocomplete="off"
               inputmode="email"
-              [attr.aria-invalid]="error('email') ? 'true' : null"
-              [attr.aria-describedby]="error('email') ? 'patient-email-error' : null"
             />
-            @if (error('email'); as message) {
-              <p id="patient-email-error" class="field__error">{{ message }}</p>
-            }
-          </div>
+          </kd-field>
 
-          <div class="field">
-            <label for="patient-phone">Teléfono (opcional)</label>
-            <input
-              id="patient-phone"
-              type="tel"
-              formControlName="phone"
-              autocomplete="off"
-              [attr.aria-invalid]="error('phone') ? 'true' : null"
-              [attr.aria-describedby]="
-                error('phone') ? 'patient-phone-hint patient-phone-error' : 'patient-phone-hint'
-              "
-            />
-            <p id="patient-phone-hint" class="field__hint">
-              Con el signo + y el código de país, sin espacios.
-            </p>
-            @if (error('phone'); as message) {
-              <p id="patient-phone-error" class="field__error">{{ message }}</p>
-            }
-          </div>
+          <kd-field
+            label="Teléfono (opcional)"
+            hint="Con el signo + y el código de país, sin espacios."
+            [error]="error('phone')"
+          >
+            <input kdInput id="patient-phone" type="tel" formControlName="phone" autocomplete="off" />
+          </kd-field>
 
-          <div class="field">
-            <label for="patient-address">Dirección (opcional)</label>
+          <kd-field label="Dirección (opcional)" [error]="error('address')">
             <input
+              kdInput
               id="patient-address"
               type="text"
               formControlName="address"
               autocomplete="off"
-              [attr.aria-invalid]="error('address') ? 'true' : null"
-              [attr.aria-describedby]="error('address') ? 'patient-address-error' : null"
             />
-            @if (error('address'); as message) {
-              <p id="patient-address-error" class="field__error">{{ message }}</p>
-            }
-          </div>
+          </kd-field>
         </fieldset>
 
         @if (isNew()) {
           @if (minor()) {
-            <fieldset class="fieldset" data-testid="guardian-section" formGroupName="guardian">
-              <legend>Representante legal (obligatorio para menores de edad)</legend>
-              <p class="hint">
-                El paciente es menor de edad: no tendrá cuenta propia y su representante da el
-                consentimiento.
-              </p>
-              <div class="field">
-                <label for="guardian-relationship">Parentesco o relación</label>
+            <fieldset
+              kdFieldGroup
+              [boxed]="true"
+              legend="Representante legal (obligatorio para menores de edad)"
+              hint="El paciente es menor de edad: no tendrá cuenta propia y su representante da el consentimiento."
+              data-testid="guardian-section"
+              formGroupName="guardian"
+            >
+              <kd-field label="Parentesco o relación" [error]="relationshipError()">
                 <input
+                  kdInput
                   id="guardian-relationship"
                   type="text"
                   formControlName="relationship"
                   autocomplete="off"
-                  [attr.aria-invalid]="relationshipError() ? 'true' : null"
-                  [attr.aria-describedby]="
-                    relationshipError() ? 'guardian-relationship-error' : null
-                  "
                 />
-                @if (relationshipError(); as message) {
-                  <p id="guardian-relationship-error" class="field__error">{{ message }}</p>
-                }
-              </div>
+              </kd-field>
               <mk-guardian-person-fields
                 [group]="form.controls.guardian.controls.person"
                 idPrefix="guardian"
@@ -216,59 +144,40 @@
             </fieldset>
           }
 
-          <fieldset class="fieldset">
-            <legend>Consentimiento de datos personales</legend>
+          <fieldset kdFieldGroup [boxed]="true" legend="Consentimiento de datos personales">
             @if (!minor()) {
-              <div class="field">
-                <label for="patient-consentGrantedBy">¿Quién otorga el consentimiento?</label>
-                <select id="patient-consentGrantedBy" formControlName="consentGrantedBy">
+              <kd-field label="¿Quién otorga el consentimiento?">
+                <select kdInput id="patient-consentGrantedBy" formControlName="consentGrantedBy">
                   <option value="PATIENT">El paciente</option>
                   <option value="GUARDIAN">Su representante</option>
                 </select>
-              </div>
+              </kd-field>
             }
-            <div class="field">
-              <label class="checkbox" for="patient-consent">
-                <input
-                  id="patient-consent"
-                  type="checkbox"
-                  formControlName="consent"
-                  [attr.aria-invalid]="error('consent') ? 'true' : null"
-                  [attr.aria-describedby]="
-                    error('consent') ? 'patient-consent-error' : 'patient-consent-hint'
-                  "
-                />
-                <span>
-                  @if (minor()) {
-                    El representante acepta el tratamiento de los datos personales del paciente por
-                    parte de la clínica.
-                  } @else {
-                    Se acepta el tratamiento de los datos personales del paciente por parte de la
-                    clínica.
-                  }
-                </span>
-              </label>
-              <p id="patient-consent-hint" class="field__hint">
-                Versión del texto: {{ consentVersion }}.
-              </p>
-              @if (error('consent'); as message) {
-                <p id="patient-consent-error" class="field__error">{{ message }}</p>
-              }
-            </div>
+            <kd-field
+              [label]="
+                minor()
+                  ? 'El representante acepta el tratamiento de los datos personales del paciente por parte de la clínica.'
+                  : 'Se acepta el tratamiento de los datos personales del paciente por parte de la clínica.'
+              "
+              [hint]="'Versión del texto: ' + consentVersion + '.'"
+              [error]="error('consent')"
+            >
+              <input kdInput id="patient-consent" type="checkbox" formControlName="consent" />
+            </kd-field>
           </fieldset>
         }
 
-        <div class="actions">
-          <button type="submit" class="button" [disabled]="submitting()">
+        <kd-actions>
+          <button kdButton variant="primary" icon="check" type="submit" [disabled]="submitting()">
             @if (submitting()) {
               Guardando…
             } @else {
               {{ isNew() ? 'Registrar paciente' : 'Guardar cambios' }}
             }
           </button>
-          <a class="button button--secondary" [routerLink]="cancelLink()">Cancelar</a>
-        </div>
+          <a kdButton variant="tertiary" [routerLink]="cancelLink()">Cancelar</a>
+        </kd-actions>
       </form>
     }
   }
-</section>
+</kd-page>
